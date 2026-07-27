@@ -18,7 +18,7 @@ export PYTHONPATH="${PROJECT_ROOT}/src:${PYTHONPATH:-}"
   --obs-password "${OBS_PASSWORD:-123456}" \
   --layers-config configs/scene01_scan_layers.yaml \
   --session-id scene_1 \
-  --settle-seconds 0.4 \
+  --settle-seconds 0.6 \
   --image-format jpg \
   --image-width 1920 \
   --image-height 1080 \

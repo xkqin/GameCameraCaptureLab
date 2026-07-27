@@ -12,6 +12,8 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 
 from .config import AppConfig
+from .discord_notify import DiscordNotifier
+from .feishu_notify import FeishuNotifier
 from .paths import PROJECT_ROOT, ensure_dir
 from .still_scan import (
     StillSample,
@@ -61,11 +63,45 @@ COVERAGE_SMOKE10_TRAJECTORY_JSON = (
 COVERAGE_SMOKE10_TRAJECTORY_OUTPUT_DIR = (
     PROJECT_ROOT / "data" / "videos" / "trajectories" / "scene_1_1_coverage_smoke10_low_to_high"
 )
+SCENE_2_SMOKE15_TRAJECTORY_JSON = (
+    PROJECT_ROOT
+    / "data"
+    / "trajectory_exports"
+    / "scene_2_true_keyframes_gain2p3_distance4_step4_singleanchor_smoke15_cluster3"
+    / "scene_2_true_gain2p3_distance4_step4_singleanchor_smoke15_cluster3_low_to_high_ui.json"
+)
+SCENE_2_SMOKE15_OUTPUT_SUBDIR = "scene_2_true_keyframes_gain2p3_distance4_step4_singleanchor_smoke15_cluster3"
+SCENE_2_AGAIN_13000_TRAJECTORY_JSON = (
+    PROJECT_ROOT
+    / "data"
+    / "trajectory_exports"
+    / "scene_2_again"
+    / "trajectories_true_keyframes_gain2_distance4_step4_singleanchor_balanced_fast64_13000"
+    / "scene_2_again_true_gain2_distance4_step4_singleanchor_balanced_fast64_13000_low_to_high_ui.json"
+)
+SCENE_2_AGAIN_13000_OUTPUT_SUBDIR = (
+    "scene_2_again_true_gain2_distance4_step4_singleanchor_balanced_fast64_13000"
+)
 DEFAULT_TRAJECTORY_SET_ID = "scene_1_1_coverage_smoke10_low_to_high"
 MIN_VALID_TRAJECTORY_VIDEO_BYTES = 64_000
 TRAJECTORY_VIDEO_SETTLE_TIMEOUT_SEC = 20.0
 TRAJECTORY_VIDEO_STABLE_CHECKS = 3
 TRAJECTORY_SETS = {
+    "scene_2_again_true_gain2_distance4_step4_singleanchor_balanced_fast64_13000": {
+        "label": "scene 2 again gain2 distance4 step4 single-anchor balanced fast64 (13,000)",
+        "json": SCENE_2_AGAIN_13000_TRAJECTORY_JSON,
+        "output_dir": PROJECT_ROOT / "data" / "videos" / "trajectories" / SCENE_2_AGAIN_13000_OUTPUT_SUBDIR,
+        "output_subdir": SCENE_2_AGAIN_13000_OUTPUT_SUBDIR,
+        "session_prefix": "scene_2_again_traj",
+        "trust_run_state": True,
+    },
+    "scene_2_true_gain2p3_distance4_step4_singleanchor_smoke15_cluster3": {
+        "label": "scene 2 true keyframes gain2p3 distance4 step4 single-anchor smoke15 cluster3",
+        "json": SCENE_2_SMOKE15_TRAJECTORY_JSON,
+        "output_dir": PROJECT_ROOT / "data" / "videos" / "trajectories" / SCENE_2_SMOKE15_OUTPUT_SUBDIR,
+        "output_subdir": SCENE_2_SMOKE15_OUTPUT_SUBDIR,
+        "session_prefix": "scene_2_gain2p3_distance4_step4_singleanchor_smoke15_cluster3_traj",
+    },
     "scene_1_1_coverage_smoke10_low_to_high": {
         "label": "scene_1.1 coverage smoke10 low-to-high",
         "json": COVERAGE_SMOKE10_TRAJECTORY_JSON,
@@ -91,6 +127,25 @@ TRAJECTORY_SETS = {
         "session_prefix": "scene_1_1_low_to_high_traj",
     },
 }
+
+
+def configured_trajectory_sets(config: AppConfig) -> dict[str, dict[str, object]]:
+    """Resolve optional machine-local capture storage for registered profiles."""
+    profiles = {set_id: dict(item) for set_id, item in TRAJECTORY_SETS.items()}
+    trajectory_config = config.raw.get("trajectory", {})
+    if not isinstance(trajectory_config, dict):
+        return profiles
+    capture_root_raw = trajectory_config.get("capture_root")
+    if not capture_root_raw:
+        return profiles
+    capture_root = Path(str(capture_root_raw)).expanduser()
+    if not capture_root.is_absolute():
+        capture_root = PROJECT_ROOT / capture_root
+    for item in profiles.values():
+        output_subdir = item.get("output_subdir")
+        if output_subdir:
+            item["output_dir"] = capture_root / str(output_subdir)
+    return profiles
 
 
 class StillScanApp:
@@ -151,12 +206,14 @@ class StillScanApp:
         self.obs_restart_every = self._read_int_env("RE9_OBS_RESTART_EVERY_N", 0)
         self.obs_restart_command = os.environ.get("RE9_OBS_RESTART_COMMAND", "")
         self.obs_restart_wait_sec = self._read_float_env("RE9_OBS_RESTART_WAIT_SEC", 20.0)
+        self.discord_notifier = DiscordNotifier.from_config(config)
+        self.feishu_notifier = FeishuNotifier.from_config(config)
         self.running = False
         self.qa_running = False
         self.trajectory_running = False
         self.output_dir: Path | None = None
         self.captured_count = 0
-        self.trajectory_sets = dict(TRAJECTORY_SETS)
+        self.trajectory_sets = configured_trajectory_sets(config)
         if trajectory_json is not None:
             custom_output = trajectory_output_dir or (
                 PROJECT_ROOT / "data" / "videos" / "trajectories" / (trajectory_json.stem or "custom_trajectory")
@@ -228,6 +285,8 @@ class StillScanApp:
         self.trajectory_var = tk.StringVar(value=self._trajectory_status_text())
         self.trajectory_output_var = tk.StringVar(value=f"Output: {self.trajectory_output_dir}")
         self.trajectory_resume_var = tk.StringVar(value=self._trajectory_resume_status_text())
+        self.discord_status_var = tk.StringVar(value=self.discord_notifier.status_text)
+        self.feishu_status_var = tk.StringVar(value=self.feishu_notifier.status_text)
 
         outer = ttk.Frame(self.root)
         outer.pack(fill="both", expand=True)
@@ -331,6 +390,40 @@ class StillScanApp:
         self.stop_trajectory_button.pack(fill="x", padx=8, pady=(0, 8))
         ttk.Label(trajectory_frame, textvariable=self.trajectory_resume_var, wraplength=760).pack(anchor="w", padx=8, pady=(0, 8))
 
+        discord_frame = ttk.LabelFrame(content, text="Discord error alerts")
+        discord_frame.pack(fill="x", pady=(0, 8))
+        ttk.Label(discord_frame, textvariable=self.discord_status_var, wraplength=620).pack(
+            side="left",
+            fill="x",
+            expand=True,
+            padx=8,
+            pady=6,
+        )
+        self.discord_test_button = ttk.Button(
+            discord_frame,
+            text="Send Test Alert",
+            command=self._send_discord_test,
+            state="normal" if self.discord_notifier.enabled else "disabled",
+        )
+        self.discord_test_button.pack(side="right", padx=8, pady=6)
+
+        feishu_frame = ttk.LabelFrame(content, text="Feishu error alerts")
+        feishu_frame.pack(fill="x", pady=(0, 8))
+        ttk.Label(feishu_frame, textvariable=self.feishu_status_var, wraplength=620).pack(
+            side="left",
+            fill="x",
+            expand=True,
+            padx=8,
+            pady=6,
+        )
+        self.feishu_test_button = ttk.Button(
+            feishu_frame,
+            text="Send Test Alert",
+            command=self._send_feishu_test,
+            state="normal" if self.feishu_notifier.enabled else "disabled",
+        )
+        self.feishu_test_button.pack(side="right", padx=8, pady=6)
+
         ttk.Label(content, textvariable=self.status_var, font=("Segoe UI", 11, "bold"), wraplength=720).pack(anchor="w", pady=5)
         ttk.Label(content, textvariable=self.plan_var, wraplength=720).pack(anchor="w", pady=5)
         self.progress = ttk.Progressbar(content, maximum=max(1, self.total), variable=self.progress_var)
@@ -340,6 +433,10 @@ class StillScanApp:
         ttk.Label(content, textvariable=self.output_var, wraplength=720).pack(anchor="w", pady=5)
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        if os.environ.get("RE9_TRAJECTORY_AUTO_RESUME", "").lower() in {"1", "true", "yes"}:
+            # Useful for unattended recovery after an OBS/UI restart.  The
+            # normal button remains confirmation-based.
+            self.root.after(1200, lambda: self.resume_latest_trajectory_run(confirm=False))
 
     def _keep_window_on_top(self) -> None:
         if not self.topmost:
@@ -426,7 +523,7 @@ class StillScanApp:
             return
         self._start_trajectory_worker(list(range(1, self.trajectory_count + 1)))
 
-    def resume_latest_trajectory_run(self) -> None:
+    def resume_latest_trajectory_run(self, confirm: bool = True) -> None:
         if self.running or self.trajectory_running:
             return
         run_dir = self._latest_trajectory_run_dir()
@@ -439,7 +536,7 @@ class StillScanApp:
         if not remaining:
             messagebox.showinfo("Resume unavailable", f"No missing trajectories were found in:\n{run_dir}")
             return
-        if not self._confirm_trajectory_ready(
+        if confirm and not self._confirm_trajectory_ready(
             f"Resume {run_dir.name} from trajectory {remaining[0]:02d}? "
             f"Completed {len(completed)}/{len(planned)}, remaining {len(remaining)}."
         ):
@@ -589,21 +686,49 @@ class StillScanApp:
                         pos, total, idx, traj.trajectory_id
                     ),
                 )
-                result = replay_trajectory_to_obs(
-                    self.config,
-                    trajectory,
-                    obs_password=self.obs_password,
-                    output_dir=output_dir,
-                    session_id=session,
-                    countdown_sec=3.0,
-                    settle_sec=1.0,
-                    post_roll_sec=1.0,
-                    speed=1.0,
-                    duration_sec=None,
-                    record=True,
-                    write_pose_log=True,
-                )
-                video_path = self._validate_trajectory_result(result, trajectory_index)
+                last_error: Exception | None = None
+                for attempt in range(1, 4):
+                    try:
+                        result = replay_trajectory_to_obs(
+                            self.config,
+                            trajectory,
+                            obs_password=self.obs_password,
+                            output_dir=output_dir,
+                            session_id=session,
+                            countdown_sec=3.0,
+                            settle_sec=1.0,
+                            post_roll_sec=1.0,
+                            speed=1.0,
+                            duration_sec=None,
+                            record=True,
+                            write_pose_log=True,
+                        )
+                        video_path = self._validate_trajectory_result(result, trajectory_index)
+                        break
+                    except Exception as exc:
+                        last_error = exc
+                        if attempt >= 3 or self.trajectory_stop_event.is_set():
+                            raise
+                        delay = 2.0 * attempt
+                        self.root.after(
+                            0,
+                            lambda idx=trajectory_index, n=attempt, wait=delay, err=str(exc): self.status_var.set(
+                                f"Trajectory {idx:02d} failed ({err}); retry {n + 1}/3 in {wait:.0f}s..."
+                            ),
+                        )
+                        # A failed replay can leave OBS in a partially active
+                        # output state. Restart it before retrying so the next
+                        # SetRecordDirectory/StartRecord starts cleanly.
+                        if self.obs_restart_command:
+                            try:
+                                self._restart_obs_between_batches(completed, planned_total)
+                            except Exception as restart_exc:
+                                last_error = RuntimeError(
+                                    f"{exc}; OBS restart before retry failed: {restart_exc}"
+                                )
+                        time.sleep(delay)
+                else:
+                    raise last_error or RuntimeError(f"Trajectory {trajectory_index:02d} failed.")
                 self.completed_trajectory_indices.add(trajectory_index)
                 completed = len(self.completed_trajectory_indices)
                 self._write_trajectory_run_state(status="recording", current_index=trajectory_index, last_video=video_path)
@@ -685,7 +810,121 @@ class StillScanApp:
 
         self.root.after(0, apply)
 
+    def _notification_error_fields(self, mode: str, error_log: Path) -> dict[str, object]:
+        fields: dict[str, object] = {
+            "Mode": mode,
+            "Session": self.session_id or "-",
+            "Error log": error_log,
+        }
+        if mode == "trajectory recording":
+            completed = len(self.completed_trajectory_indices)
+            planned = len(self.planned_trajectory_indices) or self.trajectory_count
+            remaining = sorted(
+                set(self.planned_trajectory_indices) - self.completed_trajectory_indices
+            )
+            fields.update(
+                {
+                    "Trajectory set": self._trajectory_set_label(self.trajectory_set_id),
+                    "Progress": f"{completed}/{planned}",
+                    "Next trajectory": remaining[0] if remaining else "-",
+                    "Run directory": self.current_trajectory_run_dir or self.trajectory_output_dir,
+                }
+            )
+        elif mode == "still scan":
+            fields["Progress"] = f"{self.captured_count}/{self.total}"
+        elif self.output_dir is not None:
+            fields["Output directory"] = self.output_dir
+        return fields
+
+    def _notify_error_alerts(self, title: str, message: str, mode: str, error_log: Path) -> None:
+        fields = self._notification_error_fields(mode, error_log)
+        self.discord_notifier.notify_error(
+            title,
+            message,
+            fields=fields,
+        )
+        self.feishu_notifier.notify_error(
+            title,
+            message,
+            fields=fields,
+        )
+
+    def _send_discord_test(self) -> None:
+        if not self.discord_notifier.enabled:
+            messagebox.showerror(
+                "Discord alerts disabled",
+                "Set RE9_DISCORD_WEBHOOK_URL or notifications.discord.webhook_url, then restart the UI.",
+            )
+            return
+
+        self.discord_test_button.configure(state="disabled")
+        self.discord_status_var.set("Discord error alerts: sending test alert...")
+
+        def worker() -> None:
+            sent = self.discord_notifier.send_error(
+                "RE9 Discord test alert",
+                "Discord error notifications are configured correctly.",
+                fields={
+                    "Mode": "test",
+                    "Session": self.session_id or "-",
+                    "Trajectory set": self._trajectory_set_label(self.trajectory_set_id),
+                },
+            )
+            self.root.after(0, lambda: self._set_discord_test_result(sent))
+
+        threading.Thread(target=worker, name="re9-discord-test", daemon=True).start()
+
+    def _set_discord_test_result(self, sent: bool) -> None:
+        self.discord_test_button.configure(state="normal")
+        if sent:
+            self.discord_status_var.set(f"{self.discord_notifier.status_text}; test delivered")
+            messagebox.showinfo("Discord alert sent", "The Discord test alert was delivered.")
+            return
+        self.discord_status_var.set(f"{self.discord_notifier.status_text}; last test failed")
+        messagebox.showerror(
+            "Discord alert failed",
+            f"The test alert could not be delivered. Check {self.discord_notifier.log_path}.",
+        )
+
+    def _send_feishu_test(self) -> None:
+        if not self.feishu_notifier.enabled:
+            messagebox.showerror(
+                "Feishu alerts disabled",
+                "Set RE9_FEISHU_WEBHOOK_URL or notifications.feishu.webhook_url, then restart the UI.",
+            )
+            return
+
+        self.feishu_test_button.configure(state="disabled")
+        self.feishu_status_var.set("Feishu error alerts: sending test alert...")
+
+        def worker() -> None:
+            sent = self.feishu_notifier.send_error(
+                "RE9 Feishu test alert",
+                "Feishu error notifications are configured correctly.",
+                fields={
+                    "Mode": "test",
+                    "Session": self.session_id or "-",
+                    "Trajectory set": self._trajectory_set_label(self.trajectory_set_id),
+                },
+            )
+            self.root.after(0, lambda: self._set_feishu_test_result(sent))
+
+        threading.Thread(target=worker, name="re9-feishu-test", daemon=True).start()
+
+    def _set_feishu_test_result(self, sent: bool) -> None:
+        self.feishu_test_button.configure(state="normal")
+        if sent:
+            self.feishu_status_var.set(f"{self.feishu_notifier.status_text}; test delivered")
+            messagebox.showinfo("Feishu alert sent", "The Feishu test alert was delivered.")
+            return
+        self.feishu_status_var.set(f"{self.feishu_notifier.status_text}; last test failed")
+        messagebox.showerror(
+            "Feishu alert failed",
+            f"The test alert could not be delivered. Check {self.feishu_notifier.log_path}.",
+        )
+
     def _set_error(self, message: str, error_log: Path) -> None:
+        self._notify_error_alerts("RE9 still scan failed", message, "still scan", error_log)
         self.running = False
         self.status_var.set(f"Failed: {message}")
         self.output_var.set(f"Error log: {error_log}")
@@ -706,6 +945,12 @@ class StillScanApp:
         self._refresh_qa_button()
 
     def _set_trajectory_error(self, message: str, error_log: Path) -> None:
+        self._notify_error_alerts(
+            "RE9 trajectory recording failed",
+            message,
+            "trajectory recording",
+            error_log,
+        )
         self.trajectory_running = False
         self.status_var.set(f"Trajectory failed: {message}")
         self.output_var.set(f"Error log: {error_log}")
@@ -746,6 +991,25 @@ class StillScanApp:
         return list(range(1, self.trajectory_count + 1))
 
     def _detect_completed_trajectory_indices(self, run_dir: Path, planned: list[int]) -> set[int]:
+        profile_trusts_state = bool(
+            self.trajectory_sets.get(self.trajectory_set_id, {}).get("trust_run_state", False)
+        )
+        env_trusts_state = os.environ.get("RE9_TRAJECTORY_TRUST_RUN_STATE", "").lower() in {"1", "true", "yes"}
+        if profile_trusts_state or env_trusts_state:
+            state_path = run_dir / "trajectory_run_state.json"
+            if state_path.exists():
+                try:
+                    payload = json.loads(state_path.read_text(encoding="utf-8"))
+                    completed = payload.get("completed_indices")
+                    if isinstance(completed, list):
+                        planned_set = set(planned)
+                        return {
+                            index
+                            for item in completed
+                            if (index := int(item)) > 0 and index in planned_set
+                        }
+                except (OSError, ValueError, TypeError, json.JSONDecodeError):
+                    pass
         return {index for index in planned if self._valid_video_for_trajectory(run_dir, index) is not None}
 
     def _wait_for_stable_video_file(self, video_path: Path, timeout_sec: float = TRAJECTORY_VIDEO_SETTLE_TIMEOUT_SEC) -> bool:
@@ -957,6 +1221,7 @@ class StillScanApp:
         self._refresh_qa_button()
 
     def _set_qa_error(self, message: str, error_log: Path) -> None:
+        self._notify_error_alerts("RE9 bad-image QA failed", message, "bad-image QA", error_log)
         self.qa_running = False
         self.status_var.set(f"Bad-image QA failed: {message}")
         self.output_var.set(f"Error log: {error_log}")
@@ -1075,7 +1340,7 @@ def run_still_scan_gui(
     y_values: str = "9.41,10.10,10.78",
     points_x: int = 5,
     points_z: int = 3,
-    settle_seconds: float = 0.35,
+    settle_seconds: float = 0.6,
     source_name: str | None = None,
     image_format: str = "jpg",
     image_width: int = 1920,

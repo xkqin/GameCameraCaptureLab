@@ -4,7 +4,7 @@
 
 **OBS capture + pose logs + aesthetic scoring + trajectory replay for reproducible FreeCam datasets**
 
-[Quick start](#python-setup) | [Define scan regions](#how-to-define-scan-regions) | [Still scans](#still-image-scan-datasets) | [Trajectory replay](#individual-commands) | [Linux](#installation) | [Safety](#what-this-project-does-not-do)
+[Quick start](#python-setup) | [中文使用手册](docs/USER_GUIDE_ZH.md) | [Define scan regions](#how-to-define-scan-regions) | [Still scans](#still-image-scan-datasets) | [Trajectory replay](#individual-commands) | [Linux](#installation) | [Safety](#what-this-project-does-not-do)
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![OBS](https://img.shields.io/badge/OBS-WebSocket-302E31?style=for-the-badge&logo=obsstudio&logoColor=white)
@@ -131,7 +131,9 @@ clearance is not established by still-image poses alone.
 - Controls OBS through OBS WebSocket.
 - Captures still images from OBS using configurable scan planes and view patterns.
 - Records low-to-high trajectory replay videos from JSON path files.
-- Can resume interrupted trajectory runs and optionally restart OBS between batches to release GPU memory.
+- Requires current Lua and OBS acknowledgements before capture, retries failed trajectories, and validates each recorded video before marking it complete.
+- Can resume interrupted trajectory runs, automatically resume after a UI restart, and optionally restart OBS between batches to release GPU memory.
+- Sends non-blocking error alerts to Discord and Feishu custom webhooks.
 - Writes per-image CSV metadata for position, yaw, pitch, dataset, and file path.
 - Extracts video frames at a configured FPS.
 - Scores frames using CLIP embeddings plus LAION aesthetic predictor weights.
@@ -149,6 +151,9 @@ clearance is not established by still-image poses alone.
 - It does not include game assets, raw full-length gameplay videos, game screenshots, generated datasets, model weights, or Nexus mod files.
 
 README media note: most visual assets in this repository are generated UI illustrations plus a screenshot of this tool's own GUI. The only committed gameplay-derived media is a short compressed trajectory demo slice under `docs/assets/` for README preview.
+
+For a step-by-step Chinese operations and recovery guide, see
+[docs/USER_GUIDE_ZH.md](docs/USER_GUIDE_ZH.md).
 
 ## Installation
 
@@ -393,7 +398,7 @@ python -m re9_pose_recorder.cli scan-stills-gui \
   --obs-password YOUR_PASSWORD \
   --layers-config configs/scene01_scan_layers.yaml \
   --session-id scene_1 \
-  --settle-seconds 0.4 \
+  --settle-seconds 0.6 \
   --image-format jpg \
   --image-width 1920 \
   --image-height 1080 \
@@ -415,6 +420,21 @@ For long unattended trajectory captures, the GUI writes a
 `Resume Latest Run` to continue the newest run from the first missing trajectory.
 Completed trajectories are detected by checking the recorded video file, and
 very small or missing files are treated as incomplete so they can be retried.
+The registered 13,000-path profile can use the completed index list in this
+state file to avoid rescanning thousands of old videos on every restart.
+
+Each trajectory is retried up to three times. Before OBS starts, replay requires
+fresh acknowledgements for Lua pose logging and the initial FreeCam pose. It
+then verifies that OBS entered recording state, waits for recording
+finalization, and checks the resulting video before updating the completed
+index list. Stale Lua status from an earlier attempt is rejected using unique
+command, session, and segment identifiers.
+
+To resume the latest run automatically after the GUI starts:
+
+```bash
+RE9_TRAJECTORY_AUTO_RESUME=1 bash scripts/scan_gui.sh
+```
 
 The trajectory GUI can also restart OBS between completed trajectories to release
 GPU memory while keeping NVENC recording quality. Configure it with environment
@@ -431,6 +451,82 @@ When enabled, OBS is restarted only between completed trajectories. The GUI then
 waits for OBS WebSocket to reconnect before recording the next path. The control
 window also periodically reasserts its topmost state so it stays reachable during
 long runs.
+
+### Discord error alerts
+
+The still-scan GUI can send a Discord webhook alert when a still scan,
+trajectory recording, or bad-image QA run ends with an error. Alerts run in a
+background thread, retry transient delivery failures, and never block capture.
+The UI shows whether alerts are enabled and includes a `Send Test Alert` button.
+
+Prefer passing the webhook as an environment variable so its token is not
+committed to the repository:
+
+```bash
+RE9_DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..." \
+RE9_DISCORD_MENTION="@everyone" \
+bash scripts/scan_gui.sh
+```
+
+`RE9_DISCORD_MENTION` is optional. Use `@everyone`, a user mention such as
+`<@123456789>`, or leave it empty. You can alternatively put the settings only
+in the ignored machine-local `configs/linux.local.yaml`:
+
+```yaml
+notifications:
+  discord:
+    webhook_url: "https://discord.com/api/webhooks/..."
+    mention: "@everyone"
+    username: "RE9 Capture Monitor"
+    timeout_sec: 5
+```
+
+Environment variables override the YAML values. Delivery failures are recorded
+without the webhook URL or token in `outputs/discord_notifications.log`.
+Never commit a real webhook URL; anyone who has it can post through that
+webhook.
+
+### Feishu error alerts
+
+The same GUI error events can also be sent to a Feishu group through a custom
+bot. Discord and Feishu can be enabled at the same time, and both send in
+background threads so a notification failure does not stop capture.
+
+In the target Feishu group, add a custom bot and copy its webhook URL. Enabling
+the bot's signature security option is recommended; copy that signing secret as
+well. Then launch the GUI with:
+
+```bash
+RE9_FEISHU_WEBHOOK_URL="https://open.feishu.cn/open-apis/bot/v2/hook/..." \
+RE9_FEISHU_SECRET="the-optional-signing-secret" \
+RE9_FEISHU_MENTION_OPEN_ID="all" \
+bash scripts/scan_gui.sh
+```
+
+`RE9_FEISHU_SECRET` is optional only when signature verification is disabled on
+the bot. `RE9_FEISHU_MENTION_OPEN_ID` is also optional; set it to `all` to
+mention everyone, or to a Feishu user `open_id` such as `ou_xxx`.
+
+The ignored machine-local `configs/linux.local.yaml` can be used instead:
+
+```yaml
+notifications:
+  feishu:
+    webhook_url: "https://open.feishu.cn/open-apis/bot/v2/hook/..."
+    secret: "the-optional-signing-secret"
+    mention_open_id: "all"
+    timeout_sec: 5
+```
+
+Environment variables override the YAML values. The UI includes a separate
+`Send Test Alert` button. Delivery failures are recorded without the webhook or
+signing secret in `outputs/feishu_notifications.log`. See Feishu's
+[custom bot guide](https://open.feishu.cn/document/ukTMukTMukTM/ucTM5YjL3ETO24yNxkjN)
+for creating the bot and configuring keyword, IP allowlist, or signature
+security.
+
+The webhook and signing secret are credentials. Keep them only in the ignored
+local config or environment variables, and rotate them if they are exposed.
 
 Convenience launchers are included for the committed 4000-path exports:
 
@@ -879,7 +975,25 @@ Stop control example:
 }
 ```
 
-The patch uses `json.load_file` / `json.dump_file` when available, falls back to simple file IO where possible, and reports write errors in the REFramework UI/status file without intentionally crashing the game.
+Control commands include a unique `command_id` and an `issued_at` timestamp.
+The Lua patch publishes the last accepted command id in its status file and
+rejects commands older than the newest accepted timestamp. Status output
+prefers direct file IO and falls back to the REFramework JSON helpers when
+needed. On Linux NTFS/ntfs3 mounts, Python writes the control file through a
+bounded helper process so a stalled filesystem operation cannot freeze the
+capture GUI indefinitely.
+
+## Tests
+
+Run the full unit suite with the project virtual environment:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+```
+
+The tests cover stale Lua acknowledgement rejection, bounded NTFS control-file
+writes, replay preflight and retry behavior, trajectory profile storage,
+Discord delivery, Feishu signatures, and notification secret redaction.
 
 ## Project layout
 

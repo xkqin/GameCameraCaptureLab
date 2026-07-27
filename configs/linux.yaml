@@ -13,6 +13,11 @@ lua_logger:
   default_interval_sec: 0.033333
   backup_dir: "backups/lua"
 
+# Optional root for registered trajectory profiles. Relative paths are
+# resolved from the project root.
+trajectory:
+  capture_root: "data/videos/trajectories"
+
 obs:
   host: "localhost"
   port: 4455
@@ -57,3 +62,17 @@ live_score:
   screenshot_width: 512
   screenshot_height: 288
   screenshot_quality: 80
+
+# Keep real webhook URLs and signing secrets in configs/linux.local.yaml or
+# environment variables. Never commit them.
+notifications:
+  discord:
+    webhook_url: ""
+    mention: ""
+    username: "RE9 Capture Monitor"
+    timeout_sec: 5
+  feishu:
+    webhook_url: ""
+    secret: ""
+    mention_open_id: ""
+    timeout_sec: 5

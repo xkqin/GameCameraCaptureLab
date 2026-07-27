@@ -41,7 +41,7 @@ if __name__ == "__main__":
         "--points-z",
         "6",
         "--settle-seconds",
-        "0.4",
+        "0.6",
         "--image-format",
         "jpg",
         "--image-width",

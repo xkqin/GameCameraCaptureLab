@@ -23,7 +23,7 @@ if __name__ == "__main__":
         "--session-id",
         "scene_1",
         "--settle-seconds",
-        "0.4",
+        "0.6",
         "--image-format",
         "jpg",
         "--image-width",

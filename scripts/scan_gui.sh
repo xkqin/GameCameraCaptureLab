@@ -18,7 +18,7 @@ ARGS=(
   --config "${CONFIG_PATH}"
   --obs-password "${OBS_PASSWORD:-123456}"
   --session-id "${SESSION_ID:-scene_linux}"
-  --settle-seconds "${SETTLE_SECONDS:-0.4}"
+  --settle-seconds "${SETTLE_SECONDS:-0.6}"
   --image-format "${IMAGE_FORMAT:-jpg}"
   --image-width "${IMAGE_WIDTH:-1920}"
   --image-height "${IMAGE_HEIGHT:-1080}"

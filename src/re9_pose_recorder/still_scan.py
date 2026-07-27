@@ -247,7 +247,7 @@ def run_layered_still_scan(
     layers: Iterable[StillLayer],
     points_x: int = 5,
     points_z: int = 3,
-    settle_seconds: float = 0.35,
+    settle_seconds: float = 0.6,
     source_name: str | None = None,
     image_format: str = "jpg",
     image_width: int = 1920,
@@ -353,7 +353,7 @@ def run_still_pose_plan(
     config: AppConfig,
     obs_password: str,
     pose_plan: str | Path,
-    settle_seconds: float = 0.35,
+    settle_seconds: float = 0.6,
     source_name: str | None = None,
     image_format: str = "jpg",
     image_width: int = 1920,
@@ -393,7 +393,7 @@ def run_still_scan(
     y_values: Iterable[float],
     points_x: int = 5,
     points_z: int = 3,
-    settle_seconds: float = 0.35,
+    settle_seconds: float = 0.6,
     source_name: str | None = None,
     image_format: str = "jpg",
     image_width: int = 1920,
@@ -501,17 +501,41 @@ def _run_plan(
                 if stop_event is not None and stop_event.is_set():
                     break
                 sample_id = _sample_id(sample)
-                control.write_set_pose_control(
-                    session,
-                    x=sample.x,
-                    y=sample.y,
-                    z=sample.z,
-                    yaw=sample.yaw_rad,
-                    pitch=sample.pitch_rad,
-                    segment_id=sample_id,
-                    yaw_end=sample.yaw_rad,
-                    duration_sec=0.0,
-                )
+                # The Lua control file is polled by REFramework from the game
+                # thread.  Include a per-shot nonce so an old status file can
+                # never be mistaken for an acknowledgement of this shot.
+                command_segment_id = f"{sample_id}:{time.monotonic_ns()}"
+                pose_ack_timeout = max(5.0, float(settle_seconds) + 1.0)
+                pose_acknowledged = False
+                for attempt in range(3):
+                    # Rewriting the same pose is safe: Lua assigns a fresh
+                    # command id on every write, while the unique segment id
+                    # still prevents an old status file from being accepted.
+                    control.write_set_pose_control(
+                        session,
+                        x=sample.x,
+                        y=sample.y,
+                        z=sample.z,
+                        yaw=sample.yaw_rad,
+                        pitch=sample.pitch_rad,
+                        segment_id=command_segment_id,
+                        yaw_end=sample.yaw_rad,
+                        duration_sec=0.0,
+                    )
+                    if control.wait_until_scan_pose(
+                        command_segment_id,
+                        timeout_sec=pose_ack_timeout,
+                    ):
+                        pose_acknowledged = True
+                        break
+                    if attempt < 2:
+                        time.sleep(0.25)
+                if not pose_acknowledged:
+                    raise RuntimeError(
+                        f"REFramework did not acknowledge pose {sample_id} "
+                        f"after 3 attempts ({pose_ack_timeout:.1f}s each); "
+                        "check that FreeCam remains enabled and REFramework is responsive."
+                    )
                 time.sleep(max(0.0, settle_seconds))
                 dataset_id = _dataset_id(sample)
                 dataset_dir = ensure_dir(datasets_dir / _safe_name(sample.group_id) / dataset_id)
@@ -752,4 +776,3 @@ def _optional_int(value: Any) -> int | None:
     if number <= 0:
         raise ValueError("points_x and points_z must be greater than zero.")
     return number
-

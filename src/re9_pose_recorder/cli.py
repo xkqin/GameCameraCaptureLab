@@ -331,7 +331,7 @@ def scan_stills(
     obs_password: str = typer.Option("", "--obs-password"),
     points_x: int = typer.Option(5, "--points-x"),
     points_z: int = typer.Option(3, "--points-z"),
-    settle_seconds: float = typer.Option(0.35, "--settle-seconds"),
+    settle_seconds: float = typer.Option(0.6, "--settle-seconds"),
     source_name: Optional[str] = typer.Option(None, "--source-name"),
     image_format: str = typer.Option("jpg", "--image-format"),
     image_width: int = typer.Option(1920, "--image-width"),
@@ -456,7 +456,7 @@ def scan_stills_gui(
     obs_password: str = typer.Option("", "--obs-password"),
     points_x: int = typer.Option(5, "--points-x"),
     points_z: int = typer.Option(3, "--points-z"),
-    settle_seconds: float = typer.Option(0.35, "--settle-seconds"),
+    settle_seconds: float = typer.Option(0.6, "--settle-seconds"),
     source_name: Optional[str] = typer.Option(None, "--source-name"),
     image_format: str = typer.Option("jpg", "--image-format"),
     image_width: int = typer.Option(1920, "--image-width"),
@@ -908,4 +908,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

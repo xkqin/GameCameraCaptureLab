@@ -6,10 +6,15 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 configs/linux.local.yaml
+config.ini
+vkd3d-proton.cache
+rclone_upload_*.log
+rclone_upload_*.status
 
 third_party/aesthetic-predictor/
 third_party/huggingface_cache/
 backups/
+runtime/re9_pose_*.json
 data/videos/*
 data/frames/*
 data/pose_logs/*
@@ -23,6 +28,7 @@ docs/assets/*
 !data/pose_logs/.gitkeep
 !data/stills/.gitkeep
 !outputs/.gitkeep
+!runtime/.gitkeep
 
 *.mp4
 *.mkv

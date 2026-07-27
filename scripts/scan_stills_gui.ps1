@@ -14,7 +14,7 @@ try {
         --layers-config "configs\still_scan_layers.yaml" `
         --points-x 5 `
         --points-z 6 `
-        --settle-seconds 0.4 `
+        --settle-seconds 0.6 `
         --image-format jpg `
         --image-width 1920 `
         --image-height 1080 `
@@ -23,5 +23,4 @@ try {
 finally {
     Pop-Location
 }
-
 
