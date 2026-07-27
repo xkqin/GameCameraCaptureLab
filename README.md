@@ -428,7 +428,10 @@ fresh acknowledgements for Lua pose logging and the initial FreeCam pose. It
 then verifies that OBS entered recording state, waits for recording
 finalization, and checks the resulting video before updating the completed
 index list. Stale Lua status from an earlier attempt is rejected using unique
-command, session, and segment identifiers.
+command, session, and segment identifiers. If Lua still reports an older
+logging session, replay waits for that session to stop before starting the next
+one. Start and stop commands remain available for up to eight seconds so a
+temporary game-thread hitch cannot cause every command to be overwritten.
 
 To resume the latest run automatically after the GUI starts:
 

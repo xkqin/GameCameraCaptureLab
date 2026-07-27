@@ -444,9 +444,35 @@ def _start_lua_logging(
     pose_log: Path,
     interval_sec: float,
     attempts: int = 3,
-    timeout_sec: float = 3.0,
+    timeout_sec: float = 8.0,
 ) -> None:
-    """Retry start with fresh command ids before declaring the Lua channel dead."""
+    """Stop stale logging, then retry start without outrunning a stalled game.
+
+    REFramework normally consumes the file command quickly, but the game can
+    pause its Lua update loop for several seconds during an OBS restart or a
+    loading hitch. Rewriting the control file every two or three seconds can
+    overwrite every ``start`` before Lua sees one. Leave each command in place
+    long enough for the game to recover, and explicitly stop an older session
+    before starting this attempt.
+    """
+    status = control.read_status() or {}
+    active_session = str(status.get("session_id") or "")
+    if (
+        status.get("logging") is True
+        and active_session
+        and active_session != session
+        and not _stop_active_lua_logging(
+            control,
+            fallback_session=active_session,
+            attempts=1,
+            timeout_sec=timeout_sec,
+        )
+    ):
+        raise RuntimeError(
+            f"Lua did not stop the previous pose logging session {active_session}; "
+            "OBS was not started."
+        )
+
     for _ in range(max(1, int(attempts))):
         control.write_start_control(session, pose_log, interval_sec)
         command_id = control.last_written_command_id
@@ -466,10 +492,10 @@ def _start_lua_logging(
 def _stop_active_lua_logging(
     control: LuaControl,
     fallback_session: str,
-    attempts: int = 3,
-    timeout_sec: float = 2.0,
+    attempts: int = 2,
+    timeout_sec: float = 8.0,
 ) -> bool:
-    """Stop the session Lua reports as active and preserve the final stop command."""
+    """Stop the active Lua session without rapidly overwriting a pending stop."""
     status = control.read_status() or {}
     if status and status.get("logging") is False:
         try:

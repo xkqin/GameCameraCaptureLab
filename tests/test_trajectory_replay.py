@@ -9,6 +9,7 @@ from re9_pose_recorder.trajectory_replay import (
     ReplayKeyframe,
     _prepare_lua_replay,
     _run_lua_trajectory,
+    _start_lua_logging,
     _stop_active_lua_logging,
 )
 
@@ -151,6 +152,25 @@ class LuaReplayPreflightTests(unittest.TestCase):
         )
         self.assertTrue(_stop_active_lua_logging(control, fallback_session="attempted"))
         self.assertEqual(control.stop_sessions, ["previous"])
+
+    def test_logging_start_stops_a_stale_active_session_first(self) -> None:
+        control = FakeLuaControl(
+            status={"session_id": "previous", "logging": True},
+            logging_started=True,
+            logging_stopped=True,
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _start_lua_logging(
+                control,
+                "current",
+                Path(temp_dir) / "pose.csv",
+                0.033,
+                attempts=1,
+                timeout_sec=0.1,
+            )
+
+        self.assertEqual(control.stop_sessions, ["previous"])
+        self.assertEqual(control.start_sessions, ["current"])
 
     def test_unacknowledged_stop_is_left_as_final_command(self) -> None:
         control = FakeLuaControl(
