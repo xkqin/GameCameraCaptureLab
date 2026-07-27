@@ -302,6 +302,7 @@ automation:
   codex_recovery:
     enabled: true
     codex_bin: "/home/your-user/.local/bin/codex"
+    proxy_url: "http://127.0.0.1:7890"
     prompt: "请修复问题并且重新开始采集"
     cooldown_sec: 900
     timeout_sec: 3600
@@ -312,6 +313,7 @@ automation:
 ```bash
 RE9_CODEX_RECOVERY_ENABLED=1 \
 RE9_CODEX_BIN="/absolute/path/to/codex" \
+RE9_CODEX_PROXY_URL="http://127.0.0.1:7890" \
 RE9_CODEX_RECOVERY_PROMPT="请修复问题并且重新开始采集" \
 RE9_CODEX_RECOVERY_COOLDOWN_SEC=900 \
 RE9_CODEX_RECOVERY_TIMEOUT_SEC=3600 \
@@ -328,6 +330,12 @@ bash scripts/scan_gui.sh
 - 验证至少一条新轨迹完整落盘。
 - 保持每 30 条重启 OBS、Discord/飞书通知和 @全体配置。
 - 不输出、提交或上传本机配置、Webhook、签名密钥、GitHub token、日志和数据集。
+
+设置 `proxy_url` 后，启动新会话时会删除 `ALL_PROXY` 和 `all_proxy`，并把
+`HTTP_PROXY`、`HTTPS_PROXY` 及其小写形式统一设为该地址。Codex 同时使用
+`--sandbox danger-full-access --ask-for-approval never -c features.apps=false`。
+这些覆盖值只传给本次自动恢复的 Codex 子进程，不会执行 `export`，不会改变
+GUI、OBS、系统代理、其他终端或其他 Codex 会话的网络环境。
 
 自动恢复使用无交互 Codex 和完整本地文件访问权限，属于高信任功能，只应在专用
 采集机启用。程序使用全局文件锁避免同时运行多个 Codex，并在每次触发后冷却 15

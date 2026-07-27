@@ -78,6 +78,7 @@ automation:
   codex_recovery:
     enabled: false
     codex_bin: ""
+    proxy_url: ""
     prompt: "请修复问题并且重新开始采集"
     cooldown_sec: 900
     timeout_sec: 3600

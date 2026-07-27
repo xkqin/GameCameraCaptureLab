@@ -12,6 +12,7 @@ from re9_pose_recorder.codex_recovery import (
     CodexRecoveryTrigger,
     _build_recovery_prompt,
     _codex_command,
+    _codex_environment,
     _worker,
 )
 from re9_pose_recorder.config import AppConfig
@@ -25,6 +26,7 @@ class CodexRecoveryTests(unittest.TestCase):
                     "codex_recovery": {
                         "enabled": enabled,
                         "codex_bin": "/usr/local/bin/codex",
+                        "proxy_url": "http://127.0.0.1:7890",
                         "prompt": "请修复问题并且重新开始采集",
                         "cooldown_sec": 900,
                         "timeout_sec": 3600,
@@ -43,6 +45,7 @@ class CodexRecoveryTests(unittest.TestCase):
 
         self.assertTrue(trigger.enabled)
         self.assertEqual(trigger.codex_bin, "/usr/local/bin/codex")
+        self.assertEqual(trigger.proxy_url, "http://127.0.0.1:7890")
         self.assertNotIn(trigger.base_prompt, trigger.status_text)
         self.assertIn("cooldown 15 min", trigger.status_text)
 
@@ -113,6 +116,7 @@ class CodexRecoveryTests(unittest.TestCase):
     def test_command_uses_noninteractive_approval_and_stdin_prompt(self) -> None:
         request = {
             "codex_bin": "/usr/local/bin/codex",
+            "proxy_url": "http://127.0.0.1:7890",
             "project_root": "/workspace/project",
         }
 
@@ -120,8 +124,43 @@ class CodexRecoveryTests(unittest.TestCase):
 
         self.assertIn("never", command)
         self.assertIn("danger-full-access", command)
+        self.assertIn("features.apps=false", command)
         self.assertEqual(command[-1], "-")
         self.assertNotIn("请修复问题并且重新开始采集", command)
+
+    @patch.dict(
+        os.environ,
+        {
+            "ALL_PROXY": "socks5://old-uppercase",
+            "all_proxy": "socks5://old-lowercase",
+            "HTTP_PROXY": "http://old-uppercase",
+            "HTTPS_PROXY": "http://old-secure-uppercase",
+            "http_proxy": "http://old-lowercase",
+            "https_proxy": "http://old-secure-lowercase",
+        },
+    )
+    def test_environment_matches_requested_proxy_wrapper(self) -> None:
+        proxy_url = "http://127.0.0.1:7890"
+        names = (
+            "ALL_PROXY",
+            "all_proxy",
+            "HTTP_PROXY",
+            "HTTPS_PROXY",
+            "http_proxy",
+            "https_proxy",
+        )
+        parent_environment = {name: os.environ[name] for name in names}
+
+        environment = _codex_environment({"proxy_url": proxy_url})
+
+        self.assertNotIn("ALL_PROXY", environment)
+        self.assertNotIn("all_proxy", environment)
+        for name in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
+            self.assertEqual(environment[name], proxy_url)
+        self.assertEqual(
+            {name: os.environ[name] for name in names},
+            parent_environment,
+        )
 
     def test_prompt_contains_error_context_and_recovery_constraints(self) -> None:
         prompt = _build_recovery_prompt(
@@ -157,6 +196,7 @@ class CodexRecoveryTests(unittest.TestCase):
                 json.dumps(
                     {
                         "codex_bin": "/usr/local/bin/codex",
+                        "proxy_url": "http://127.0.0.1:7890",
                         "base_prompt": "请修复问题并且重新开始采集",
                         "cooldown_sec": 900,
                         "timeout_sec": 600,
@@ -183,6 +223,13 @@ class CodexRecoveryTests(unittest.TestCase):
         )
         self.assertEqual(process.communicate.call_args.kwargs["timeout"], 600)
         self.assertEqual(popen_mock.call_args.args[0][-1], "-")
+        worker_environment = popen_mock.call_args.kwargs["env"]
+        self.assertNotIn("ALL_PROXY", worker_environment)
+        self.assertNotIn("all_proxy", worker_environment)
+        self.assertEqual(
+            worker_environment["HTTPS_PROXY"],
+            "http://127.0.0.1:7890",
+        )
 
 
 if __name__ == "__main__":

@@ -548,6 +548,7 @@ automation:
   codex_recovery:
     enabled: true
     codex_bin: "/absolute/path/to/codex"
+    proxy_url: "http://127.0.0.1:7890"
     prompt: "请修复问题并且重新开始采集"
     cooldown_sec: 900
     timeout_sec: 3600
@@ -558,6 +559,7 @@ The equivalent environment variables are:
 ```bash
 RE9_CODEX_RECOVERY_ENABLED=1 \
 RE9_CODEX_BIN="/absolute/path/to/codex" \
+RE9_CODEX_PROXY_URL="http://127.0.0.1:7890" \
 RE9_CODEX_RECOVERY_PROMPT="请修复问题并且重新开始采集" \
 RE9_CODEX_RECOVERY_COOLDOWN_SEC=900 \
 RE9_CODEX_RECOVERY_TIMEOUT_SEC=3600 \
@@ -568,9 +570,15 @@ bash scripts/scan_gui.sh
 Only one recovery worker can run at a time, and a completed or failed launch
 starts the configured cooldown. The worker invokes non-interactive
 `codex exec` with approval prompts disabled and full local filesystem access,
-so enabling it is a high-trust operation. The recovery prompt requires Codex
-to preserve completed videos, resume at the first missing trajectory, verify a
-new trajectory, and avoid printing or committing local secrets.
+with `features.apps=false`, so enabling it is a high-trust operation. When
+`proxy_url` is set, the worker removes `ALL_PROXY` and `all_proxy`, then assigns
+the same URL to uppercase and lowercase `HTTP_PROXY` and `HTTPS_PROXY`. The
+override is passed only to that recovery Codex child process; it does not
+export variables, alter the GUI or OBS environment, change system proxy
+settings, or affect other terminals and Codex sessions. The recovery prompt
+requires Codex to preserve completed videos, resume at the first missing
+trajectory, verify a new trajectory, and avoid printing or committing local
+secrets.
 
 Worker state and output are machine-local:
 

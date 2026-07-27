@@ -19,6 +19,7 @@ from .paths import PROJECT_ROOT, ensure_dir
 
 CODEX_RECOVERY_ENABLED_ENV = "RE9_CODEX_RECOVERY_ENABLED"
 CODEX_RECOVERY_BIN_ENV = "RE9_CODEX_BIN"
+CODEX_RECOVERY_PROXY_ENV = "RE9_CODEX_PROXY_URL"
 CODEX_RECOVERY_PROMPT_ENV = "RE9_CODEX_RECOVERY_PROMPT"
 CODEX_RECOVERY_COOLDOWN_ENV = "RE9_CODEX_RECOVERY_COOLDOWN_SEC"
 CODEX_RECOVERY_TIMEOUT_ENV = "RE9_CODEX_RECOVERY_TIMEOUT_SEC"
@@ -101,6 +102,7 @@ def _cooldown_active(state_path: Path, cooldown_sec: float) -> bool:
 class CodexRecoveryTrigger:
     configured_enabled: bool = False
     codex_bin: str = ""
+    proxy_url: str = ""
     base_prompt: str = DEFAULT_RECOVERY_PROMPT
     cooldown_sec: float = 900.0
     timeout_sec: float = 3_600.0
@@ -125,6 +127,10 @@ class CodexRecoveryTrigger:
             codex_bin = str(settings.get("codex_bin") or "")
         codex_bin = codex_bin.strip() or str(shutil.which("codex") or "")
 
+        proxy_url = os.environ.get(CODEX_RECOVERY_PROXY_ENV)
+        if proxy_url is None:
+            proxy_url = str(settings.get("proxy_url") or "")
+
         base_prompt = os.environ.get(CODEX_RECOVERY_PROMPT_ENV)
         if base_prompt is None:
             base_prompt = str(settings.get("prompt") or DEFAULT_RECOVERY_PROMPT)
@@ -140,6 +146,7 @@ class CodexRecoveryTrigger:
         return cls(
             configured_enabled=configured_enabled,
             codex_bin=codex_bin,
+            proxy_url=proxy_url.strip(),
             base_prompt=base_prompt.strip() or DEFAULT_RECOVERY_PROMPT,
             cooldown_sec=_float_setting(cooldown_value, 900.0, minimum=60.0),
             timeout_sec=_float_setting(timeout_value, 3_600.0, minimum=300.0),
@@ -192,6 +199,7 @@ class CodexRecoveryTrigger:
         )
         request = {
             "codex_bin": self.codex_bin,
+            "proxy_url": self.proxy_url,
             "base_prompt": self.base_prompt,
             "cooldown_sec": self.cooldown_sec,
             "timeout_sec": self.timeout_sec,
@@ -294,10 +302,12 @@ def _build_recovery_prompt(request: Mapping[str, object]) -> str:
 def _codex_command(request: Mapping[str, object]) -> list[str]:
     return [
         str(request["codex_bin"]),
-        "--ask-for-approval",
-        "never",
         "--sandbox",
         "danger-full-access",
+        "--ask-for-approval",
+        "never",
+        "-c",
+        "features.apps=false",
         "exec",
         "--cd",
         str(request["project_root"]),
@@ -305,6 +315,19 @@ def _codex_command(request: Mapping[str, object]) -> list[str]:
         "never",
         "-",
     ]
+
+
+def _codex_environment(request: Mapping[str, object]) -> dict[str, str]:
+    environment = os.environ.copy()
+    proxy_url = str(request.get("proxy_url") or "").strip()
+    if not proxy_url:
+        return environment
+
+    environment.pop("ALL_PROXY", None)
+    environment.pop("all_proxy", None)
+    for name in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
+        environment[name] = proxy_url
+    return environment
 
 
 def _terminate_process(process: subprocess.Popen[str]) -> None:
@@ -375,7 +398,7 @@ def _worker(request_path: Path) -> int:
             process = subprocess.Popen(
                 _codex_command(request),
                 cwd=str(request["project_root"]),
-                env=os.environ.copy(),
+                env=_codex_environment(request),
                 stdin=subprocess.PIPE,
                 stdout=log_handle,
                 stderr=subprocess.STDOUT,
