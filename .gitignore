@@ -14,7 +14,7 @@ rclone_upload_*.status
 third_party/aesthetic-predictor/
 third_party/huggingface_cache/
 backups/
-runtime/re9_pose_*.json
+runtime/re9_pose_*
 data/videos/*
 data/frames/*
 data/pose_logs/*

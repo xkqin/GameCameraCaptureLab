@@ -531,6 +531,59 @@ security.
 The webhook and signing secret are credentials. Keep them only in the ignored
 local config or environment variables, and rotate them if they are exposed.
 
+### Codex automatic recovery
+
+The GUI can optionally start the locally installed Codex CLI after a still
+scan, trajectory recording, or bad-image QA run reaches its final error
+handler. Local retries still run first. The detached recovery worker sends the
+configured instruction together with the error log path, run directory,
+progress, and first missing trajectory.
+
+This feature is disabled by default. Enable it only on a dedicated capture
+machine where `codex` is already installed, authenticated, and trusted to edit
+and run this repository:
+
+```yaml
+automation:
+  codex_recovery:
+    enabled: true
+    codex_bin: "/absolute/path/to/codex"
+    prompt: "请修复问题并且重新开始采集"
+    cooldown_sec: 900
+    timeout_sec: 3600
+```
+
+The equivalent environment variables are:
+
+```bash
+RE9_CODEX_RECOVERY_ENABLED=1 \
+RE9_CODEX_BIN="/absolute/path/to/codex" \
+RE9_CODEX_RECOVERY_PROMPT="请修复问题并且重新开始采集" \
+RE9_CODEX_RECOVERY_COOLDOWN_SEC=900 \
+RE9_CODEX_RECOVERY_TIMEOUT_SEC=3600 \
+RE9_TRAJECTORY_AUTO_RESUME=1 \
+bash scripts/scan_gui.sh
+```
+
+Only one recovery worker can run at a time, and a completed or failed launch
+starts the configured cooldown. The worker invokes non-interactive
+`codex exec` with approval prompts disabled and full local filesystem access,
+so enabling it is a high-trust operation. The recovery prompt requires Codex
+to preserve completed videos, resume at the first missing trajectory, verify a
+new trajectory, and avoid printing or committing local secrets.
+
+Worker state and output are machine-local:
+
+```text
+runtime/re9_pose_codex_recovery_state.json
+outputs/codex_recovery.log
+```
+
+They are stored with owner-only permissions and ignored by Git. Like webhook
+alerts, automatic recovery cannot run if the computer loses power, the
+operating system crashes, or the GUI process is forcibly killed before it
+handles the error.
+
 Convenience launchers are included for the committed 4000-path exports:
 
 ```bash

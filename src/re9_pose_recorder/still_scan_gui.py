@@ -11,6 +11,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
 
+from .codex_recovery import CodexRecoveryTrigger
 from .config import AppConfig
 from .discord_notify import DiscordNotifier
 from .feishu_notify import FeishuNotifier
@@ -208,6 +209,7 @@ class StillScanApp:
         self.obs_restart_wait_sec = self._read_float_env("RE9_OBS_RESTART_WAIT_SEC", 20.0)
         self.discord_notifier = DiscordNotifier.from_config(config)
         self.feishu_notifier = FeishuNotifier.from_config(config)
+        self.codex_recovery = CodexRecoveryTrigger.from_config(config)
         self.running = False
         self.qa_running = False
         self.trajectory_running = False
@@ -287,6 +289,9 @@ class StillScanApp:
         self.trajectory_resume_var = tk.StringVar(value=self._trajectory_resume_status_text())
         self.discord_status_var = tk.StringVar(value=self.discord_notifier.status_text)
         self.feishu_status_var = tk.StringVar(value=self.feishu_notifier.status_text)
+        self.codex_recovery_status_var = tk.StringVar(
+            value=self.codex_recovery.status_text
+        )
 
         outer = ttk.Frame(self.root)
         outer.pack(fill="both", expand=True)
@@ -423,6 +428,17 @@ class StillScanApp:
             state="normal" if self.feishu_notifier.enabled else "disabled",
         )
         self.feishu_test_button.pack(side="right", padx=8, pady=6)
+
+        codex_recovery_frame = ttk.LabelFrame(
+            content,
+            text="Codex automatic recovery",
+        )
+        codex_recovery_frame.pack(fill="x", pady=(0, 8))
+        ttk.Label(
+            codex_recovery_frame,
+            textvariable=self.codex_recovery_status_var,
+            wraplength=760,
+        ).pack(anchor="w", fill="x", padx=8, pady=6)
 
         ttk.Label(content, textvariable=self.status_var, font=("Segoe UI", 11, "bold"), wraplength=720).pack(anchor="w", pady=5)
         ttk.Label(content, textvariable=self.plan_var, wraplength=720).pack(anchor="w", pady=5)
@@ -838,6 +854,16 @@ class StillScanApp:
 
     def _notify_error_alerts(self, title: str, message: str, mode: str, error_log: Path) -> None:
         fields = self._notification_error_fields(mode, error_log)
+        recovery_queued = self.codex_recovery.trigger(
+            title,
+            message,
+            fields=fields,
+        )
+        if recovery_queued:
+            fields["Codex recovery"] = "queued"
+            self.codex_recovery_status_var.set(
+                f"{self.codex_recovery.status_text}; recovery queued"
+            )
         self.discord_notifier.notify_error(
             title,
             message,

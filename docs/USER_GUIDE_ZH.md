@@ -290,7 +290,60 @@ outputs/feishu_notifications.log
 
 日志只记录异常类型，不记录 Webhook 或签名密钥。
 
-## 11. 常见错误与恢复
+## 11. Codex 自动修复并续采
+
+GUI 可以在静态图扫描、轨迹录像或坏图 QA 进入最终错误处理后，自动启动本机
+Codex。程序自己的三次重试仍会先执行；只有最终失败才会触发 Codex。
+
+在忽略提交的 `configs/linux.local.yaml` 中配置：
+
+```yaml
+automation:
+  codex_recovery:
+    enabled: true
+    codex_bin: "/home/your-user/.local/bin/codex"
+    prompt: "请修复问题并且重新开始采集"
+    cooldown_sec: 900
+    timeout_sec: 3600
+```
+
+也可以使用环境变量：
+
+```bash
+RE9_CODEX_RECOVERY_ENABLED=1 \
+RE9_CODEX_BIN="/absolute/path/to/codex" \
+RE9_CODEX_RECOVERY_PROMPT="请修复问题并且重新开始采集" \
+RE9_CODEX_RECOVERY_COOLDOWN_SEC=900 \
+RE9_CODEX_RECOVERY_TIMEOUT_SEC=3600 \
+RE9_TRAJECTORY_AUTO_RESUME=1 \
+bash scripts/scan_gui.sh
+```
+
+启用前，应先在同一 Linux 用户下完成 Codex 登录，并确认 `codex exec` 可以访问本
+仓库。自动任务会收到错误内容、日志路径、运行目录、当前进度和第一个缺失轨迹，
+并被要求：
+
+- 定位和修复根因，运行相关测试。
+- 保留已完成的视频，从第一个缺失索引继续。
+- 验证至少一条新轨迹完整落盘。
+- 保持每 30 条重启 OBS、Discord/飞书通知和 @全体配置。
+- 不输出、提交或上传本机配置、Webhook、签名密钥、GitHub token、日志和数据集。
+
+自动恢复使用无交互 Codex 和完整本地文件访问权限，属于高信任功能，只应在专用
+采集机启用。程序使用全局文件锁避免同时运行多个 Codex，并在每次触发后冷却 15
+分钟。单次任务默认最长运行 60 分钟。
+
+状态和日志位置：
+
+```text
+runtime/re9_pose_codex_recovery_state.json
+outputs/codex_recovery.log
+```
+
+这两个文件只允许当前用户读取且不会进入 Git。断电、系统崩溃、GUI 被强制结束
+或机器完全断网时，Codex 自动恢复无法触发。
+
+## 12. 常见错误与恢复
 
 | 现象 | 处理 |
 | --- | --- |
@@ -303,7 +356,7 @@ outputs/feishu_notifications.log
 | 通知测试失败 | 检查 Webhook、签名、群机器人安全规则和网络；查看脱敏日志 |
 | UI 重启后没有自动继续 | 确认设置了 `RE9_TRAJECTORY_AUTO_RESUME=1`，并检查最新状态文件 |
 
-## 12. 测试
+## 13. 测试
 
 使用项目虚拟环境运行完整测试：
 
@@ -318,7 +371,7 @@ PYTHONPATH=src .venv/bin/python -m compileall -q src tests
 bash -n scripts/*.sh
 ```
 
-## 13. 批量转码与上传脚本
+## 14. 批量转码与上传脚本
 
 仓库根目录包含已用于现有数据集的批处理脚本：
 
