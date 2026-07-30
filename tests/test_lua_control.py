@@ -120,13 +120,54 @@ class LuaControlPoseAckTests(unittest.TestCase):
                 )
             )
 
-    def test_bounded_helper_overwrites_control_file(self) -> None:
+    def test_health_check_requires_an_exact_command_ack(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            status_file = Path(temp_dir) / "status.json"
+            status_file.write_text(
+                json.dumps({"last_command_id": "health_check:stale"}),
+                encoding="utf-8",
+            )
+            control = self._control(status_file)
+            self.assertFalse(
+                control.wait_until_lua_control_ack(
+                    "health_check:expected",
+                    timeout_sec=0.05,
+                )
+            )
+            status_file.write_text(
+                json.dumps({"last_command_id": "health_check:expected"}),
+                encoding="utf-8",
+            )
+            self.assertTrue(
+                control.wait_until_lua_control_ack(
+                    "health_check:expected",
+                    timeout_sec=0.05,
+                )
+            )
+
+    def test_bounded_helper_overwrites_without_shrinking_control_file(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             control_file = Path(temp_dir) / "control.json"
             control_file.write_text('{"command":"old","padding":"xxxxxxxx"}', encoding="utf-8")
+            previous_size = control_file.stat().st_size
             content = b'{"command":"stop"}'
             _write_control_in_bounded_helper(control_file, content, timeout_sec=1.0)
-            self.assertEqual(control_file.read_bytes(), content)
+            written = control_file.read_bytes()
+            self.assertEqual(len(written), previous_size)
+            self.assertEqual(json.loads(written), {"command": "stop"})
+            self.assertEqual(written[len(content) :], b" " * (previous_size - len(content)))
+
+    def test_bounded_helper_grows_for_a_larger_control_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            control_file = Path(temp_dir) / "control.json"
+            control_file.write_text('{"command":"stop"}', encoding="utf-8")
+            payload = {"command": "play_trajectory", "keyframes": [{"x": 1.0}] * 20}
+            content = json.dumps(payload).encode("utf-8")
+
+            _write_control_in_bounded_helper(control_file, content, timeout_sec=1.0)
+
+            self.assertEqual(control_file.stat().st_size, len(content))
+            self.assertEqual(json.loads(control_file.read_bytes()), payload)
 
     @patch("re9_pose_recorder.lua_control._filesystem_type_for_path", return_value="ntfs3")
     @patch("re9_pose_recorder.lua_control._write_control_in_bounded_helper")
@@ -185,6 +226,9 @@ class LuaControlPoseAckTests(unittest.TestCase):
         self.assertIn("last_command_issued_at", block)
         self.assertIn("issued_at = tonumber(text:match", block)
         self.assertIn("issued_at < (tonumber(re9_pose_logger.last_command_issued_at)", block)
+        self.assertIn('elseif control.command == "stop" then', block)
+        self.assertIn("re9_pose_logger.session_id = control.session_id", block)
+        self.assertIn('elseif control.command == "health_check" then', block)
 
 
 if __name__ == "__main__":

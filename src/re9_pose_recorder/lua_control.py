@@ -121,6 +121,15 @@ class LuaControl:
     def write_stop_control(self, session_id: str) -> Path:
         return self._write_control({"command": "stop", "command_id": f"stop:{session_id}:{time.time():.6f}", "session_id": session_id})
 
+    def write_health_check_control(self, session_id: str) -> Path:
+        return self._write_control(
+            {
+                "command": "health_check",
+                "command_id": f"health_check:{session_id}:{time.time():.6f}",
+                "session_id": session_id,
+            }
+        )
+
     def write_set_pose_control(
         self,
         session_id: str,
@@ -250,6 +259,22 @@ class LuaControl:
             time.sleep(0.25)
         return False
 
+    def wait_until_lua_control_ack(
+        self,
+        command_id: str,
+        timeout_sec: float = 5,
+    ) -> bool:
+        """Require an exact command acknowledgement from the loaded Lua patch."""
+        if not command_id:
+            raise ValueError("command_id must not be empty.")
+        deadline = time.monotonic() + max(0.0, float(timeout_sec))
+        while time.monotonic() < deadline:
+            status = self.read_status()
+            if status and str(status.get("last_command_id") or "") == command_id:
+                return True
+            time.sleep(0.1)
+        return False
+
     def wait_until_scan_pose(
         self,
         segment_id: str,
@@ -310,9 +335,11 @@ class LuaControl:
         if filesystem_type in _NTFS_FILESYSTEM_TYPES:
             # Wine readers can hold the destination inode without allowing
             # delete sharing. os.replace() on ntfs3 may then sleep forever
-            # inside the kernel rather than raising PermissionError. Direct
-            # overwrite avoids the rename, and the helper gives the GUI a hard
-            # timeout if open/write/close ever blocks as well.
+            # inside the kernel rather than raising PermissionError. The
+            # helper overwrites without shrinking and pads a shorter command
+            # with JSON whitespace, so Wine cannot keep reading stale bytes
+            # past a cached EOF from a larger play_trajectory payload. It also
+            # gives the GUI a hard timeout if open/write/fsync/close blocks.
             _write_control_in_bounded_helper(
                 self.control_file,
                 content,

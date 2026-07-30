@@ -4,7 +4,7 @@
 
 **OBS capture + pose logs + aesthetic scoring + trajectory replay for reproducible FreeCam datasets**
 
-[Quick start](#python-setup) | [中文使用手册](docs/USER_GUIDE_ZH.md) | [Define scan regions](#how-to-define-scan-regions) | [Still scans](#still-image-scan-datasets) | [Trajectory replay](#individual-commands) | [Linux](#installation) | [Safety](#what-this-project-does-not-do)
+[Quick start](#python-setup) | [Alerts & auto-debug](#unattended-alerts-and-automatic-debugging) | [中文使用手册](docs/USER_GUIDE_ZH.md) | [Define scan regions](#how-to-define-scan-regions) | [Still scans](#still-image-scan-datasets) | [Trajectory replay](#individual-commands) | [Linux](#installation) | [Safety](#what-this-project-does-not-do)
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![OBS](https://img.shields.io/badge/OBS-WebSocket-302E31?style=for-the-badge&logo=obsstudio&logoColor=white)
@@ -42,6 +42,42 @@ It collects reproducible still-image datasets, records trajectory videos, logs c
     <td><b>Trajectory replay from scored poses.</b><br>Use sampled viewpoints and aesthetic scores to build smooth camera-path videos.</td>
   </tr>
 </table>
+
+## Unattended Alerts and Automatic Debugging
+
+Long trajectory runs can operate for days without hiding a terminal failure.
+The optional unattended path combines local retries, group alerts, automated
+root-cause analysis, and safe resume:
+
+```text
+capture error
+    -> retry locally up to 3 times
+    -> alert Discord + Feishu
+    -> launch a detached Codex recovery worker
+    -> inspect logs, fix the root cause, and run focused tests
+    -> resume the same run at the first missing trajectory
+    -> validate a newly recorded video before continuing
+```
+
+- **Dual-channel alarms:** Discord and Feishu notifications run in background
+  threads, retry transient network errors, support group mentions, and never
+  block the capture worker.
+- **Automatic debugging:** after the normal retry budget is exhausted, the
+  optional Codex worker receives the error, log path, run directory, progress,
+  and next missing index so it can diagnose the live failure.
+- **Data-safe recovery:** completed trajectory indices are preserved, valid
+  videos are not overwritten, and capture resumes only from the first missing
+  item. Each new result must pass file and frame validation.
+- **Operational guardrails:** one recovery worker runs at a time, launches are
+  rate-limited, owner-only state/log files stay outside Git, and webhook
+  credentials remain in environment variables or ignored local configuration.
+
+Alerts and Codex recovery are independently configurable and disabled when
+their credentials or enable flags are absent. Codex recovery runs with broad
+local access and should only be enabled on a dedicated, trusted capture
+machine. See [Discord alerts](#discord-error-alerts),
+[Feishu alerts](#feishu-error-alerts), and
+[Codex automatic recovery](#codex-automatic-recovery) for setup details.
 
 ## Trajectory Demo
 

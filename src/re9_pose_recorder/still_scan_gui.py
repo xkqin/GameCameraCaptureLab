@@ -83,11 +83,51 @@ SCENE_2_AGAIN_13000_TRAJECTORY_JSON = (
 SCENE_2_AGAIN_13000_OUTPUT_SUBDIR = (
     "scene_2_again_true_gain2_distance4_step4_singleanchor_balanced_fast64_13000"
 )
+SCENE_3_1_15000_TRAJECTORY_JSON = (
+    PROJECT_ROOT
+    / "data"
+    / "trajectory_exports"
+    / "scene_3.1"
+    / "trajectories_true_keyframes_gain2p5_distance10_step8_singlemax_globaloverlap90_fast64_15000"
+    / "scene_3_1_true_gain2p5_distance10_step8_singlemax_globaloverlap90_fast64_15000_low_to_high_ui.json"
+)
+SCENE_3_1_15000_OUTPUT_SUBDIR = (
+    "scene_3_1_true_gain2p5_distance10_step8_singlemax_globaloverlap90_fast64_15000"
+)
+SCENE_3_2_13000_TRAJECTORY_JSON = (
+    PROJECT_ROOT
+    / "data"
+    / "trajectory_exports"
+    / "scene_3.2"
+    / "trajectories_true_keyframes_gain2p5_distance10_step8_singlemax_globaloverlap90_fast64_13000"
+    / "scene_3_2_true_gain2p5_distance10_step8_singlemax_globaloverlap90_fast64_13000_low_to_high_ui.json"
+)
+SCENE_3_2_13000_OUTPUT_SUBDIR = (
+    "scene_3_2_true_gain2p5_distance10_step8_singlemax_globaloverlap90_fast64_13000"
+)
 DEFAULT_TRAJECTORY_SET_ID = "scene_1_1_coverage_smoke10_low_to_high"
 MIN_VALID_TRAJECTORY_VIDEO_BYTES = 64_000
 TRAJECTORY_VIDEO_SETTLE_TIMEOUT_SEC = 20.0
 TRAJECTORY_VIDEO_STABLE_CHECKS = 3
 TRAJECTORY_SETS = {
+    "scene_3_1_true_gain2p5_distance10_step8_singlemax_globaloverlap90_fast64_15000": {
+        "label": "scene 3.1 gain2p5 distance10 step8 single-max global-overlap90 fast64 (15,000)",
+        "json": SCENE_3_1_15000_TRAJECTORY_JSON,
+        "output_dir": PROJECT_ROOT / "data" / "videos" / "trajectories" / SCENE_3_1_15000_OUTPUT_SUBDIR,
+        "output_subdir": SCENE_3_1_15000_OUTPUT_SUBDIR,
+        "capture_group": "scene_3",
+        "session_prefix": "scene_3_1_traj",
+        "trust_run_state": True,
+    },
+    "scene_3_2_true_gain2p5_distance10_step8_singlemax_globaloverlap90_fast64_13000": {
+        "label": "scene 3.2 gain2p5 distance10 step8 single-max global-overlap90 fast64 (13,000)",
+        "json": SCENE_3_2_13000_TRAJECTORY_JSON,
+        "output_dir": PROJECT_ROOT / "data" / "videos" / "trajectories" / SCENE_3_2_13000_OUTPUT_SUBDIR,
+        "output_subdir": SCENE_3_2_13000_OUTPUT_SUBDIR,
+        "capture_group": "scene_3",
+        "session_prefix": "scene_3_2_traj",
+        "trust_run_state": True,
+    },
     "scene_2_again_true_gain2_distance4_step4_singleanchor_balanced_fast64_13000": {
         "label": "scene 2 again gain2 distance4 step4 single-anchor balanced fast64 (13,000)",
         "json": SCENE_2_AGAIN_13000_TRAJECTORY_JSON,
@@ -136,17 +176,27 @@ def configured_trajectory_sets(config: AppConfig) -> dict[str, dict[str, object]
     trajectory_config = config.raw.get("trajectory", {})
     if not isinstance(trajectory_config, dict):
         return profiles
-    capture_root_raw = trajectory_config.get("capture_root")
-    if not capture_root_raw:
-        return profiles
-    capture_root = Path(str(capture_root_raw)).expanduser()
-    if not capture_root.is_absolute():
-        capture_root = PROJECT_ROOT / capture_root
+    default_capture_root = _resolve_capture_root(trajectory_config.get("capture_root"))
+    capture_roots = trajectory_config.get("capture_roots", {})
+    if not isinstance(capture_roots, dict):
+        capture_roots = {}
     for item in profiles.values():
         output_subdir = item.get("output_subdir")
-        if output_subdir:
+        capture_group = str(item.get("capture_group") or "")
+        grouped_capture_root = _resolve_capture_root(capture_roots.get(capture_group))
+        capture_root = grouped_capture_root or default_capture_root
+        if output_subdir and capture_root is not None:
             item["output_dir"] = capture_root / str(output_subdir)
     return profiles
+
+
+def _resolve_capture_root(value: object) -> Path | None:
+    if not value:
+        return None
+    path = Path(str(value)).expanduser()
+    if not path.is_absolute():
+        path = PROJECT_ROOT / path
+    return path
 
 
 class StillScanApp:

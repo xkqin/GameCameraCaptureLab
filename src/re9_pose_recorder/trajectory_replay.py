@@ -228,6 +228,7 @@ def replay_trajectory_to_obs(
                 time.sleep(1.0)
 
         if record:
+            _confirm_lua_replay_ready(control, session, trajectory.trajectory_id)
             obs_cfg = config.raw["obs"]
             controller = OBSController(obs_cfg["host"], int(obs_cfg["port"]), obs_password or obs_cfg.get("password", ""))
             try:
@@ -436,6 +437,23 @@ def _prepare_lua_replay(
     _raise_if_lua_rejected_pose(control)
     if settle_sec > 0:
         time.sleep(settle_sec)
+
+
+def _confirm_lua_replay_ready(
+    control: LuaControl,
+    session: str,
+    trajectory_id: str,
+    timeout_sec: float = 3.0,
+) -> None:
+    """Confirm that Lua completed a frame after applying the prepare pose."""
+    control.write_health_check_control(session)
+    command_id = control.last_written_command_id
+    if control.wait_until_lua_control_ack(command_id, timeout_sec=timeout_sec):
+        return
+    raise RuntimeError(
+        f"Lua stopped responding after the prepare pose for {trajectory_id}; "
+        "OBS was not started."
+    )
 
 
 def _start_lua_logging(

@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from re9_pose_recorder.trajectory_replay import (
     ReplayKeyframe,
+    _confirm_lua_replay_ready,
     _prepare_lua_replay,
     _run_lua_trajectory,
     _start_lua_logging,
@@ -32,6 +33,8 @@ class FakeLuaControl:
         self.stop_sessions: list[str] = []
         self.clear_sessions: list[str] = []
         self.play_ids: list[str] = []
+        self.health_checks: list[str] = []
+        self.health_acknowledged = True
         self.last_written_command_id = ""
         self.command_counter = 0
 
@@ -67,6 +70,14 @@ class FakeLuaControl:
         self._next_command("stop")
         self.stop_sessions.append(session_id)
         return Path("control.json")
+
+    def write_health_check_control(self, session_id: str) -> Path:
+        self._next_command("health_check")
+        self.health_checks.append(session_id)
+        return Path("control.json")
+
+    def wait_until_lua_control_ack(self, command_id: str, timeout_sec: float = 5) -> bool:
+        return self.health_acknowledged
 
     def wait_until_lua_logging_stopped(
         self,
@@ -187,6 +198,22 @@ class LuaReplayPreflightTests(unittest.TestCase):
         )
         self.assertEqual(control.stop_sessions, ["previous", "previous", "previous"])
         self.assertEqual(control.clear_sessions, [])
+
+    def test_post_prepare_health_check_must_be_acknowledged_before_obs(self) -> None:
+        control = FakeLuaControl()
+        control.health_acknowledged = False
+
+        with self.assertRaisesRegex(RuntimeError, "OBS was not started"):
+            _confirm_lua_replay_ready(control, "current", "trajectory", timeout_sec=0.0)
+
+        self.assertEqual(control.health_checks, ["current"])
+
+    def test_post_prepare_health_check_accepts_current_lua_ack(self) -> None:
+        control = FakeLuaControl()
+
+        _confirm_lua_replay_ready(control, "current", "trajectory", timeout_sec=0.1)
+
+        self.assertEqual(control.health_checks, ["current"])
 
     @patch("re9_pose_recorder.trajectory_replay.time.sleep")
     @patch(

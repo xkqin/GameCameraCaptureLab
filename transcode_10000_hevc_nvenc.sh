@@ -10,6 +10,8 @@ EXPECTED_VIDEOS="${EXPECTED_VIDEOS:-10000}"
 VIDEO_BITRATE="${VIDEO_BITRATE:-24M}"
 MAX_BITRATE="${MAX_BITRATE:-30M}"
 BUFFER_SIZE="${BUFFER_SIZE:-48M}"
+VIDEO_SOURCE_MODE="${VIDEO_SOURCE_MODE:-all}"
+VALIDATE_ONLY="${VALIDATE_ONLY:-0}"
 
 if [[ -z "$SOURCE_ROOT" || -z "$OUTPUT_ROOT" ]]; then
     printf 'Set SOURCE_ROOT and OUTPUT_ROOT before running this script.\n' >&2
@@ -66,17 +68,66 @@ if ! "$FFMPEG" -hide_banner -encoders 2>/dev/null | grep 'hevc_nvenc' >/dev/null
     exit 1
 fi
 
-# Copy CSV/JSON sidecars and the directory structure, but never copy MP4s.
-rsync -a --exclude='*.mp4' --exclude='*.MP4' "$SOURCE_ROOT/" "$OUTPUT_ROOT/"
-
-mapfile -d '' videos < <(
-    find "$SOURCE_ROOT" -type f -iname '*.mp4' -print0 | sort -zV
-)
+videos=()
+if [[ "$VIDEO_SOURCE_MODE" == 'all' ]]; then
+    mapfile -d '' videos < <(
+        find "$SOURCE_ROOT" -type f -iname '*.mp4' -print0 | sort -zV
+    )
+elif [[ "$VIDEO_SOURCE_MODE" == 'replay_results' ]]; then
+    if ! command -v jq >/dev/null 2>&1; then
+        log 'ERROR jq is required when VIDEO_SOURCE_MODE=replay_results.'
+        exit 1
+    fi
+    source_root_resolved=$(realpath -e "$SOURCE_ROOT")
+    mapfile -d '' replay_results < <(
+        find "$SOURCE_ROOT" -mindepth 2 -maxdepth 2 -type f -name 'replay_result.json' -print0 | sort -zV
+    )
+    declare -A seen_videos=()
+    for result_file in "${replay_results[@]}"; do
+        if ! selected_video=$(jq -er '.video_path | strings | select(length > 0)' "$result_file"); then
+            log "ERROR replay result has no video_path: $result_file"
+            exit 1
+        fi
+        if [[ "$selected_video" != /* ]]; then
+            selected_video="$SOURCE_ROOT/$selected_video"
+        fi
+        if ! selected_video=$(realpath -e "$selected_video"); then
+            log "ERROR replay result video does not exist: $result_file"
+            exit 1
+        fi
+        if [[ "$selected_video" != "$source_root_resolved/"* ]]; then
+            log "ERROR replay result points outside source root: $selected_video"
+            exit 1
+        fi
+        if [[ -n "${seen_videos["$selected_video"]+present}" ]]; then
+            log "ERROR duplicate replay result video: $selected_video"
+            exit 1
+        fi
+        seen_videos["$selected_video"]=1
+        videos+=("$selected_video")
+    done
+else
+    log "ERROR unsupported VIDEO_SOURCE_MODE: $VIDEO_SOURCE_MODE"
+    exit 1
+fi
 total=${#videos[@]}
 if [[ "$total" -ne "$EXPECTED_VIDEOS" ]]; then
     log "ERROR expected $EXPECTED_VIDEOS MP4 files, found $total; refusing an incomplete batch."
     exit 1
 fi
+
+if [[ "$VALIDATE_ONLY" == '1' ]]; then
+    log "VALID source total=$total source_mode=$VIDEO_SOURCE_MODE"
+    exit 0
+fi
+
+# Copy CSV/JSON sidecars and the directory structure, but never copy MP4s.
+rsync_args=(-a --exclude='*.mp4' --exclude='*.MP4')
+if [[ "$VIDEO_SOURCE_MODE" == 'replay_results' ]]; then
+    # Failed retry directories are diagnostic artifacts, not dataset entries.
+    rsync_args+=(--exclude='traj_*_failed_*/')
+fi
+rsync "${rsync_args[@]}" "$SOURCE_ROOT/" "$OUTPUT_ROOT/"
 
 if [[ ! -e "$PROGRESS_FILE" ]]; then
     printf 'timestamp\tindex\tstatus\tinput_bytes\toutput_bytes\tratio_percent\telapsed_seconds\trelative_path\n' >"$PROGRESS_FILE"
@@ -85,7 +136,7 @@ if [[ ! -e "$FAILURE_FILE" ]]; then
     printf 'timestamp\tindex\trelative_path\n' >"$FAILURE_FILE"
 fi
 
-log "START total=$total codec=hevc_nvenc bitrate=$VIDEO_BITRATE audio=removed"
+log "START total=$total codec=hevc_nvenc bitrate=$VIDEO_BITRATE audio=removed source_mode=$VIDEO_SOURCE_MODE"
 
 success=0
 skipped=0

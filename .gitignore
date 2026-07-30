@@ -10,6 +10,7 @@ config.ini
 vkd3d-proton.cache
 rclone_upload_*.log
 rclone_upload_*.status
+.rclone_upload_*.lock
 
 third_party/aesthetic-predictor/
 third_party/huggingface_cache/
