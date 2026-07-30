@@ -9,6 +9,7 @@ from typing import Any
 import yaml
 
 from .paths import DEFAULT_CONFIG_PATH, resolve_project_path
+from .platform_support import platform_config_names
 
 
 ENV_CONFIG_PATH = "RE9_CONFIG"
@@ -19,13 +20,10 @@ def _expand_path(value: str | Path) -> Path:
 
 
 def _default_config_path() -> Path:
-    if sys.platform.startswith("linux"):
-        local_linux = resolve_project_path("configs/linux.local.yaml")
-        if local_linux.exists():
-            return local_linux
-        linux = resolve_project_path("configs/linux.yaml")
-        if linux.exists():
-            return linux
+    for name in platform_config_names(sys.platform):
+        candidate = resolve_project_path(Path("configs") / name)
+        if candidate.exists():
+            return candidate
     return DEFAULT_CONFIG_PATH
 
 

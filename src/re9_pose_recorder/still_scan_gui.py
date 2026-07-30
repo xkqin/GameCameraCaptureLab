@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import shlex
 import subprocess
 import threading
 import time
@@ -16,6 +15,14 @@ from .config import AppConfig
 from .discord_notify import DiscordNotifier
 from .feishu_notify import FeishuNotifier
 from .paths import PROJECT_ROOT, ensure_dir
+from .platform_support import (
+    command_for_popen,
+    default_obs_restart_command,
+    detached_process_kwargs,
+    obs_process_names,
+    obs_sentinel_dir,
+    platform_key,
+)
 from .still_scan import (
     StillSample,
     build_layered_still_scan_plan,
@@ -255,7 +262,9 @@ class StillScanApp:
         self.trajectory_stop_event = threading.Event()
         self.topmost = topmost
         self.obs_restart_every = self._read_int_env("RE9_OBS_RESTART_EVERY_N", 0)
-        self.obs_restart_command = os.environ.get("RE9_OBS_RESTART_COMMAND", "")
+        self.obs_restart_command = os.environ.get("RE9_OBS_RESTART_COMMAND", "").strip()
+        if self.obs_restart_every > 0 and not self.obs_restart_command:
+            self.obs_restart_command = default_obs_restart_command()
         self.obs_restart_wait_sec = self._read_float_env("RE9_OBS_RESTART_WAIT_SEC", 20.0)
         self.discord_notifier = DiscordNotifier.from_config(config)
         self.feishu_notifier = FeishuNotifier.from_config(config)
@@ -1225,7 +1234,10 @@ class StillScanApp:
 
     def _restart_obs_between_batches(self, completed: int, total: int) -> None:
         if not self.obs_restart_command:
-            raise RuntimeError("RE9_OBS_RESTART_COMMAND must be set when RE9_OBS_RESTART_EVERY_N is enabled.")
+            raise RuntimeError(
+                "OBS executable could not be auto-detected; set "
+                "RE9_OBS_RESTART_COMMAND when RE9_OBS_RESTART_EVERY_N is enabled."
+            )
         self.root.after(
             0,
             lambda: self.status_var.set(f"Restarting OBS to release GPU memory after {completed}/{total} trajectories..."),
@@ -1236,15 +1248,18 @@ class StillScanApp:
         log_path = ensure_dir(self.config.output_dir) / "obs_restart.log"
         with log_path.open("ab") as log_handle:
             subprocess.Popen(
-                shlex.split(self.obs_restart_command),
+                command_for_popen(self.obs_restart_command),
                 stdout=log_handle,
                 stderr=subprocess.STDOUT,
-                start_new_session=True,
                 env=os.environ.copy(),
+                **detached_process_kwargs(),
             )
         self._wait_for_obs_websocket()
 
     def _terminate_obs_processes(self) -> None:
+        if platform_key() == "windows":
+            self._terminate_obs_processes_windows()
+            return
         try:
             subprocess.run(["pkill", "-x", "obs"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except OSError:
@@ -1258,8 +1273,48 @@ class StillScanApp:
         subprocess.run(["pkill", "-9", "-x", "obs"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(1.0)
 
+    def _terminate_obs_processes_windows(self) -> None:
+        names = obs_process_names("windows")
+        for name in names:
+            try:
+                subprocess.run(
+                    ["taskkill", "/IM", name, "/T"],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            except OSError:
+                return
+        deadline = time.monotonic() + 10.0
+        while time.monotonic() < deadline:
+            if not self._windows_obs_running(names):
+                return
+            time.sleep(0.25)
+        for name in names:
+            subprocess.run(
+                ["taskkill", "/F", "/IM", name, "/T"],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        time.sleep(1.0)
+
+    @staticmethod
+    def _windows_obs_running(names: tuple[str, ...]) -> bool:
+        try:
+            result = subprocess.run(
+                ["tasklist", "/NH"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+        except OSError:
+            return False
+        output = result.stdout.lower()
+        return any(name.lower() in output for name in names)
+
     def _clear_obs_sentinel_files(self) -> None:
-        sentinel_dir = Path.home() / ".config" / "obs-studio" / ".sentinel"
+        sentinel_dir = obs_sentinel_dir()
         if not sentinel_dir.exists():
             return
         backup_dir = sentinel_dir.with_name(".sentinel.backup-re9")

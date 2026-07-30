@@ -76,13 +76,18 @@ class CodexRecoveryTests(unittest.TestCase):
             request = json.loads(request_paths[0].read_text(encoding="utf-8"))
             mode = os.stat(request_paths[0]).st_mode & 0o777
 
-        self.assertEqual(mode, 0o600)
+        if os.name == "posix":
+            self.assertEqual(mode, 0o600)
         self.assertEqual(request["base_prompt"], "请修复问题并且重新开始采集")
         self.assertEqual(request["fields"]["Next trajectory"], "8875")
         command = popen_mock.call_args.args[0]
         self.assertIn("re9_pose_recorder.codex_recovery", command)
         self.assertNotIn(request["base_prompt"], command)
-        self.assertTrue(popen_mock.call_args.kwargs["start_new_session"])
+        popen_options = popen_mock.call_args.kwargs
+        if os.name == "nt":
+            self.assertIn("creationflags", popen_options)
+        else:
+            self.assertTrue(popen_options["start_new_session"])
 
     @patch("re9_pose_recorder.codex_recovery.subprocess.Popen")
     def test_disabled_or_cooling_down_trigger_does_not_spawn(

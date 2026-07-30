@@ -3,11 +3,17 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-Set-Location (Split-Path -Parent $PSScriptRoot)
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
+Set-Location $ProjectRoot
 
 & $Python -m venv .venv
 & .\.venv\Scripts\python.exe -m pip install --upgrade pip
 & .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+
+if (-not (Test-Path "configs\windows.local.yaml")) {
+  Copy-Item "configs\windows.yaml" "configs\windows.local.yaml"
+  Write-Host "Created configs\windows.local.yaml. Edit its game and OBS paths before capture."
+}
 
 Write-Host "Python environment is ready. Activate it with:"
 Write-Host ".\.venv\Scripts\activate"

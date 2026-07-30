@@ -1,26 +1,22 @@
-$ErrorActionPreference = "Stop"
+param(
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$RemainingArgs
+)
 
-$ProjectRoot = Split-Path -Parent $PSScriptRoot
-$Python = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
-
-if (-not (Test-Path $Python)) {
-    throw "Python venv not found: $Python"
+# Backward-compatible still-scan entry point. The generic Windows launcher now
+# mirrors scripts/scan_gui.sh and also exposes trajectory profiles and recovery.
+$PreviousLayersConfig = $env:LAYERS_CONFIG
+if (-not $env:LAYERS_CONFIG -and -not $env:POSE_PLAN_CONFIG) {
+    $env:LAYERS_CONFIG = "configs\still_scan_layers.yaml"
 }
 
-Push-Location $ProjectRoot
 try {
-    & $Python -m re9_pose_recorder.cli scan-stills-gui `
-        --obs-password "123456" `
-        --layers-config "configs\still_scan_layers.yaml" `
-        --points-x 5 `
-        --points-z 6 `
-        --settle-seconds 0.6 `
-        --image-format jpg `
-        --image-width 1920 `
-        --image-height 1080 `
-        --image-quality 100
+    & (Join-Path $PSScriptRoot "scan_gui.ps1") @RemainingArgs
+    $ExitCode = $LASTEXITCODE
 }
 finally {
-    Pop-Location
+    $env:LAYERS_CONFIG = $PreviousLayersConfig
 }
-
+if ($ExitCode -ne 0) {
+    throw "RE9 capture GUI exited with code $ExitCode."
+}

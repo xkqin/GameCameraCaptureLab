@@ -1,5 +1,5 @@
-# Backward-compatible Windows template. New Windows installs should copy
-# configs/windows.yaml to configs/windows.local.yaml and edit the local file.
+# Windows-native template. Copy this file to configs/windows.local.yaml before
+# adding machine paths, OBS credentials, webhooks, or signing secrets.
 game:
   lua_path: "D:/steam/steamapps/common/RESIDENT EVIL requiem BIOHAZARD requiem/reframework/autorun/RE9FreeCam.lua"
   reframework_dir: "D:/steam/steamapps/common/RESIDENT EVIL requiem BIOHAZARD requiem/reframework"
@@ -12,6 +12,8 @@ lua_logger:
   default_interval_sec: 0.033333
   backup_dir: "backups/lua"
 
+# Optional root for registered trajectory profiles. Relative paths are resolved
+# from the project root; an absolute path can target a separate capture drive.
 trajectory:
   capture_root: "data/videos/trajectories"
 
@@ -60,8 +62,8 @@ live_score:
   screenshot_height: 288
   screenshot_quality: 80
 
-# Keep real webhook URLs and signing secrets in a local config or environment
-# variables. Never commit them.
+# Keep real webhook URLs and signing secrets in windows.local.yaml or
+# environment variables. Never commit them.
 notifications:
   discord:
     webhook_url: ""
@@ -74,8 +76,8 @@ notifications:
     mention_open_id: ""
     timeout_sec: 5
 
-# Opt-in unattended recovery. The worker invokes the locally authenticated
-# Codex CLI after a final GUI error.
+# Optional unattended recovery. Install and authenticate Codex for the same
+# Windows user before enabling this high-trust feature.
 automation:
   codex_recovery:
     enabled: false

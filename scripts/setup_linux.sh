@@ -28,11 +28,15 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 
+if [[ ! -f configs/linux.local.yaml ]]; then
+  cp configs/linux.yaml configs/linux.local.yaml
+  echo "Created configs/linux.local.yaml. Edit its Steam/Proton and OBS paths before capture."
+fi
+
 echo
 echo "Linux environment ready."
 echo "Next:"
 echo "  source .venv/bin/activate"
-echo "  cp configs/linux.yaml configs/linux.local.yaml"
 echo "  edit configs/linux.local.yaml with your Steam/Proton game path"
 echo "  export RE9_CONFIG=configs/linux.local.yaml"
 echo "  python -m re9_pose_recorder.cli setup-laion --config configs/linux.local.yaml"

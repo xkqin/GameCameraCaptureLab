@@ -15,6 +15,7 @@ from typing import IO, Mapping
 
 from .config import AppConfig
 from .paths import PROJECT_ROOT, ensure_dir
+from .platform_support import detached_process_kwargs
 
 
 CODEX_RECOVERY_ENABLED_ENV = "RE9_CODEX_RECOVERY_ENABLED"
@@ -241,7 +242,7 @@ class CodexRecoveryTrigger:
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                start_new_session=True,
+                **detached_process_kwargs(hide_console=True),
             )
         except OSError:
             request_path.unlink(missing_ok=True)
@@ -294,7 +295,7 @@ def _build_recovery_prompt(request: Mapping[str, object]) -> str:
         "3. 保留所有已完成轨迹，从第一个缺失索引安全重启采集；不要覆盖有效视频。\n"
         "4. 验证至少一条新轨迹完整落盘、状态继续增长且错误日志不再更新。\n"
         "5. 保持每 30 条重启 OBS、Discord/飞书告警和 @全体配置有效。\n"
-        "6. 不要输出、提交或上传 configs/linux.local.yaml、Webhook、签名密钥、GitHub token、日志或数据集。\n"
+        "6. 不要输出、提交或上传 configs/*.local.yaml、Webhook、签名密钥、GitHub token、日志或数据集。\n"
         "7. 不要强推 Git，不要删除用户数据；除非修复本身需要，否则不要扩大改动范围。\n"
     )
 
@@ -403,7 +404,7 @@ def _worker(request_path: Path) -> int:
                 stdout=log_handle,
                 stderr=subprocess.STDOUT,
                 text=True,
-                start_new_session=True,
+                **detached_process_kwargs(hide_console=True),
             )
             timed_out = False
             try:

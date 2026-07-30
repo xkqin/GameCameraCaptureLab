@@ -4,7 +4,7 @@
 
 **OBS capture + pose logs + aesthetic scoring + trajectory replay for reproducible FreeCam datasets**
 
-[Quick start](#python-setup) | [Alerts & auto-debug](#unattended-alerts-and-automatic-debugging) | [中文使用手册](docs/USER_GUIDE_ZH.md) | [Define scan regions](#how-to-define-scan-regions) | [Still scans](#still-image-scan-datasets) | [Trajectory replay](#individual-commands) | [Linux](#installation) | [Safety](#what-this-project-does-not-do)
+[Quick start](#python-setup) | [Windows/Linux](#windows-and-linux-platform-adapters) | [Alerts & auto-debug](#unattended-alerts-and-automatic-debugging) | [中文使用手册](docs/USER_GUIDE_ZH.md) | [Define scan regions](#how-to-define-scan-regions) | [Still scans](#still-image-scan-datasets) | [Trajectory replay](#individual-commands) | [Safety](#what-this-project-does-not-do)
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![OBS](https://img.shields.io/badge/OBS-WebSocket-302E31?style=for-the-badge&logo=obsstudio&logoColor=white)
@@ -69,8 +69,8 @@ capture error
   videos are not overwritten, and capture resumes only from the first missing
   item. Each new result must pass file and frame validation.
 - **Operational guardrails:** one recovery worker runs at a time, launches are
-  rate-limited, owner-only state/log files stay outside Git, and webhook
-  credentials remain in environment variables or ignored local configuration.
+  rate-limited, state/log files stay outside Git, and webhook credentials
+  remain in environment variables or ignored local configuration.
 
 Alerts and Codex recovery are independently configurable and disabled when
 their credentials or enable flags are absent. Codex recovery runs with broad
@@ -155,10 +155,42 @@ clearance is not established by still-image poses alone.
 
 ![Dataset preview](docs/assets/dataset-preview.png)
 
-## Platform Support
+## Windows and Linux Platform Adapters
 
-- Windows is the primary tested setup and uses `configs/default.yaml`.
-- Linux is supported for Python, OBS WebSocket capture, still scans, trajectory replay, and LAION scoring when the game, REFramework, and FreeCam mod are installed through Steam Proton and configured with `configs/linux.yaml`.
+Windows and Linux use the same capture, validation, alert, automatic-debugging,
+and resume engine. Platform adapters only handle configuration discovery,
+launch syntax, process detachment, OBS restart, and the REFramework file path.
+
+| Area | Windows native | Linux + Steam Proton |
+| --- | --- | --- |
+| Tracked template | `configs/windows.yaml` | `configs/linux.yaml` |
+| Ignored local config | `configs/windows.local.yaml` | `configs/linux.local.yaml` |
+| Generic GUI launcher | `scripts/scan_gui.ps1` | `scripts/scan_gui.sh` |
+| Game/FreeCam | Native RE9 + REFramework | RE9 under Proton + REFramework |
+| OBS process adapter | `obs64.exe` / `taskkill` | `obs` / `pkill` |
+| OBS state directory | `%APPDATA%\obs-studio` | `$XDG_CONFIG_HOME/obs-studio` or `~/.config/obs-studio` |
+| Codex worker lock | Windows `msvcrt` lock | POSIX `flock` |
+| Long-run features | Alerts, auto-debug, resume, validation, scheduled OBS restart | Alerts, auto-debug, resume, validation, scheduled OBS restart |
+
+`configs/default.yaml` remains as a backward-compatible Windows template.
+New installations should use the explicit platform template and keep
+machine-specific paths and credentials only in the ignored `*.local.yaml`
+file.
+
+The shared platform boundary is intentionally small:
+
+```text
+configs/
+  windows.yaml          # Windows template
+  linux.yaml            # Linux/Proton template
+  *.local.yaml          # ignored machine configuration
+scripts/
+  scan_gui.ps1          # Windows launcher
+  scan_gui.sh           # Linux launcher
+src/re9_pose_recorder/
+  platform_support.py   # config, OBS, command, and process adapters
+  ...                   # shared capture engine
+```
 
 ## What This Project Does
 
@@ -193,12 +225,12 @@ For a step-by-step Chinese operations and recovery guide, see
 
 ## Installation
 
-Windows is the primary tested setup and uses `configs/default.yaml`. Linux/Steam Proton users should use `configs/linux.yaml` or a local copy named `configs/linux.local.yaml`.
+Choose the native adapter for the capture machine:
 
 1. Install Resident Evil Requiem.
 2. Install REFramework manually.
 3. Install the RE9 FreeCam mod manually.
-4. Confirm this Lua path exists, or edit `configs/default.yaml`:
+4. Confirm the Lua path exists and set it in the platform-local config:
 
 ```powershell
 D:\steam\steamapps\common\RESIDENT EVIL requiem BIOHAZARD requiem\reframework\autorun\RE9FreeCam.lua
@@ -211,6 +243,20 @@ D:\steam\steamapps\common\RESIDENT EVIL requiem BIOHAZARD requiem\reframework\au
    Password: set one.
 7. Install Python 3.10+.
 8. Install Git.
+
+### Windows prerequisites
+
+Use native Windows RE9, REFramework, FreeCam, OBS, PowerShell, and
+`configs/windows.local.yaml`. The normal game path resembles:
+
+```text
+D:\steam\steamapps\common\RESIDENT EVIL requiem BIOHAZARD requiem
+```
+
+### Linux prerequisites
+
+Use Steam Proton for the game and native Linux Python/OBS with
+`configs/linux.local.yaml`.
 
 Linux system packages:
 
@@ -264,6 +310,9 @@ Install summary:
 D:\steam\steamapps\common\RESIDENT EVIL requiem BIOHAZARD requiem\reframework\autorun\RE9FreeCam.lua
 ```
 
+On Linux, use the same `reframework/autorun/` location inside the Steam library
+selected for the Proton game.
+
 The Python patcher only backs up and modifies `RE9FreeCam.lua`. It never modifies the game executable, never modifies the FreeCam DLL, and never reads game memory from Python.
 
 ## Python setup
@@ -274,6 +323,7 @@ Windows:
 python -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt
+Copy-Item configs\windows.yaml configs\windows.local.yaml
 python -m re9_pose_recorder.cli setup-laion
 ```
 
@@ -286,15 +336,19 @@ Or use:
 .\scripts\setup_laion_repo.ps1
 ```
 
+`setup_windows.ps1` creates the ignored `configs/windows.local.yaml` when it
+does not already exist. Edit that local file and keep real paths, OBS
+credentials, webhooks, and signing secrets out of the tracked templates.
+
 Linux:
 
 ```bash
 bash scripts/setup_linux.sh
 source .venv/bin/activate
-cp configs/linux.yaml configs/linux.local.yaml
 ```
 
-Then edit `configs/linux.local.yaml` and update the REFramework paths:
+The setup script creates `configs/linux.local.yaml` when needed. Edit it and
+update the REFramework paths:
 
 ```yaml
 game:
@@ -315,6 +369,14 @@ On Linux, when `--config` is omitted, the CLI automatically tries:
 ```text
 configs/linux.local.yaml
 configs/linux.yaml
+configs/default.yaml
+```
+
+On Windows, the equivalent order is:
+
+```text
+configs/windows.local.yaml
+configs/windows.yaml
 configs/default.yaml
 ```
 
@@ -393,18 +455,31 @@ Before starting:
 Run the default street/upper-plane scan:
 
 ```powershell
-python scripts\scan_stills_gui.py
+.\scripts\scan_gui.ps1
 ```
 
 Linux:
 
 ```bash
-bash scripts/scan_scene01_gui.sh
+bash scripts/scan_gui.sh
 ```
 
-Or use the generic Linux launcher, which selects `configs/linux.local.yaml` when it exists and otherwise falls back to `configs/linux.yaml`:
+The launchers have the same environment-variable interface. They select the
+platform-local config first, then the tracked platform template. The older
+`scripts/scan_stills_gui.ps1` and scene-specific shell launchers remain
+available as compatibility wrappers.
+
+Select a registered trajectory set on Windows:
+
+```powershell
+$env:TRAJECTORY_SET = "scene_3_1_true_gain2p5_distance10_step8_singlemax_globaloverlap90_fast64_15000"
+.\scripts\scan_gui.ps1
+```
+
+The equivalent Linux command is:
 
 ```bash
+TRAJECTORY_SET=scene_3_1_true_gain2p5_distance10_step8_singlemax_globaloverlap90_fast64_15000 \
 bash scripts/scan_gui.sh
 ```
 
@@ -441,7 +516,18 @@ python -m re9_pose_recorder.cli scan-stills-gui \
   --image-quality 100
 ```
 
-The same GUI also includes the trajectory-video recorder. To load a custom trajectory JSON on Linux without editing Python files:
+The same GUI also includes the trajectory-video recorder. Load a custom
+trajectory JSON on Windows without editing Python files:
+
+```powershell
+$env:TRAJECTORY_JSON = "D:\captures\sample_trajectories.json"
+$env:TRAJECTORY_OUTPUT_DIR = "D:\captures\my_scene"
+$env:TRAJECTORY_LABEL = "my scene trajectories"
+$env:TRAJECTORY_SESSION_PREFIX = "my_scene_traj"
+.\scripts\scan_gui.ps1
+```
+
+Linux:
 
 ```bash
 TRAJECTORY_JSON=/path/to/sample_trajectories.json \
@@ -471,20 +557,41 @@ temporary game-thread hitch cannot cause every command to be overwritten.
 
 To resume the latest run automatically after the GUI starts:
 
+```powershell
+$env:RE9_TRAJECTORY_AUTO_RESUME = "1"
+.\scripts\scan_gui.ps1
+```
+
+Linux:
+
 ```bash
 RE9_TRAJECTORY_AUTO_RESUME=1 bash scripts/scan_gui.sh
 ```
 
 The trajectory GUI can also restart OBS between completed trajectories to release
-GPU memory while keeping NVENC recording quality. Configure it with environment
-variables before launching `scripts/scan_gui.sh`:
+GPU memory while keeping NVENC recording quality. The executable is
+auto-detected as `obs64.exe` on Windows and `obs` on Linux when the restart
+interval is enabled.
+
+Windows:
+
+```powershell
+$env:RE9_OBS_RESTART_EVERY_N = "30"
+$env:RE9_OBS_RESTART_WAIT_SEC = "30"
+.\scripts\scan_gui.ps1
+```
+
+Linux:
 
 ```bash
 RE9_OBS_RESTART_EVERY_N=30 \
 RE9_OBS_RESTART_WAIT_SEC=30 \
-RE9_OBS_RESTART_COMMAND="/usr/bin/obs --collection RE9_Still_Scan --profile Untitled --disable-missing-files-check" \
 bash scripts/scan_gui.sh
 ```
+
+Set `RE9_OBS_RESTART_COMMAND` only when OBS is installed in a nonstandard
+location or a different collection/profile is required. Windows command lines
+may contain a quoted executable path; Linux uses normal shell quoting.
 
 When enabled, OBS is restarted only between completed trajectories. The GUI then
 waits for OBS WebSocket to reconnect before recording the next path. The control
@@ -501,6 +608,14 @@ The UI shows whether alerts are enabled and includes a `Send Test Alert` button.
 Prefer passing the webhook as an environment variable so its token is not
 committed to the repository:
 
+```powershell
+$env:RE9_DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/..."
+$env:RE9_DISCORD_MENTION = "@everyone"
+.\scripts\scan_gui.ps1
+```
+
+Linux:
+
 ```bash
 RE9_DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..." \
 RE9_DISCORD_MENTION="@everyone" \
@@ -509,7 +624,7 @@ bash scripts/scan_gui.sh
 
 `RE9_DISCORD_MENTION` is optional. Use `@everyone`, a user mention such as
 `<@123456789>`, or leave it empty. You can alternatively put the settings only
-in the ignored machine-local `configs/linux.local.yaml`:
+in the ignored `configs/windows.local.yaml` or `configs/linux.local.yaml`:
 
 ```yaml
 notifications:
@@ -535,6 +650,15 @@ In the target Feishu group, add a custom bot and copy its webhook URL. Enabling
 the bot's signature security option is recommended; copy that signing secret as
 well. Then launch the GUI with:
 
+```powershell
+$env:RE9_FEISHU_WEBHOOK_URL = "https://open.feishu.cn/open-apis/bot/v2/hook/..."
+$env:RE9_FEISHU_SECRET = "the-optional-signing-secret"
+$env:RE9_FEISHU_MENTION_OPEN_ID = "all"
+.\scripts\scan_gui.ps1
+```
+
+Linux:
+
 ```bash
 RE9_FEISHU_WEBHOOK_URL="https://open.feishu.cn/open-apis/bot/v2/hook/..." \
 RE9_FEISHU_SECRET="the-optional-signing-secret" \
@@ -546,7 +670,7 @@ bash scripts/scan_gui.sh
 the bot. `RE9_FEISHU_MENTION_OPEN_ID` is also optional; set it to `all` to
 mention everyone, or to a Feishu user `open_id` such as `ou_xxx`.
 
-The ignored machine-local `configs/linux.local.yaml` can be used instead:
+The ignored platform-local YAML can be used instead:
 
 ```yaml
 notifications:
@@ -592,6 +716,19 @@ automation:
 
 The equivalent environment variables are:
 
+```powershell
+$env:RE9_CODEX_RECOVERY_ENABLED = "1"
+$env:RE9_CODEX_BIN = "C:\path\to\codex.exe"
+$env:RE9_CODEX_PROXY_URL = "http://127.0.0.1:7890"
+$env:RE9_CODEX_RECOVERY_PROMPT = "请修复问题并且重新开始采集"
+$env:RE9_CODEX_RECOVERY_COOLDOWN_SEC = "900"
+$env:RE9_CODEX_RECOVERY_TIMEOUT_SEC = "3600"
+$env:RE9_TRAJECTORY_AUTO_RESUME = "1"
+.\scripts\scan_gui.ps1
+```
+
+Linux:
+
 ```bash
 RE9_CODEX_RECOVERY_ENABLED=1 \
 RE9_CODEX_BIN="/absolute/path/to/codex" \
@@ -623,12 +760,14 @@ runtime/re9_pose_codex_recovery_state.json
 outputs/codex_recovery.log
 ```
 
-They are stored with owner-only permissions and ignored by Git. Like webhook
+They use restrictive permissions where the operating system supports POSIX
+modes and are always ignored by Git. On Windows, protect the capture account
+and its working directory with normal NTFS account permissions. Like webhook
 alerts, automatic recovery cannot run if the computer loses power, the
 operating system crashes, or the GUI process is forcibly killed before it
 handles the error.
 
-Convenience launchers are included for the committed 4000-path exports:
+Linux convenience launchers are included for the committed 4000-path exports:
 
 ```bash
 bash scripts/scan_low_to_high4000_gui.sh
@@ -1026,7 +1165,8 @@ If existing output files would be overwritten and `video.overwrite` is false, a 
 
 ## Error handling notes
 
-- Wrong Lua path: edit `configs/default.yaml` on Windows or `configs/linux.local.yaml` on Linux, then rerun `check-lua`.
+- Wrong Lua path: edit `configs/windows.local.yaml` or
+  `configs/linux.local.yaml`, then rerun `check-lua`.
 - Missing Lua patch: run `patch-lua-logger`.
 - OBS connection failure: open OBS, enable WebSocket, confirm port `4455`, and check the password.
 - Missing Git: install Git and rerun `setup-laion`.
@@ -1087,25 +1227,39 @@ capture GUI indefinitely.
 
 Run the full unit suite with the project virtual environment:
 
+```powershell
+$env:PYTHONPATH = "src"
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+Linux:
+
 ```bash
 PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
 ```
 
 The tests cover stale Lua acknowledgement rejection, bounded NTFS control-file
-writes, replay preflight and retry behavior, trajectory profile storage,
-Discord delivery, Feishu signatures, and notification secret redaction.
+writes, Windows/Linux config and OBS adapters, replay preflight and retry
+behavior, trajectory profile storage, Discord delivery, Feishu signatures, and
+notification secret redaction.
 
 ## Project layout
 
 ```text
 re9-freecam-aesthetic-pose-recorder/
-  configs/default.yaml
+  configs/
+    windows.yaml
+    linux.yaml
+    default.yaml
+  scripts/
+    scan_gui.ps1
+    scan_gui.sh
   src/re9_pose_recorder/
+    platform_support.py
   data/videos/
   data/frames/
   data/pose_logs/
   outputs/
-  scripts/
   third_party/
 ```
 

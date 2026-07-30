@@ -29,10 +29,28 @@ REFramework Lua 文件通道控制 FreeCam，通过 OBS WebSocket 截图和录�
 报警和 Codex 自动恢复可以分别启用。Codex 自动恢复具有较高的本机访问权限，只应
 在专用且可信的采集机上开启。具体配置见第 10 节和第 11 节。
 
+## Windows 与 Linux 版本结构
+
+两个平台共用同一套采集、录像校验、报警、自动调试和断点恢复代码；只有配置发现、
+启动命令、OBS 进程管理和游戏文件路径由平台适配层处理。
+
+| 项目 | Windows 原生版 | Linux + Steam Proton 版 |
+| --- | --- | --- |
+| 配置模板 | `configs/windows.yaml` | `configs/linux.yaml` |
+| 本机配置 | `configs/windows.local.yaml` | `configs/linux.local.yaml` |
+| GUI 启动器 | `scripts/scan_gui.ps1` | `scripts/scan_gui.sh` |
+| OBS 进程 | `obs64.exe`，使用 `taskkill` | `obs`，使用 `pkill` |
+| Codex 任务锁 | Windows `msvcrt` | POSIX `flock` |
+| 完整功能 | 报警、自动 Debug、断点续采、视频验证、定期重启 OBS | 报警、自动 Debug、断点续采、视频验证、定期重启 OBS |
+
+`configs/default.yaml` 仅作为旧版 Windows 配置兼容入口保留。新部署应复制明确的平台
+模板到对应的 `*.local.yaml`；本机路径和凭据只写入 local 文件。
+
 ## 1. 安全原则
 
 - 不要提交游戏文件、截图、视频、数据集、日志、Webhook 或签名密钥。
-- Linux 本机配置使用 `configs/linux.local.yaml`；该文件已被 Git 忽略。
+- Windows 使用 `configs/windows.local.yaml`，Linux 使用
+  `configs/linux.local.yaml`；两个文件都被 Git 忽略。
 - Discord Webhook、飞书 Webhook 和飞书签名 Secret 都应视为密码。
 - 如果凭据被发到公共聊天、截图或日志中，请立即在对应平台重新生成。
 - `outputs/`、`runtime/`、视频和截图目录默认不会进入 Git。
@@ -44,15 +62,25 @@ Linux：
 ```bash
 bash scripts/setup_linux.sh
 source .venv/bin/activate
-cp configs/linux.yaml configs/linux.local.yaml
 ```
+
+Linux 和 Windows 安装脚本都会在对应 local 配置不存在时创建它，并且不会覆盖已有
+的本机配置。
 
 Windows：
 
 ```powershell
-python -m venv .venv
+.\scripts\setup_windows.ps1
 .\.venv\Scripts\activate
-pip install -r requirements.txt
+```
+
+Windows 安装脚本会在文件不存在时创建 `configs/windows.local.yaml`。也可以手动
+执行：
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+Copy-Item configs\windows.yaml configs\windows.local.yaml
 ```
 
 然后安装并启动：
@@ -64,7 +92,26 @@ pip install -r requirements.txt
 
 ## 3. 配置本机路径
 
-编辑 `configs/linux.local.yaml`：
+编辑当前平台的 local 配置：
+
+- Windows：`configs/windows.local.yaml`
+- Linux：`configs/linux.local.yaml`
+
+Windows 路径示例：
+
+```yaml
+game:
+  lua_path: "D:/steam/steamapps/common/RESIDENT EVIL requiem BIOHAZARD requiem/reframework/autorun/RE9FreeCam.lua"
+  reframework_dir: "D:/steam/steamapps/common/RESIDENT EVIL requiem BIOHAZARD requiem/reframework"
+  reframework_data_dir: "D:/steam/steamapps/common/RESIDENT EVIL requiem BIOHAZARD requiem/reframework/data"
+
+lua_logger:
+  control_file: "D:/steam/steamapps/common/RESIDENT EVIL requiem BIOHAZARD requiem/reframework/data/re9_pose_control.json"
+  status_file: "D:/steam/steamapps/common/RESIDENT EVIL requiem BIOHAZARD requiem/reframework/data/re9_pose_status.json"
+  pose_log_file: "D:/steam/steamapps/common/RESIDENT EVIL requiem BIOHAZARD requiem/reframework/data/re9_freecam_pose_log.csv"
+```
+
+Linux/Proton 路径示例：
 
 ```yaml
 game:
@@ -87,10 +134,19 @@ obs:
   recording_output_dir: "data/videos"
 ```
 
+`trajectory`、`obs`、通知和自动恢复配置在 Windows 与 Linux 上使用相同字段。
 `trajectory.capture_root` 用于注册在 GUI 中的轨迹集。相对路径从项目根目录解析，
 绝对路径适合把大量录像写到独立磁盘。
 
 检查 OBS：
+
+```powershell
+.\.venv\Scripts\python.exe -m re9_pose_recorder.cli obs-test `
+  --config configs\windows.local.yaml `
+  --obs-password YOUR_PASSWORD
+```
+
+Linux：
 
 ```bash
 .venv/bin/python -m re9_pose_recorder.cli obs-test \
@@ -101,6 +157,19 @@ obs:
 ## 4. 安装或更新 Lua 控制块
 
 修改 Lua 前会自动创建备份：
+
+```powershell
+.\.venv\Scripts\python.exe -m re9_pose_recorder.cli check-lua `
+  --config configs\windows.local.yaml
+.\.venv\Scripts\python.exe -m re9_pose_recorder.cli backup-lua `
+  --config configs\windows.local.yaml
+.\.venv\Scripts\python.exe -m re9_pose_recorder.cli patch-lua-logger `
+  --config configs\windows.local.yaml
+.\.venv\Scripts\python.exe -m re9_pose_recorder.cli verify-lua-patch `
+  --config configs\windows.local.yaml
+```
+
+Linux：
 
 ```bash
 .venv/bin/python -m re9_pose_recorder.cli check-lua \
@@ -134,13 +203,24 @@ Linux 上位于 NTFS/ntfs3 的控制文件使用带超时的辅助进程写入�
 
 ## 6. 启动采集 GUI
 
-常用 Linux 启动方式：
+Windows：
+
+```powershell
+.\scripts\scan_gui.ps1
+```
+
+Linux：
 
 ```bash
 bash scripts/scan_gui.sh
 ```
 
-指定轨迹集：
+两个启动器使用相同的环境变量。指定轨迹集：
+
+```powershell
+$env:TRAJECTORY_SET = "scene_2_again_true_gain2_distance4_step4_singleanchor_balanced_fast64_13000"
+.\scripts\scan_gui.ps1
+```
 
 ```bash
 TRAJECTORY_SET=scene_2_again_true_gain2_distance4_step4_singleanchor_balanced_fast64_13000 \
@@ -148,6 +228,14 @@ bash scripts/scan_gui.sh
 ```
 
 加载自定义轨迹：
+
+```powershell
+$env:TRAJECTORY_JSON = "D:\captures\trajectories.json"
+$env:TRAJECTORY_OUTPUT_DIR = "D:\captures\my_scene"
+$env:TRAJECTORY_LABEL = "my trajectory set"
+$env:TRAJECTORY_SESSION_PREFIX = "my_scene"
+.\scripts\scan_gui.ps1
+```
 
 ```bash
 TRAJECTORY_JSON=/path/to/trajectories.json \
@@ -158,6 +246,11 @@ bash scripts/scan_gui.sh
 ```
 
 默认静态图稳定等待时间为 `0.6` 秒。可用 `SETTLE_SECONDS` 覆盖：
+
+```powershell
+$env:SETTLE_SECONDS = "0.8"
+.\scripts\scan_gui.ps1
+```
 
 ```bash
 SETTLE_SECONDS=0.8 bash scripts/scan_gui.sh
@@ -224,19 +317,33 @@ trajectory_run_state.json
 
 无人值守自动恢复：
 
+```powershell
+$env:RE9_TRAJECTORY_AUTO_RESUME = "1"
+.\scripts\scan_gui.ps1
+```
+
 ```bash
 RE9_TRAJECTORY_AUTO_RESUME=1 bash scripts/scan_gui.sh
 ```
 
 每 30 条安全重启 OBS：
 
+```powershell
+$env:RE9_OBS_RESTART_EVERY_N = "30"
+$env:RE9_OBS_RESTART_WAIT_SEC = "30"
+$env:RE9_TRAJECTORY_AUTO_RESUME = "1"
+.\scripts\scan_gui.ps1
+```
+
 ```bash
 RE9_OBS_RESTART_EVERY_N=30 \
 RE9_OBS_RESTART_WAIT_SEC=30 \
-RE9_OBS_RESTART_COMMAND="/usr/bin/obs --collection RE9_Still_Scan --profile Untitled --disable-missing-files-check" \
 RE9_TRAJECTORY_AUTO_RESUME=1 \
 bash scripts/scan_gui.sh
 ```
+
+Windows 会自动查找 `obs64.exe`，Linux 会自动查找 `obs`。仅在非标准安装路径或需要
+其他 OBS collection/profile 时设置 `RE9_OBS_RESTART_COMMAND`。
 
 OBS 只会在一条轨迹已经完整写入后重启。GUI 会等待 WebSocket 重新连接后再开始下一条。
 
@@ -257,7 +364,7 @@ OBS 只会在一条轨迹已经完整写入后重启。GUI 会等待 WebSocket �
 
 ### Discord
 
-在 `configs/linux.local.yaml` 中添加：
+在当前平台的 `configs/*.local.yaml` 中添加：
 
 ```yaml
 notifications:
@@ -269,6 +376,13 @@ notifications:
 ```
 
 也可以使用环境变量：
+
+```powershell
+$env:RE9_DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/..."
+$env:RE9_DISCORD_MENTION = "@everyone"
+$env:RE9_DISCORD_USERNAME = "RE9 Capture Monitor"
+.\scripts\scan_gui.ps1
+```
 
 ```bash
 RE9_DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..." \
@@ -291,6 +405,13 @@ notifications:
 ```
 
 环境变量方式：
+
+```powershell
+$env:RE9_FEISHU_WEBHOOK_URL = "https://open.feishu.cn/open-apis/bot/v2/hook/..."
+$env:RE9_FEISHU_SECRET = "机器人签名密钥"
+$env:RE9_FEISHU_MENTION_OPEN_ID = "all"
+.\scripts\scan_gui.ps1
+```
 
 ```bash
 RE9_FEISHU_WEBHOOK_URL="https://open.feishu.cn/open-apis/bot/v2/hook/..." \
@@ -321,13 +442,13 @@ outputs/feishu_notifications.log
 GUI 可以在静态图扫描、轨迹录像或坏图 QA 进入最终错误处理后，自动启动本机
 Codex。程序自己的三次重试仍会先执行；只有最终失败才会触发 Codex。
 
-在忽略提交的 `configs/linux.local.yaml` 中配置：
+在当前平台被 Git 忽略的 `configs/*.local.yaml` 中配置：
 
 ```yaml
 automation:
   codex_recovery:
     enabled: true
-    codex_bin: "/home/your-user/.local/bin/codex"
+    codex_bin: "/absolute/path/to/codex"
     proxy_url: "http://127.0.0.1:7890"
     prompt: "请修复问题并且重新开始采集"
     cooldown_sec: 900
@@ -335,6 +456,17 @@ automation:
 ```
 
 也可以使用环境变量：
+
+```powershell
+$env:RE9_CODEX_RECOVERY_ENABLED = "1"
+$env:RE9_CODEX_BIN = "C:\path\to\codex.exe"
+$env:RE9_CODEX_PROXY_URL = "http://127.0.0.1:7890"
+$env:RE9_CODEX_RECOVERY_PROMPT = "请修复问题并且重新开始采集"
+$env:RE9_CODEX_RECOVERY_COOLDOWN_SEC = "900"
+$env:RE9_CODEX_RECOVERY_TIMEOUT_SEC = "3600"
+$env:RE9_TRAJECTORY_AUTO_RESUME = "1"
+.\scripts\scan_gui.ps1
+```
 
 ```bash
 RE9_CODEX_RECOVERY_ENABLED=1 \
@@ -347,7 +479,8 @@ RE9_TRAJECTORY_AUTO_RESUME=1 \
 bash scripts/scan_gui.sh
 ```
 
-启用前，应先在同一 Linux 用户下完成 Codex 登录，并确认 `codex exec` 可以访问本
+启用前，应先在运行采集 GUI 的同一系统用户下完成 Codex 登录，并确认
+`codex exec` 可以访问本
 仓库。自动任务会收到错误内容、日志路径、运行目录、当前进度和第一个缺失轨迹，
 并被要求：
 
@@ -374,8 +507,9 @@ runtime/re9_pose_codex_recovery_state.json
 outputs/codex_recovery.log
 ```
 
-这两个文件只允许当前用户读取且不会进入 Git。断电、系统崩溃、GUI 被强制结束
-或机器完全断网时，Codex 自动恢复无法触发。
+这两个文件不会进入 Git；Linux 会设置仅当前用户可读的 POSIX 权限，Windows 应
+依赖采集账号和工作目录的 NTFS 权限保护。断电、系统崩溃、GUI 被强制结束或机器
+完全断网时，Codex 自动恢复无法触发。
 
 ## 12. 常见错误与恢复
 
@@ -394,13 +528,16 @@ outputs/codex_recovery.log
 
 使用项目虚拟环境运行完整测试：
 
-```bash
-PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+```powershell
+$env:PYTHONPATH = "src"
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m compileall -q src tests
 ```
 
-语法检查：
+Linux：
 
 ```bash
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
 PYTHONPATH=src .venv/bin/python -m compileall -q src tests
 bash -n scripts/*.sh
 ```

@@ -13,6 +13,7 @@ from typing import Any
 
 from .config import AppConfig
 from .paths import ensure_dir
+from .platform_support import detached_process_kwargs
 from .utils import timestamp_id
 
 
@@ -78,7 +79,7 @@ def _write_control_in_bounded_helper(control_file: Path, content: bytes, timeout
         stdin=subprocess.PIPE,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
-        start_new_session=True,
+        **detached_process_kwargs(hide_console=True),
     )
     try:
         _, stderr = process.communicate(input=content, timeout=max(0.1, float(timeout_sec)))

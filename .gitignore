@@ -6,6 +6,7 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 configs/linux.local.yaml
+configs/windows.local.yaml
 config.ini
 vkd3d-proton.cache
 rclone_upload_*.log
