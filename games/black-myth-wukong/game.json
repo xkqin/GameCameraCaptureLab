@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "black-myth-wukong",
+  "name": "Black Myth: Wukong",
+  "short_name": "Black Myth",
+  "engine": "Unreal Engine 5",
+  "maturity": "experimental",
+  "summary": "通过 UUU Connector 读取位姿，记录点位，并用 UUU 热键做低频闭环移动。",
+  "documentation": "README.md",
+  "examples": "examples",
+  "capabilities": {
+    "free_camera": "verified_with_uuu",
+    "pose_read": "requires_connector_handshake",
+    "absolute_pose_control": "not_available",
+    "relative_pose_control": "experimental_hotkey_feedback",
+    "point_capture": "implemented",
+    "still_capture": "implemented",
+    "trajectory_capture": "implemented",
+    "trajectory_replay": "experimental_relative_only"
+  },
+  "actions": [
+    {
+      "id": "capture",
+      "label": "打开黑神话采集界面",
+      "description": "首次启动会创建游戏适配器自己的 .venv。",
+      "platforms": ["windows"],
+      "working_directory": ".",
+      "command": [
+        "powershell.exe",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "{game}/launch_bmw_capture_studio.ps1"
+      ]
+    }
+  ]
+}

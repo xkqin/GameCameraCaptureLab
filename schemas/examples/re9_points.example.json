@@ -1,0 +1,23 @@
+{
+  "schema_version": "camera-point-set/v1",
+  "game_id": "re9",
+  "scene_id": "example_room",
+  "coordinate_system": {
+    "handedness": "unknown",
+    "vertical_axis": "y",
+    "angle_unit": "degrees",
+    "position_unit": "game_units"
+  },
+  "points": [
+    {
+      "id": "point_0001",
+      "label": "room_center",
+      "time_sec": 0.0,
+      "pose": {
+        "position": {"x": 12.5, "y": 9.4, "z": -3.2},
+        "rotation": {"yaw": 35.0, "pitch": -4.0, "roll": 0.0},
+        "fov_degrees": 80.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xkqin/GameCameraCaptureLab/schemas/camera_pose_v1.schema.json",
+  "title": "Game Camera Pose v1",
+  "type": "object",
+  "required": ["schema_version", "game_id", "coordinate_system", "pose"],
+  "properties": {
+    "schema_version": {"const": "camera-pose/v1"},
+    "game_id": {"type": "string", "minLength": 1},
+    "coordinate_system": {"$ref": "#/$defs/coordinate_system"},
+    "captured_at": {"type": "string"},
+    "pose": {"$ref": "#/$defs/pose"},
+    "metadata": {"type": "object", "additionalProperties": true}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "coordinate_system": {
+      "type": "object",
+      "required": ["handedness", "vertical_axis", "angle_unit"],
+      "properties": {
+        "handedness": {"enum": ["left", "right", "unknown"]},
+        "vertical_axis": {"enum": ["x", "y", "z"]},
+        "angle_unit": {"enum": ["degrees", "radians"]},
+        "position_unit": {"type": "string", "default": "game_units"}
+      },
+      "additionalProperties": false
+    },
+    "vector3": {
+      "type": "object",
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": {"type": "number"},
+        "y": {"type": "number"},
+        "z": {"type": "number"}
+      },
+      "additionalProperties": false
+    },
+    "rotation": {
+      "type": "object",
+      "required": ["yaw", "pitch", "roll"],
+      "properties": {
+        "yaw": {"type": "number"},
+        "pitch": {"type": "number"},
+        "roll": {"type": "number"}
+      },
+      "additionalProperties": false
+    },
+    "quaternion": {
+      "type": "object",
+      "required": ["x", "y", "z", "w"],
+      "properties": {
+        "x": {"type": "number"},
+        "y": {"type": "number"},
+        "z": {"type": "number"},
+        "w": {"type": "number"}
+      },
+      "additionalProperties": false
+    },
+    "pose": {
+      "type": "object",
+      "required": ["position", "rotation", "fov_degrees"],
+      "properties": {
+        "position": {"$ref": "#/$defs/vector3"},
+        "rotation": {"$ref": "#/$defs/rotation"},
+        "quaternion": {"$ref": "#/$defs/quaternion"},
+        "fov_degrees": {"type": "number", "exclusiveMinimum": 0, "maximum": 360}
+      },
+      "additionalProperties": false
+    }
+  }
+}

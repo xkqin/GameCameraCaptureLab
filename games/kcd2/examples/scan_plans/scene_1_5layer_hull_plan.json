@@ -1,0 +1,47 @@
+{
+  "scene_id": "scene_1",
+  "plan_id": "scene_1_5layer_hull",
+  "created_at": "2026-08-04T21:52:05.109559+08:00",
+  "planning_method": "convex_hull_filtered_layers",
+  "source_boundary_space": "../scene_points/scene_1_boundary_space.json",
+  "bounds": {
+    "x_min": 298.695041615,
+    "x_max": 530.953335187,
+    "y_min": 174.518191596,
+    "y_max": 334.325640324,
+    "z_min": 105.193586984,
+    "z_max": 144.746950444
+  },
+  "vertical_axis": "z",
+  "layer_count": 5,
+  "layer_heights": [
+    111.126591503,
+    118.0484301085,
+    124.97026871399999,
+    131.89210731949998,
+    138.81394592499998
+  ],
+  "layer_point_counts": [
+    17,
+    36,
+    38,
+    29,
+    11
+  ],
+  "vertical_inset_fraction": 0.15,
+  "safety_margin": 2.0,
+  "candidate_grid": {
+    "x": 11,
+    "y": 8,
+    "z": 5
+  },
+  "candidate_point_count": 440,
+  "spatial_point_count": 131,
+  "views_per_point": 22,
+  "image_count": 2882,
+  "fov_degrees": 63.0,
+  "ordering": "serpentine_xy_alternating_layers",
+  "estimated_path_length": 3248.541589429798,
+  "positions_csv": "scene_1_5layer_hull_positions.csv",
+  "samples_csv": "scene_1_5layer_hull_22view_samples.csv"
+}

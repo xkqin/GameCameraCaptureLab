@@ -5,6 +5,9 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 *.egg-info/
+**/.venv/
+**/__pycache__/
+**/*.egg-info/
 configs/linux.local.yaml
 configs/windows.local.yaml
 config.ini
@@ -23,6 +26,27 @@ data/pose_logs/*
 data/stills/*
 outputs/*
 docs/assets/*
+
+# Multi-game adapters: generated captures, runtime state, and third-party tools.
+games/kcd2/camera_tools/
+games/kcd2/capture_studio_data/
+games/kcd2/game_mods/
+games/kcd2/current_game_screen.png
+games/kcd2/capture_studio_settings.json
+games/black-myth-wukong/capture_data/
+games/black-myth-wukong/native/build/
+games/black-myth-wukong/qa/
+games/black-myth-wukong/settings.json
+
+# Closed-source injectors, game mods, saves, and build products are never vendored.
+*.dll
+*.exe
+*.addon64
+*.pak
+*.sav
+*.pdb
+*.obj
+*.lib
 
 !third_party/.gitkeep
 !data/videos/.gitkeep

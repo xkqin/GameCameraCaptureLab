@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kcd2-camera-capture-studio"
+version = "0.1.0"
+description = "Pose, scene-point, OBS capture, and trajectory tooling for KCD2 Camera Tools."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "PJLabPR"}]
+dependencies = []
+
+[project.optional-dependencies]
+obs = ["obsws-python>=1.7"]
+analysis = [
+    "numpy",
+    "pillow",
+    "opencv-python",
+    "torch",
+    "torchvision",
+    "open-clip-torch",
+    "matplotlib",
+    "requests",
+]
+dev = [
+    "obsws-python>=1.7",
+    "numpy",
+    "pillow",
+    "opencv-python",
+    "matplotlib",
+]
+
+[project.scripts]
+kcd2-capture-studio = "kcd2_capture_studio.__main__:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

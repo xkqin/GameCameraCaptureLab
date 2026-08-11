@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "id": "re9",
+  "name": "Resident Evil 9 / RE Engine Adapter",
+  "short_name": "RE9",
+  "engine": "RE Engine",
+  "maturity": "stable",
+  "summary": "成熟适配器：Lua 位姿桥、OBS 静态扫描、轨迹回放和数据分析。",
+  "documentation": "../../docs/USER_GUIDE_ZH.md",
+  "examples": "../../data",
+  "capabilities": {
+    "free_camera": "verified",
+    "pose_read": "verified",
+    "absolute_pose_control": "verified",
+    "point_capture": "verified",
+    "still_capture": "verified",
+    "trajectory_capture": "verified",
+    "trajectory_replay": "verified"
+  },
+  "actions": [
+    {
+      "id": "capture",
+      "label": "打开 RE9 采集界面",
+      "description": "打开静态扫描、点位和轨迹采集界面。",
+      "platforms": ["windows"],
+      "working_directory": "../..",
+      "command": [
+        "powershell.exe",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "{repo}/scripts/scan_stills_gui.ps1"
+      ]
+    },
+    {
+      "id": "setup",
+      "label": "安装 RE9 Python 环境",
+      "description": "创建根目录 .venv 并安装 RE9 所需依赖。",
+      "platforms": ["windows"],
+      "working_directory": "../..",
+      "command": [
+        "powershell.exe",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "{repo}/scripts/setup_windows.ps1"
+      ]
+    }
+  ]
+}

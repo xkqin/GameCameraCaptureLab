@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "re9-freecam-aesthetic-pose-recorder"
-version = "0.1.0"
-description = "RE9 FreeCam still-image dataset capture, OBS recording, pose logging, and optional aesthetic scoring."
+name = "game-camera-capture-lab"
+version = "0.2.0"
+description = "Multi-game camera pose, point, still-scan, and trajectory capture toolkit."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -27,6 +27,8 @@ dependencies = [
 ]
 
 [project.scripts]
+game-camera-capture = "game_camera_capture_lab.hub:main"
+game-camera-registry-check = "game_camera_capture_lab.validate:main"
 re9-pose-recorder = "re9_pose_recorder.cli:app"
 
 [tool.setuptools.packages.find]

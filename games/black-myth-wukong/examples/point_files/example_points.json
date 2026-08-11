@@ -1,0 +1,32 @@
+{
+  "format": "bmw-uuu-camera-v1",
+  "kind": "points",
+  "coordinate_system": {"angle_unit": "degrees"},
+  "count": 2,
+  "points": [
+    {
+      "index": 1,
+      "label": "example_0001",
+      "time_sec": 0.0,
+      "x": 100.0,
+      "y": 200.0,
+      "z": 300.0,
+      "yaw_degrees": 20.0,
+      "pitch_degrees": -5.0,
+      "roll_degrees": 0.0,
+      "fov_degrees": 63.0
+    },
+    {
+      "index": 2,
+      "label": "example_0002",
+      "time_sec": 0.0,
+      "x": 120.0,
+      "y": 230.0,
+      "z": 310.0,
+      "yaw_degrees": 30.0,
+      "pitch_degrees": -4.0,
+      "roll_degrees": 0.0,
+      "fov_degrees": 63.0
+    }
+  ]
+}

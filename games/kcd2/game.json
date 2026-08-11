@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "kcd2",
+  "name": "Kingdom Come: Deliverance II",
+  "short_name": "KCD2",
+  "engine": "CryEngine",
+  "maturity": "beta",
+  "summary": "读取 Camera Tools 位姿，管理边界点与扫描计划，并执行已验证的相对随机运镜。",
+  "documentation": "README.md",
+  "examples": "examples",
+  "capabilities": {
+    "free_camera": "verified_with_external_tool",
+    "pose_read": "verified",
+    "absolute_pose_control": "unverified_visual_result",
+    "relative_pose_control": "verified",
+    "point_capture": "verified",
+    "still_capture": "implemented_requires_obs",
+    "trajectory_capture": "verified",
+    "trajectory_replay": "relative_only"
+  },
+  "actions": [
+    {
+      "id": "capture",
+      "label": "打开 KCD2 采集界面",
+      "description": "打开 Pose、点位、静态照片、轨迹和分析标签页。",
+      "platforms": ["windows"],
+      "working_directory": ".",
+      "command": [
+        "powershell.exe",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "{game}/launch_kcd2_capture_studio.ps1"
+      ]
+    }
+  ]
+}

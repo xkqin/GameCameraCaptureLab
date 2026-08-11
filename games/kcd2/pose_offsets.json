@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "camera_tools_version": "1.0.5",
+  "camera_tools_sha256": "9600C8CE3B32AE78177603695287126B05B3B165AD8820283544E8AD420B5D96",
+  "fields": {
+    "x": {
+      "base": "camera",
+      "offset": "0x18",
+      "type": "f64"
+    },
+    "y": {
+      "base": "camera",
+      "offset": "0x20",
+      "type": "f64"
+    },
+    "z": {
+      "base": "camera",
+      "offset": "0x28",
+      "type": "f64"
+    },
+    "q0": {
+      "base": "camera",
+      "offset": "0x30",
+      "type": "f32"
+    },
+    "q1": {
+      "base": "camera",
+      "offset": "0x34",
+      "type": "f32"
+    },
+    "q2": {
+      "base": "camera",
+      "offset": "0x38",
+      "type": "f32"
+    },
+    "q3": {
+      "base": "camera",
+      "offset": "0x3C",
+      "type": "f32"
+    },
+    "fov_radians": {
+      "base": "camera",
+      "offset": "0x40",
+      "type": "f32"
+    },
+    "pitch_radians": {
+      "base": "camera",
+      "offset": "0x44",
+      "type": "f32"
+    },
+    "yaw_radians": {
+      "base": "camera",
+      "offset": "0x48",
+      "type": "f32"
+    },
+    "roll_radians": {
+      "base": "camera",
+      "offset": "0x4C",
+      "type": "f32"
+    }
+  },
+  "note": "已在 KCD2 Camera Tools v1.0.5 / KingdomCome.exe 1.5.6.0 上通过实时内存变化确认。XYZ 为 double，四元数、FOV 和角度为 float。q0-q3 的轴顺序仍保留为原始内存顺序。"
+}

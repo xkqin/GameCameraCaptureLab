@@ -1,0 +1,11 @@
+{
+  "format": "bmw-uuu-camera-v1",
+  "kind": "trajectory",
+  "coordinate_system": {"angle_unit": "degrees"},
+  "count": 3,
+  "keyframes": [
+    {"index": 1, "label": "frame_0001", "time_sec": 0.0, "x": 100.0, "y": 200.0, "z": 300.0, "yaw_degrees": 20.0, "pitch_degrees": -5.0, "roll_degrees": 0.0, "fov_degrees": 63.0},
+    {"index": 2, "label": "frame_0002", "time_sec": 1.0, "x": 110.0, "y": 220.0, "z": 305.0, "yaw_degrees": 25.0, "pitch_degrees": -4.5, "roll_degrees": 0.0, "fov_degrees": 63.0},
+    {"index": 3, "label": "frame_0003", "time_sec": 2.0, "x": 120.0, "y": 240.0, "z": 310.0, "yaw_degrees": 30.0, "pitch_degrees": -4.0, "roll_degrees": 0.0, "fov_degrees": 63.0}
+  ]
+}

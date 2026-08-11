@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xkqin/GameCameraCaptureLab/schemas/trajectory_v1.schema.json",
+  "title": "Game Camera Trajectory v1",
+  "type": "object",
+  "required": ["schema_version", "game_id", "trajectory_id", "coordinate_system", "keyframes"],
+  "properties": {
+    "schema_version": {"const": "camera-trajectory/v1"},
+    "game_id": {"type": "string", "minLength": 1},
+    "scene_id": {"type": "string"},
+    "trajectory_id": {"type": "string", "minLength": 1},
+    "coordinate_system": {
+      "$ref": "camera_pose_v1.schema.json#/$defs/coordinate_system"
+    },
+    "keyframes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["index", "time_sec", "pose"],
+        "properties": {
+          "index": {"type": "integer", "minimum": 0},
+          "time_sec": {"type": "number", "minimum": 0},
+          "pose": {"$ref": "camera_pose_v1.schema.json#/$defs/pose"},
+          "metadata": {"type": "object", "additionalProperties": true}
+        },
+        "additionalProperties": false
+      }
+    },
+    "metadata": {"type": "object", "additionalProperties": true}
+  },
+  "additionalProperties": false
+}

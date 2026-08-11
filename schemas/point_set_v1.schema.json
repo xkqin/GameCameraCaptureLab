@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xkqin/GameCameraCaptureLab/schemas/point_set_v1.schema.json",
+  "title": "Game Camera Point Set v1",
+  "type": "object",
+  "required": ["schema_version", "game_id", "scene_id", "coordinate_system", "points"],
+  "properties": {
+    "schema_version": {"const": "camera-point-set/v1"},
+    "game_id": {"type": "string", "minLength": 1},
+    "scene_id": {"type": "string", "minLength": 1},
+    "coordinate_system": {
+      "$ref": "camera_pose_v1.schema.json#/$defs/coordinate_system"
+    },
+    "points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "pose"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "label": {"type": "string"},
+          "time_sec": {"type": "number", "minimum": 0},
+          "pose": {"$ref": "camera_pose_v1.schema.json#/$defs/pose"},
+          "metadata": {"type": "object", "additionalProperties": true}
+        },
+        "additionalProperties": false
+      }
+    },
+    "metadata": {"type": "object", "additionalProperties": true}
+  },
+  "additionalProperties": false
+}

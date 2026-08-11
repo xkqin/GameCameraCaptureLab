@@ -1,0 +1,25 @@
+{
+  "schema_version": "camera-point-set/v1",
+  "game_id": "black-myth-wukong",
+  "scene_id": "example_shrine",
+  "coordinate_system": {
+    "handedness": "unknown",
+    "vertical_axis": "z",
+    "angle_unit": "degrees",
+    "position_unit": "game_units"
+  },
+  "points": [
+    {
+      "id": "point_0001",
+      "label": "shrine_wide",
+      "pose": {
+        "position": {"x": 100.0, "y": 200.0, "z": 300.0},
+        "rotation": {"yaw": 20.0, "pitch": -5.0, "roll": 0.0},
+        "fov_degrees": 63.0
+      },
+      "metadata": {
+        "source": "UUU Connector pose"
+      }
+    }
+  ]
+}

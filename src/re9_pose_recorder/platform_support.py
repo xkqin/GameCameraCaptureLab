@@ -67,6 +67,7 @@ def default_obs_restart_command(
     selected = platform_key(value)
     variables = os.environ if environ is None else environ
     executable: Path | None = None
+    discovered: str | None = None
     if selected == "windows":
         discovered = which("obs64.exe") or which("obs32.exe")
         candidates = [
@@ -98,8 +99,12 @@ def default_obs_restart_command(
 
     if executable is None:
         return ""
+    # Preserve the exact path returned by shutil.which. On Windows, Path()
+    # normalizes forward slashes to backslashes and needlessly changes a valid
+    # caller-provided command line (and makes diagnostics harder to compare).
+    executable_text = discovered if discovered else str(executable)
     arguments = [
-        str(executable),
+        executable_text,
         "--collection",
         "RE9_Still_Scan",
         "--profile",
