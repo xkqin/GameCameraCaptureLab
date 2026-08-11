@@ -5,6 +5,10 @@
 <h1 align="center">Game Camera Capture Lab</h1>
 
 <p align="center">
+  <a href="README.md">中文</a> · <a href="README.en.md">English</a>
+</p>
+
+<p align="center">
   面向多款游戏的相机位姿、场景点、静态扫描与轨迹采集工具箱
 </p>
 
@@ -149,3 +153,9 @@ Demo 视频由项目实际采集流程生成，是文档素材，不是游戏或
 ## 历史兼容
 
 仓库由原 `RE9_Still_Scan` 演进而来。为避免破坏已有脚本和 Windows 长路径，RE9 的成熟实现暂时保留在根目录；旧版详细首页归档在 [RE9_ORIGINAL_GUIDE.md](docs/RE9_ORIGINAL_GUIDE.md)。新功能与项目品牌统一使用 **Game Camera Capture Lab**。
+
+## 适配器指南
+
+- [RE9 / RE Engine](games/re9/README.md) · [English](games/re9/README.en.md)
+- [天国拯救 2 / KCD2](games/kcd2/README.md) · [English](games/kcd2/README.en.md)
+- [黑神话：悟空 / Black Myth: Wukong](games/black-myth-wukong/README.md) · [English](games/black-myth-wukong/README.en.md)

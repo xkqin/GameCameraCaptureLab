@@ -1,5 +1,7 @@
 # RE Engine / RE9 adapter
 
+[中文](README.md) · [English](README.en.md)
+
 这是 Game Camera Capture Lab 中最成熟的游戏适配器。为保持既有脚本、配置和长轨迹文件的兼容性，RE9 的实现仍位于仓库根目录：
 
 - Python 源码：`src/re9_pose_recorder/`

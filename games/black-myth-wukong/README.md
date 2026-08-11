@@ -1,5 +1,7 @@
 # Black Myth: Wukong adapter
 
+[中文](README.md) · [English](README.en.md)
+
 黑神话适配器是在 UUU 外部运行的轻量采集界面。它读取 Connector 共享内存中的相机位姿，管理 JSON/CSV 点位与轨迹，并通过 UUU 默认热键做低频闭环移动和截图。
 
 ## 能力边界

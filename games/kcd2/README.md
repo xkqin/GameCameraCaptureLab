@@ -1,5 +1,7 @@
 # Kingdom Come: Deliverance II adapter
 
+[中文](README.md) · [English](README.en.md)
+
 KCD2 适配器提供独立 Tkinter 界面，用于相机 DLL 注入顺序管理、实时 pose、场景边界点、分层扫描计划、OBS 采集与轨迹实验。
 
 ## 能力边界
