@@ -30,6 +30,33 @@
 
 “能读到 pose”“内存写回值变化”和“游戏画面确实到达目标位姿”是三件不同的事。上表只把实际验证过的能力标为已验证，不把 RE9 的能力自动套到其他游戏。
 
+## 界面、规划与数据输出
+
+之前制作的界面图、流程图和数据预览继续作为项目设计的一部分保留。它们主要展示成熟 RE Engine 适配器的完整工作流，也作为后续游戏适配器统一交互的参考。
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/interface-overview.png" alt="Capture interface overview"></td>
+    <td width="50%"><img src="docs/assets/capture-gui.png" alt="Still scan and trajectory capture GUI"></td>
+  </tr>
+  <tr>
+    <td><b>采集系统总览</b><br>从自由相机、位姿读取到点位、截图和轨迹任务。</td>
+    <td><b>静态扫描与轨迹界面</b><br>统一操作点位计划、任务状态和采集进度。</td>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/trajectory-replay.png" alt="Trajectory replay visualization"></td>
+    <td><img src="docs/assets/pipeline.png" alt="Capture pipeline"></td>
+  </tr>
+  <tr>
+    <td><b>轨迹回放设计</b><br>关键帧、相机路径和实际位姿反馈分开记录。</td>
+    <td><b>完整数据管线</b><br>Pose、OBS、帧对齐、评分与数据集输出。</td>
+  </tr>
+</table>
+
+![Dataset preview](docs/assets/dataset-preview.png)
+
+旧版 RE9 轨迹动画和所有原始说明也仍保存在 [`docs/RE9_ORIGINAL_GUIDE.md`](docs/RE9_ORIGINAL_GUIDE.md)，没有删除。
+
 ## Windows 快速开始
 
 1. 克隆仓库并安装 Python 3.10 或更高版本。
