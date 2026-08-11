@@ -3,7 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from re9_pose_recorder.trajectory_replay import (
     ReplayKeyframe,
@@ -12,6 +12,7 @@ from re9_pose_recorder.trajectory_replay import (
     _run_lua_trajectory,
     _start_lua_logging,
     _stop_active_lua_logging,
+    _wait_for_lua_trajectory_complete,
 )
 
 
@@ -183,6 +184,47 @@ class LuaReplayPreflightTests(unittest.TestCase):
         self.assertEqual(control.stop_sessions, ["previous"])
         self.assertEqual(control.start_sessions, ["current"])
 
+    @patch("re9_pose_recorder.trajectory_replay.activate_re9_window")
+    def test_logging_start_refocuses_and_retries_a_missed_stale_stop(
+        self,
+        activate_mock,
+    ) -> None:
+        control = FakeLuaControl(
+            status={"session_id": "previous", "logging": True},
+            logging_started=True,
+        )
+        control.wait_until_lua_logging_stopped = Mock(side_effect=[False, True])
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _start_lua_logging(
+                control,
+                "current",
+                Path(temp_dir) / "pose.csv",
+                0.033,
+                attempts=1,
+                timeout_sec=0.0,
+            )
+
+        self.assertEqual(control.stop_sessions, ["previous", "previous"])
+        self.assertEqual(control.start_sessions, ["current"])
+        activate_mock.assert_called_once_with()
+
+    @patch("re9_pose_recorder.trajectory_replay.activate_re9_window")
+    def test_logging_start_refocuses_game_after_a_missed_ack(self, activate_mock) -> None:
+        control = FakeLuaControl(status={"logging": False})
+        control.wait_until_lua_logging_started = Mock(side_effect=[False, True])
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _start_lua_logging(
+                control,
+                "current",
+                Path(temp_dir) / "pose.csv",
+                0.033,
+                attempts=2,
+                timeout_sec=0.0,
+            )
+
+        self.assertEqual(control.start_sessions, ["current", "current"])
+        activate_mock.assert_called_once_with()
+
     def test_unacknowledged_stop_is_left_as_final_command(self) -> None:
         control = FakeLuaControl(
             status={"session_id": "previous", "logging": True},
@@ -215,12 +257,12 @@ class LuaReplayPreflightTests(unittest.TestCase):
 
         self.assertEqual(control.health_checks, ["current"])
 
-    @patch("re9_pose_recorder.trajectory_replay.time.sleep")
+    @patch("re9_pose_recorder.trajectory_replay._wait_for_lua_trajectory_complete")
     @patch(
         "re9_pose_recorder.trajectory_replay._wait_for_lua_trajectory",
         side_effect=[RuntimeError("first command missed"), None],
     )
-    def test_playback_retries_with_a_new_ack_id(self, wait_mock, sleep_mock) -> None:
+    def test_playback_retries_with_a_new_ack_id(self, wait_mock, complete_mock) -> None:
         control = FakeLuaControl(status={"last_error": ""})
         frames = [
             first_frame(),
@@ -241,7 +283,96 @@ class LuaReplayPreflightTests(unittest.TestCase):
         self.assertEqual(len(control.play_ids), 2)
         self.assertNotEqual(control.play_ids[0], control.play_ids[1])
         self.assertEqual(wait_mock.call_count, 2)
-        sleep_mock.assert_called_once()
+        complete_mock.assert_called_once()
+
+    @patch("re9_pose_recorder.trajectory_replay.activate_re9_window")
+    def test_trajectory_completion_requires_current_disabled_status(self, activate_mock) -> None:
+        control = FakeLuaControl(
+            status={
+                "session_id": "session",
+                "trajectory_id": "trajectory",
+                "trajectory_frame_count": 2,
+                "trajectory_enabled": False,
+            }
+        )
+
+        _wait_for_lua_trajectory_complete(
+            control,
+            "session",
+            "trajectory",
+            expected_duration_sec=0.0,
+            completion_grace_sec=0.0,
+        )
+        activate_mock.assert_called_once_with()
+
+    @patch("re9_pose_recorder.trajectory_replay.activate_re9_window")
+    @patch("re9_pose_recorder.trajectory_replay.time.sleep")
+    @patch(
+        "re9_pose_recorder.trajectory_replay.time.monotonic",
+        side_effect=[0.0, 0.0, 2.1],
+    )
+    def test_trajectory_completion_refreshes_focus_during_playback(
+        self,
+        _monotonic_mock,
+        _sleep_mock,
+        activate_mock,
+    ) -> None:
+        control = FakeLuaControl()
+        control.read_status = Mock(
+            side_effect=[
+                {
+                    "session_id": "session",
+                    "trajectory_id": "trajectory",
+                    "trajectory_frame_count": 2,
+                    "trajectory_enabled": True,
+                },
+                {
+                    "session_id": "session",
+                    "trajectory_id": "trajectory",
+                    "trajectory_frame_count": 2,
+                    "trajectory_enabled": False,
+                },
+            ]
+        )
+
+        _wait_for_lua_trajectory_complete(
+            control,
+            "session",
+            "trajectory",
+            expected_duration_sec=4.0,
+            completion_grace_sec=1.0,
+            focus_refresh_sec=2.0,
+        )
+
+        self.assertEqual(activate_mock.call_count, 2)
+
+    @patch("re9_pose_recorder.trajectory_replay.activate_re9_window")
+    @patch("re9_pose_recorder.trajectory_replay.time.sleep")
+    @patch("re9_pose_recorder.trajectory_replay.time.monotonic", side_effect=[0.0, 0.0, 2.0])
+    def test_trajectory_completion_rejects_a_stuck_active_status(
+        self,
+        _monotonic_mock,
+        _sleep_mock,
+        activate_mock,
+    ) -> None:
+        control = FakeLuaControl(
+            status={
+                "session_id": "session",
+                "trajectory_id": "trajectory",
+                "trajectory_frame_count": 2,
+                "trajectory_enabled": True,
+            }
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "did not confirm trajectory completion"):
+            _wait_for_lua_trajectory_complete(
+                control,
+                "session",
+                "trajectory",
+                expected_duration_sec=0.0,
+                completion_grace_sec=0.0,
+            )
+        activate_mock.assert_called_once_with()
 
 
 if __name__ == "__main__":

@@ -14,6 +14,7 @@ from .config import AppConfig
 from .lua_control import LuaControl, make_session_id
 from .obs_control import OBSController, find_latest_video_file
 from .paths import ensure_dir
+from .platform_support import activate_re9_window
 
 
 @dataclass(frozen=True)
@@ -397,7 +398,13 @@ def _run_lua_trajectory(
             last_error = exc
             continue
         _raise_if_lua_rejected_pose(control)
-        time.sleep((frames[-1].time_sec if frames else 0.0) + 0.1)
+        _wait_for_lua_trajectory_complete(
+            control,
+            session,
+            attempt_id,
+            expected_duration_sec=frames[-1].time_sec if frames else 0.0,
+            command_id=command_id,
+        )
         return
     raise RuntimeError(
         f"Lua did not acknowledge play_trajectory after {max(1, int(attempts))} attempts. "
@@ -482,7 +489,7 @@ def _start_lua_logging(
         and not _stop_active_lua_logging(
             control,
             fallback_session=active_session,
-            attempts=1,
+            attempts=2,
             timeout_sec=timeout_sec,
         )
     ):
@@ -491,7 +498,8 @@ def _start_lua_logging(
             "OBS was not started."
         )
 
-    for _ in range(max(1, int(attempts))):
+    attempt_count = max(1, int(attempts))
+    for attempt in range(attempt_count):
         control.write_start_control(session, pose_log, interval_sec)
         command_id = control.last_written_command_id
         if control.wait_until_lua_logging_started(
@@ -500,6 +508,8 @@ def _start_lua_logging(
             command_id=command_id,
         ):
             return
+        if attempt + 1 < attempt_count:
+            activate_re9_window()
     status = control.read_status() or {}
     raise RuntimeError(
         f"Lua did not acknowledge pose logging start for {session}; OBS was not started. "
@@ -523,7 +533,8 @@ def _stop_active_lua_logging(
         return True
 
     active_session = str(status.get("session_id") or fallback_session)
-    for _ in range(max(1, int(attempts))):
+    attempt_count = max(1, int(attempts))
+    for attempt in range(attempt_count):
         try:
             control.write_stop_control(active_session)
         except OSError:
@@ -539,6 +550,8 @@ def _stop_active_lua_logging(
         if latest.get("logging") is False:
             return True
         active_session = str(latest.get("session_id") or active_session)
+        if attempt + 1 < attempt_count:
+            activate_re9_window()
     return False
 
 
@@ -604,6 +617,58 @@ def _wait_for_lua_trajectory(
         time.sleep(0.1)
     raise RuntimeError(
         "Lua did not acknowledge play_trajectory. Reload scripts in REFramework or restart the game so the smooth trajectory patch is active. "
+        f"Last status: {last_status}"
+    )
+
+
+def _wait_for_lua_trajectory_complete(
+    control: LuaControl,
+    session: str,
+    trajectory_id: str,
+    expected_duration_sec: float,
+    command_id: str = "",
+    completion_grace_sec: float = 5.0,
+    focus_refresh_sec: float = 2.0,
+) -> None:
+    """Require Lua to reach the final keyframe before accepting the video.
+
+    Proton can stop presenting RE9 frames when OBS or another desktop window
+    takes focus.  REFramework's Lua callbacks then stop too, leaving both the
+    trajectory and its logger active forever.  Refresh focus during playback,
+    not only after an OBS restart, so a later focus steal cannot freeze an
+    otherwise healthy capture.
+    """
+    started_at = time.monotonic()
+    deadline = started_at + max(
+        0.1,
+        float(expected_duration_sec) + max(1.0, float(completion_grace_sec)),
+    )
+    focus_interval = max(0.5, float(focus_refresh_sec))
+    next_focus_at = started_at
+    last_status: dict[str, Any] = {}
+    while True:
+        now = time.monotonic()
+        if now >= deadline:
+            break
+        if now >= next_focus_at:
+            activate_re9_window()
+            next_focus_at = now + focus_interval
+        status = control.read_status() or {}
+        last_status = status
+        if (
+            str(status.get("session_id") or "") == session
+            and str(status.get("trajectory_id") or "") == trajectory_id
+            and int(status.get("trajectory_frame_count") or 0) > 1
+            and status.get("trajectory_enabled") is False
+            and control._status_matches_command(status, command_id)
+        ):
+            return
+        error = str(status.get("last_error") or "")
+        if "Enable FreeCam" in error or "play_trajectory requires" in error:
+            _raise_if_lua_rejected_pose(control)
+        time.sleep(0.1)
+    raise RuntimeError(
+        "Lua did not confirm trajectory completion; OBS output was not accepted as a completed trajectory. "
         f"Last status: {last_status}"
     )
 

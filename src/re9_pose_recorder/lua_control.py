@@ -108,6 +108,9 @@ class LuaControl:
         self.control_file = config.control_file
         self.status_file = config.status_file
         self.last_written_command_id = ""
+        self.trajectory_payload_file = self.control_file.with_name(
+            f"{self.control_file.stem}_trajectory_payload.json"
+        )
 
     def write_start_control(self, session_id: str, pose_log_file: str | Path, interval_sec: float) -> Path:
         payload = {
@@ -189,14 +192,42 @@ class LuaControl:
         keyframes: list[dict[str, float | int | None]],
         trajectory_id: str = "",
     ) -> Path:
+        # Keep the frequently-polled command mailbox small.  Leaving thousands
+        # of keyframes in the control file makes REFramework parse hundreds of
+        # kilobytes four times per second for the entire replay, and Wine/NTFS
+        # stalls can then strand a trajectory halfway through.  The payload is
+        # fully persisted first and Lua reads it only once when it sees the new
+        # command id.
+        self._write_trajectory_payload(keyframes)
         payload = {
             "command": "play_trajectory",
             "command_id": f"play_trajectory:{session_id}:{trajectory_id}:{time.time():.6f}",
             "session_id": session_id,
             "trajectory_id": trajectory_id,
-            "keyframes": keyframes,
+            "trajectory_file": self.trajectory_payload_file.name,
         }
         return self._write_control(payload)
+
+    def _write_trajectory_payload(
+        self,
+        keyframes: list[dict[str, float | int | None]],
+    ) -> None:
+        content = json.dumps({"keyframes": keyframes}, separators=(",", ":")).encode("utf-8")
+        filesystem_type = _filesystem_type_for_path(str(self.trajectory_payload_file))
+        if filesystem_type in _NTFS_FILESYSTEM_TYPES:
+            _write_control_in_bounded_helper(
+                self.trajectory_payload_file,
+                content,
+                timeout_sec=_CONTROL_WRITE_TIMEOUT_SEC,
+            )
+            return
+
+        self.trajectory_payload_file.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = self.trajectory_payload_file.with_name(
+            f".{self.trajectory_payload_file.name}.{os.getpid()}.{time.time_ns()}.tmp"
+        )
+        tmp_path.write_bytes(content)
+        os.replace(tmp_path, self.trajectory_payload_file)
 
     def write_physics_probe_control(self, session_id: str = "manual") -> Path:
         return self._write_control(

@@ -16,6 +16,7 @@ from .discord_notify import DiscordNotifier
 from .feishu_notify import FeishuNotifier
 from .paths import PROJECT_ROOT, ensure_dir
 from .platform_support import (
+    activate_re9_window,
     command_for_popen,
     default_obs_restart_command,
     detached_process_kwargs,
@@ -41,6 +42,13 @@ from .utils import timestamp_id
 
 DEFAULT_TRAJECTORY_JSON = PROJECT_ROOT / "data" / "trajectories" / "scene_1.1" / "scene_1_1_trajectories.json"
 DEFAULT_TRAJECTORY_OUTPUT_DIR = PROJECT_ROOT / "data" / "videos" / "trajectories" / "scene_1.1_low_to_high"
+
+
+def _trajectory_failure_needs_obs_restart(error: BaseException) -> bool:
+    """Restart OBS only when a failed replay could have started recording."""
+    return "OBS was not started" not in str(error)
+
+
 TOPSTART20_TRAJECTORY_JSON = (
     PROJECT_ROOT
     / "data"
@@ -794,7 +802,7 @@ class StillScanApp:
                         # A failed replay can leave OBS in a partially active
                         # output state. Restart it before retrying so the next
                         # SetRecordDirectory/StartRecord starts cleanly.
-                        if self.obs_restart_command:
+                        if self.obs_restart_command and _trajectory_failure_needs_obs_restart(exc):
                             try:
                                 self._restart_obs_between_batches(completed, planned_total)
                             except Exception as restart_exc:
@@ -1255,6 +1263,7 @@ class StillScanApp:
                 **detached_process_kwargs(),
             )
         self._wait_for_obs_websocket()
+        activate_re9_window()
 
     def _terminate_obs_processes(self) -> None:
         if platform_key() == "windows":

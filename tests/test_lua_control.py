@@ -187,6 +187,24 @@ class LuaControlPoseAckTests(unittest.TestCase):
         self.assertEqual(control.last_written_command_id, payload["command_id"])
         filesystem_mock.assert_called_once()
 
+    def test_trajectory_keyframes_use_a_separate_payload_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            status_file = Path(temp_dir) / "status.json"
+            control = self._control(status_file)
+            frames = [{"time_sec": 0.0, "x": 1.0}, {"time_sec": 1.0, "x": 2.0}]
+
+            control.write_play_trajectory_control(
+                "current",
+                frames,
+                trajectory_id="trajectory",
+            )
+
+            command = json.loads(control.control_file.read_text(encoding="utf-8"))
+            payload = json.loads(control.trajectory_payload_file.read_text(encoding="utf-8"))
+            self.assertNotIn("keyframes", command)
+            self.assertEqual(command["trajectory_file"], control.trajectory_payload_file.name)
+            self.assertEqual(payload["keyframes"], frames)
+
     @patch("re9_pose_recorder.lua_control._reap_process_later")
     @patch("re9_pose_recorder.lua_control.subprocess.Popen")
     def test_bounded_helper_times_out_without_waiting_forever(
@@ -229,6 +247,19 @@ class LuaControlPoseAckTests(unittest.TestCase):
         self.assertIn('elseif control.command == "stop" then', block)
         self.assertIn("re9_pose_logger.session_id = control.session_id", block)
         self.assertIn('elseif control.command == "health_check" then', block)
+        self.assertIn("control.trajectory_file", block)
+        self.assertIn("frames = payload.keyframes or payload", block)
+        self.assertIn(
+            "re9_pose_logger.trajectory_enabled = false\n        re9_pose_logger.scan_pose_enabled = false\n        re9_pose_write_status()",
+            block,
+        )
+        self.assertIn(
+            're.on_pre_application_entry("LateUpdateBehavior", function()\n'
+            "    pcall(re9_pose_poll_control)\n"
+            "    pcall(re9_pose_apply_scan_pose)\n"
+            "    pcall(re9_pose_log_sample)",
+            block,
+        )
 
 
 if __name__ == "__main__":
