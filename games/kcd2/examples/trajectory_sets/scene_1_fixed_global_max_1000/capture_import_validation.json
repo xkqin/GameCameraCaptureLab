@@ -1,0 +1,54 @@
+{
+  "validation_passed": true,
+  "checks": {
+    "trajectory_count_is_1000": true,
+    "capture_ids_are_unique": true,
+    "all_capture_pose_fields_are_numeric": true,
+    "all_capture_times_strictly_increase_from_zero": true,
+    "all_source_scores_strictly_increase": true,
+    "all_source_score_gains_at_least_2": true,
+    "all_end_at_one_pose": true,
+    "all_end_at_one_source_node": true,
+    "endpoint_is_sample1805_point83": true,
+    "all_physical_geometry_signatures_unique": true
+  },
+  "trajectory_count": 1000,
+  "real_scored_control_keyframe_count": 8152,
+  "endpoint_pose": [
+    460.475847,
+    287.809226,
+    124.970269,
+    0.0,
+    0.0
+  ],
+  "endpoint_node_id": "20260810_191147_scene_1_auto22|1805|83",
+  "endpoint_sample_point": [
+    1805,
+    83
+  ],
+  "endpoint_measured_score": 7.101753,
+  "score_gain": {
+    "min": 2.457797,
+    "mean": 3.77614,
+    "median": 3.891339,
+    "max": 4.532177
+  },
+  "duration_sec": {
+    "min": 8.980953,
+    "mean": 18.728868,
+    "median": 19.90267,
+    "max": 23.888754
+  },
+  "keyframe_count": {
+    "min": 5.0,
+    "mean": 8.152,
+    "median": 9.0,
+    "max": 10.0
+  },
+  "capture_json": "kcd2_scene1_1000_capture_import_sparse_controls.json",
+  "capture_json_sha256": "75ee285f49dd63dfd464009d12ee47228a604b1f7b94866664919fd044960b3a",
+  "mapping_json": "kcd2_scene1_1000_capture_source_mapping.json",
+  "mapping_json_sha256": "2728ca12335e36e01fdf7f68804538d6d82d7b3d671d9071bf3c8ff03e73825e",
+  "collision_clearance_verified": false,
+  "runtime_frame_scores_measured": false
+}

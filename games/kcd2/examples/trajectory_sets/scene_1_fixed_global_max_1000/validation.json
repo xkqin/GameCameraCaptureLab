@@ -1,0 +1,117 @@
+{
+  "validation_passed": true,
+  "requested_trajectory_count": 1000,
+  "generated_trajectory_count": 1000,
+  "failure_counts": {},
+  "all_exported_keyframes_are_real_scored_source_poses": true,
+  "materialized_interpolated_keyframe_count": 0,
+  "all_real_scores_strictly_monotonic": true,
+  "monotonic_direction": "low_to_high",
+  "all_real_scores_strictly_increasing": true,
+  "all_real_scores_strictly_decreasing": null,
+  "all_score_gains_at_least": 2.0,
+  "all_start_at_global_max": null,
+  "all_end_at_global_max": true,
+  "all_start_at_target_anchor": null,
+  "all_end_at_target_anchor": true,
+  "unique_physical_geometry_signatures": 1000,
+  "unique_real_node_path_signatures": 1000,
+  "set_diversity": {
+    "diversity_scope": "global_incremental_balanced",
+    "overlap_group_count": null,
+    "requested_overlap_group_size": null,
+    "checked_pair_count": 499500,
+    "unique_start_node_ids": 312,
+    "unique_start_positions": 100,
+    "unique_end_node_ids": 1,
+    "unique_end_positions": 1,
+    "unique_first_physical_edges": 419,
+    "pairwise_route_overlap_min": null,
+    "pairwise_route_overlap_mean": 0.089593,
+    "pairwise_route_overlap_median": 0.005952,
+    "pairwise_route_overlap_max": 0.897059,
+    "pairwise_physical_node_overlap_max": 1.0,
+    "target_predecessor_position_distribution": {
+      "(437.650018, 287.809226, 118.04843)": 61,
+      "(437.650018, 287.809226, 124.970269)": 93,
+      "(437.650018, 287.809226, 131.892107)": 97,
+      "(460.475847, 265.551019, 124.970269)": 150,
+      "(460.475847, 265.551019, 131.892107)": 150,
+      "(460.475847, 287.809226, 111.126592)": 149,
+      "(460.475847, 287.809226, 131.892107)": 150,
+      "(460.475847, 310.067433, 124.970269)": 150
+    },
+    "all_route_common_terminal_physical_edge_count": 0,
+    "pairwise_start_distance_min": null,
+    "group_summaries": [],
+    "note": "The exact global maximum overlap was checked incrementally for every selected pair; mean, median, p95, and target-pass fraction are estimated from the sampled pair audit.",
+    "target_predecessor_position_count": 8,
+    "pairwise_route_overlap_p95": 0.538929,
+    "pairwise_route_overlap_sample_count": 50000,
+    "pair_fraction_at_or_below_overlap_target": 0.98814,
+    "overlap_target": 0.7,
+    "overlap_maximum_allowed_after_relaxation": 1.0
+  },
+  "keyframe_count": {
+    "min": 5.0,
+    "mean": 8.152,
+    "median": 9.0,
+    "max": 10.0
+  },
+  "duration_sec": {
+    "min": 8.980953,
+    "mean": 18.728868,
+    "median": 19.90267,
+    "max": 23.888754
+  },
+  "score_gain": {
+    "min": 2.457797,
+    "mean": 3.77614,
+    "median": 3.891339,
+    "max": 4.532177
+  },
+  "min_real_score_step": {
+    "min": 0.050122,
+    "mean": 0.129937,
+    "median": 0.080483,
+    "max": 0.892614
+  },
+  "path_xyz_length": {
+    "min": 61.005584,
+    "mean": 144.807227,
+    "median": 154.277959,
+    "max": 179.971248
+  },
+  "net_xyz_distance": {
+    "min": 31.881754,
+    "mean": 75.297001,
+    "median": 72.004126,
+    "max": 123.283497
+  },
+  "path_to_net_ratio": {
+    "min": 1.008766,
+    "mean": 1.99039,
+    "median": 2.096597,
+    "max": 2.499457
+  },
+  "target_distance_total_increase": {
+    "min": 0.0,
+    "mean": 7.487387,
+    "median": 6.468273,
+    "max": 27.201459
+  },
+  "minimum_nonadjacent_distance": {
+    "min": 6.921839,
+    "mean": 21.175233,
+    "median": 22.825829,
+    "max": 45.051337
+  },
+  "max_control_turn_deg": {
+    "min": 17.274605,
+    "mean": 102.88088,
+    "median": 106.869711,
+    "max": 107.274605
+  },
+  "true_video_frame_monotonicity_guaranteed": false,
+  "true_video_note": "Every exported keyframe is real and monotonic in the declared direction; runtime frames between keyframes remain unscored until capture and rescoring."
+}

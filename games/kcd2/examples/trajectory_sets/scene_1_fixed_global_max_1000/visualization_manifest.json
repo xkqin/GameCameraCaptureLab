@@ -1,0 +1,119 @@
+{
+  "coordinate_note": "KCD2 uses z as the vertical axis; top-view plots therefore use x-y.",
+  "all_trajectory_plots": [
+    "real_keyframe_score_curves.png",
+    "physical_distance_vs_time.png",
+    "trajectory_xy_paths.png",
+    "trajectory_xyz_paths_all.png",
+    "trajectory_metric_distributions.png",
+    "score_gain_vs_path_length.png",
+    "global_max_entrance_distribution.png",
+    "collection_score_and_control_distributions.png",
+    "collection_route_overview.png"
+  ],
+  "representative_plots": [
+    "trajectory_xy_paths_individual.png",
+    "trajectory_xyz_paths_individual.png",
+    "real_keyframe_score_curves_individual.png"
+  ],
+  "representative_trajectories": [
+    {
+      "trajectory_id": "20260810_191147_scene_1_auto22_true_gain2_no_backtrack_balanced_00477",
+      "score_gain": 2.457797,
+      "keyframe_count": 5,
+      "duration_sec": 11.402439,
+      "start_score": 4.643956,
+      "end_score": 7.101753
+    },
+    {
+      "trajectory_id": "20260810_191147_scene_1_auto22_true_gain2_no_backtrack_balanced_00635",
+      "score_gain": 3.311638,
+      "keyframe_count": 7,
+      "duration_sec": 15.178249,
+      "start_score": 3.790115,
+      "end_score": 7.101753
+    },
+    {
+      "trajectory_id": "20260810_191147_scene_1_auto22_true_gain2_no_backtrack_balanced_00292",
+      "score_gain": 3.513875,
+      "keyframe_count": 9,
+      "duration_sec": 21.688046,
+      "start_score": 3.587878,
+      "end_score": 7.101753
+    },
+    {
+      "trajectory_id": "20260810_191147_scene_1_auto22_true_gain2_no_backtrack_balanced_00520",
+      "score_gain": 3.599298,
+      "keyframe_count": 10,
+      "duration_sec": 23.74778,
+      "start_score": 3.502455,
+      "end_score": 7.101753
+    },
+    {
+      "trajectory_id": "20260810_191147_scene_1_auto22_true_gain2_no_backtrack_balanced_00781",
+      "score_gain": 3.7394,
+      "keyframe_count": 10,
+      "duration_sec": 22.756441,
+      "start_score": 3.362353,
+      "end_score": 7.101753
+    },
+    {
+      "trajectory_id": "20260810_191147_scene_1_auto22_true_gain2_no_backtrack_balanced_00809",
+      "score_gain": 3.828612,
+      "keyframe_count": 8,
+      "duration_sec": 19.039256,
+      "start_score": 3.27314,
+      "end_score": 7.101753
+    },
+    {
+      "trajectory_id": "20260810_191147_scene_1_auto22_true_gain2_no_backtrack_balanced_00672",
+      "score_gain": 3.927994,
+      "keyframe_count": 6,
+      "duration_sec": 14.504926,
+      "start_score": 3.173759,
+      "end_score": 7.101753
+    },
+    {
+      "trajectory_id": "20260810_191147_scene_1_auto22_true_gain2_no_backtrack_balanced_00042",
+      "score_gain": 3.971524,
+      "keyframe_count": 7,
+      "duration_sec": 17.358155,
+      "start_score": 3.130229,
+      "end_score": 7.101753
+    },
+    {
+      "trajectory_id": "20260810_191147_scene_1_auto22_true_gain2_no_backtrack_balanced_00439",
+      "score_gain": 3.999694,
+      "keyframe_count": 9,
+      "duration_sec": 19.644891,
+      "start_score": 3.102059,
+      "end_score": 7.101753
+    },
+    {
+      "trajectory_id": "20260810_191147_scene_1_auto22_true_gain2_no_backtrack_balanced_00861",
+      "score_gain": 4.033654,
+      "keyframe_count": 9,
+      "duration_sec": 21.220398,
+      "start_score": 3.068099,
+      "end_score": 7.101753
+    },
+    {
+      "trajectory_id": "20260810_191147_scene_1_auto22_true_gain2_no_backtrack_balanced_00420",
+      "score_gain": 4.136651,
+      "keyframe_count": 9,
+      "duration_sec": 21.821671,
+      "start_score": 2.965102,
+      "end_score": 7.101753
+    },
+    {
+      "trajectory_id": "20260810_191147_scene_1_auto22_true_gain2_no_backtrack_balanced_00750",
+      "score_gain": 4.532177,
+      "keyframe_count": 9,
+      "duration_sec": 20.955029,
+      "start_score": 2.569575,
+      "end_score": 7.101753
+    }
+  ],
+  "storyboards_included": false,
+  "storyboard_note": "The six source-image storyboards remain local because repository policy excludes raw game screenshots."
+}

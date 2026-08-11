@@ -1,0 +1,232 @@
+{
+  "scene_id": "20260810_191147_scene_1_auto22",
+  "input_node_count": 2882,
+  "original_node_count": 2882,
+  "extra_node_count": 0,
+  "global_max_node_id": "20260810_191147_scene_1_auto22|1805|83",
+  "global_max_score": 7.101753,
+  "target_rank": 1,
+  "target_anchor_node_id": "20260810_191147_scene_1_auto22|1805|83",
+  "target_anchor_score": 7.101753,
+  "target_anchor_is_global_max": true,
+  "hard_constraints": {
+    "minimum_score_gain": 2.0,
+    "strict_real_score_monotonicity": true,
+    "export_direction": "low_to_high",
+    "real_keyframes_only": true,
+    "minimum_xyz_step": 5.0,
+    "maximum_xyz_step": 24.5,
+    "maximum_yaw_step": 45.0,
+    "maximum_pitch_step": 45.0,
+    "minimum_score_step": 0.05,
+    "maximum_score_step": 1.1,
+    "maximum_control_turn_deg": 120.0,
+    "minimum_net_distance": 30.0,
+    "maximum_path_length": 180.0,
+    "maximum_path_to_net_ratio": 2.5,
+    "maximum_target_distance_total_increase": 30.0,
+    "forbid_near_revisit_radius": 1.0,
+    "maximum_pairwise_route_overlap": 1.0,
+    "maximum_pairwise_physical_node_overlap": 1.0,
+    "maximum_selected_per_target_predecessor_position": 150,
+    "target_predecessor_position_index": -1,
+    "selected_target_predecessor_position": null,
+    "balanced_overlap_target": 0.7,
+    "balanced_overlap_maximum_after_relaxation": 1.0,
+    "minimum_selected_start_distance": 0.0,
+    "diversity_scope": "global_incremental_balanced",
+    "diversity_group_size": null
+  },
+  "objective": {
+    "physical_distance_weight": 1.0,
+    "yaw_change_weight": 0.01,
+    "pitch_change_weight": 0.015,
+    "turn_angle_weight": 0.01
+  },
+  "graph_stats": {
+    "radius_pair_count": 347765,
+    "accepted_directed_edge_count": 35859,
+    "rejected_pair_reasons": {
+      "xyz_too_small": 30261,
+      "yaw": 233536,
+      "pitch": 19680,
+      "score_step": 28429
+    },
+    "implementation": "chunked_numpy_vectorized",
+    "minimum_score_step": 0.05,
+    "removed_below_minimum_score_step": 2989,
+    "accepted_after_minimum_score_step": 32870,
+    "target_predecessor_position_count_before_filter": 9,
+    "target_predecessor_positions_before_filter": [
+      [
+        437.650018,
+        287.809226,
+        118.04843
+      ],
+      [
+        437.650018,
+        287.809226,
+        124.970269
+      ],
+      [
+        437.650018,
+        287.809226,
+        131.892107
+      ],
+      [
+        460.475847,
+        265.551019,
+        124.970269
+      ],
+      [
+        460.475847,
+        265.551019,
+        131.892107
+      ],
+      [
+        460.475847,
+        287.809226,
+        111.126592
+      ],
+      [
+        460.475847,
+        287.809226,
+        131.892107
+      ],
+      [
+        460.475847,
+        310.067433,
+        118.04843
+      ],
+      [
+        460.475847,
+        310.067433,
+        124.970269
+      ]
+    ],
+    "selected_target_predecessor_position_index": -1,
+    "selected_target_predecessor_position": null,
+    "target_predecessor_node_count_after_filter": 13
+  },
+  "search_stats": {
+    "search_method": "reverse_best_first_from_constrained_target_entrance",
+    "eligible_start_count": 433,
+    "eligible_start_position_count_before_sharding": 117,
+    "assigned_start_position_count": 117,
+    "planning_start_shard_count": 1,
+    "planning_start_shard_index": 0,
+    "requested_candidate_count": 5000,
+    "expanded_state_count": 38369,
+    "remaining_queue_size": 54,
+    "frontier_trim_count": 0,
+    "rejected_duplicate_geometry_count": 10723,
+    "rejected_start_capacity": {
+      "target_predecessor_position": 280
+    },
+    "rejected_completed_route_quality": {
+      "path_to_net_ratio": 18470
+    },
+    "accepted_start_node_count": 433,
+    "accepted_start_position_count": 103,
+    "accepted_per_start_node_max": 139,
+    "accepted_per_start_position_max": 277,
+    "accepted_target_predecessor_position_count": 8,
+    "accepted_target_predecessor_position_distribution": {
+      "(437.650018, 287.809226, 118.04843)": 625,
+      "(437.650018, 287.809226, 124.970269)": 625,
+      "(437.650018, 287.809226, 131.892107)": 625,
+      "(460.475847, 265.551019, 124.970269)": 625,
+      "(460.475847, 265.551019, 131.892107)": 625,
+      "(460.475847, 287.809226, 111.126592)": 625,
+      "(460.475847, 287.809226, 131.892107)": 625,
+      "(460.475847, 310.067433, 124.970269)": 625
+    },
+    "search_exhausted": false,
+    "state_limit_reached": false
+  },
+  "selection_stats": {
+    "candidate_count": 5000,
+    "candidate_start_node_count": 433,
+    "candidate_start_position_count": 103,
+    "selected_count": 1000,
+    "selection_method": "round_robin_physical_start_with_incremental_voxel_overlap",
+    "selection_seed": 20260710,
+    "overlap_target": 0.7,
+    "overlap_maximum_allowed_after_relaxation": 1.0,
+    "overlap_relax_step": 0.05,
+    "selected_by_overlap_limit": {
+      "0.70": 289,
+      "0.75": 141,
+      "0.80": 213,
+      "0.85": 329,
+      "0.90": 28
+    },
+    "maximum_pairwise_route_overlap_exact": 0.897059,
+    "maximum_pairwise_physical_node_overlap_exact": 1.0,
+    "maximum_allowed_pairwise_physical_node_overlap": 1.0,
+    "target_predecessor_position_count": 8,
+    "target_predecessor_position_distribution": {
+      "(437.650018, 287.809226, 118.04843)": 61,
+      "(437.650018, 287.809226, 124.970269)": 93,
+      "(437.650018, 287.809226, 131.892107)": 97,
+      "(460.475847, 265.551019, 124.970269)": 150,
+      "(460.475847, 265.551019, 131.892107)": 150,
+      "(460.475847, 287.809226, 111.126592)": 149,
+      "(460.475847, 287.809226, 131.892107)": 150,
+      "(460.475847, 310.067433, 124.970269)": 150
+    },
+    "selected_start_node_count": 312,
+    "selected_start_position_count": 100,
+    "trajectories_per_start_node_min": 1,
+    "trajectories_per_start_node_mean": 3.205128,
+    "trajectories_per_start_node_max": 19,
+    "trajectories_per_start_position_min": 1,
+    "trajectories_per_start_position_mean": 10.0,
+    "trajectories_per_start_position_max": 45,
+    "sampled_pair_count": 50000,
+    "sampled_pairwise_route_overlap_min": 0.002564,
+    "sampled_pairwise_route_overlap_mean": 0.089593,
+    "sampled_pairwise_route_overlap_median": 0.005952,
+    "sampled_pairwise_route_overlap_p95": 0.538929,
+    "sampled_pairwise_route_overlap_max": 0.897059,
+    "sampled_pair_fraction_at_or_below_target": 0.98814
+  },
+  "set_diversity": {
+    "diversity_scope": "global_incremental_balanced",
+    "overlap_group_count": null,
+    "requested_overlap_group_size": null,
+    "checked_pair_count": 499500,
+    "unique_start_node_ids": 312,
+    "unique_start_positions": 100,
+    "unique_end_node_ids": 1,
+    "unique_end_positions": 1,
+    "unique_first_physical_edges": 419,
+    "pairwise_route_overlap_min": null,
+    "pairwise_route_overlap_mean": 0.089593,
+    "pairwise_route_overlap_median": 0.005952,
+    "pairwise_route_overlap_max": 0.897059,
+    "pairwise_physical_node_overlap_max": 1.0,
+    "target_predecessor_position_distribution": {
+      "(437.650018, 287.809226, 118.04843)": 61,
+      "(437.650018, 287.809226, 124.970269)": 93,
+      "(437.650018, 287.809226, 131.892107)": 97,
+      "(460.475847, 265.551019, 124.970269)": 150,
+      "(460.475847, 265.551019, 131.892107)": 150,
+      "(460.475847, 287.809226, 111.126592)": 149,
+      "(460.475847, 287.809226, 131.892107)": 150,
+      "(460.475847, 310.067433, 124.970269)": 150
+    },
+    "all_route_common_terminal_physical_edge_count": 0,
+    "pairwise_start_distance_min": null,
+    "group_summaries": [],
+    "note": "The exact global maximum overlap was checked incrementally for every selected pair; mean, median, p95, and target-pass fraction are estimated from the sampled pair audit.",
+    "target_predecessor_position_count": 8,
+    "pairwise_route_overlap_p95": 0.538929,
+    "pairwise_route_overlap_sample_count": 50000,
+    "pair_fraction_at_or_below_overlap_target": 0.98814,
+    "overlap_target": 0.7,
+    "overlap_maximum_allowed_after_relaxation": 1.0
+  },
+  "candidate_count": 5000,
+  "generated_count": 1000
+}

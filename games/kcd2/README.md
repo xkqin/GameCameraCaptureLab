@@ -38,6 +38,9 @@ games/kcd2/camera_tools/
 - `examples/scene_points/`：真实场景边界点；
 - `examples/scan_plans/`：131 个空间位置、每点 22 视角的五层计划；
 - `examples/trajectories/`：160 帧相对随机运镜样例。
+- `examples/trajectory_sets/scene_1_fixed_global_max_1000/`：1000 条从低分真实控制点严格递增到同一最高分构图的离线规划集、验证结果和诊断图。
+
+1000 条规划集不代表 KCD2 任意绝对关键帧回放已经完成游戏内验收。连续插值、碰撞安全和运行时帧分数仍需 smoke capture 验证。
 
 ## 离线测试
 

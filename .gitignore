@@ -71,3 +71,6 @@ games/black-myth-wukong/settings.json
 !docs/assets/*.webp
 !docs/assets/*.mp4
 !docs/assets/*.jpg
+
+# Curated offline trajectory diagnostics contain plots, but no raw game frames.
+!games/kcd2/examples/trajectory_sets/**/*.png
