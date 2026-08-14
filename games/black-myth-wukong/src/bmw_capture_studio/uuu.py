@@ -4,6 +4,7 @@ import ctypes
 from ctypes import wintypes
 from pathlib import Path
 import subprocess
+import sys
 import time
 
 from .paths import BRIDGE_PATH
@@ -29,6 +30,13 @@ INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
 
 class UuuIntegrationError(RuntimeError):
     pass
+
+
+def _require_windows() -> None:
+    if sys.platform != "win32":
+        raise UuuIntegrationError(
+            "UUU 5.8.21 注入和 Native Bridge 目前仅支持 Windows；Linux 只能使用兼容界面、文件和 OBS 功能。"
+        )
 
 
 class MODULEENTRY32W(ctypes.Structure):
@@ -62,6 +70,7 @@ class PROCESSENTRY32W(ctypes.Structure):
 
 
 def _kernel32() -> ctypes.WinDLL:
+    _require_windows()
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
     kernel32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
     kernel32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
@@ -137,6 +146,7 @@ def _kernel32() -> ctypes.WinDLL:
 
 
 def list_processes() -> dict[str, list[int]]:
+    _require_windows()
     kernel32 = _kernel32()
     snapshot = kernel32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
     if snapshot in (None, 0, INVALID_HANDLE_VALUE):
@@ -200,6 +210,7 @@ def list_modules(pid: int) -> list[str]:
 
 
 def inject_bridge(pid: int, bridge_path: Path = BRIDGE_PATH) -> dict[str, object]:
+    _require_windows()
     bridge = bridge_path.resolve()
     if not bridge.exists():
         raise UuuIntegrationError(f"位姿桥不存在：{bridge}")
@@ -285,6 +296,7 @@ def inject_bridge(pid: int, bridge_path: Path = BRIDGE_PATH) -> dict[str, object
 
 
 def launch_uuu_client(uuu_dir: str | Path) -> dict[str, object]:
+    _require_windows()
     directory = Path(uuu_dir)
     client = directory / "IGCSClient.exe"
     dll = directory / "UniversalUE5Unlocker.dll"
@@ -302,6 +314,19 @@ def launch_uuu_client(uuu_dir: str | Path) -> dict[str, object]:
 
 
 def integration_status() -> dict[str, object]:
+    if sys.platform != "win32":
+        return {
+            "platform_unsupported": True,
+            "platform": sys.platform,
+            "game_running": False,
+            "module_scan_ok": False,
+            "bridge_loaded": False,
+            "uuu_loaded": False,
+            "message": (
+                "Linux 兼容模式：界面、点位/轨迹文件和 OBS 可用；"
+                "黑神话 UUU 原生位姿控制需要 Windows。"
+            ),
+        }
     try:
         pid = find_game_pid()
     except UuuIntegrationError as exc:

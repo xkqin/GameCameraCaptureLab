@@ -1,3 +1,5 @@
+param([string]$TrajectoryFile = "")
+
 $ErrorActionPreference = "Stop"
 
 $projectDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -23,4 +25,17 @@ if (-not (Test-Path -LiteralPath $pythonwExe)) {
     throw "Python GUI executable was not found: $pythonwExe"
 }
 
-Start-Process -FilePath $pythonwExe -ArgumentList @("-m", "bmw_capture_studio") -WorkingDirectory $projectDir
+& $pythonExe -c "import obsws_python; import PIL" 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Updating capture-studio dependencies..."
+    & $pythonExe -m pip install --disable-pip-version-check -e $projectDir
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not install capture-studio dependencies."
+    }
+}
+
+$arguments = @("-m", "bmw_capture_studio")
+if ($TrajectoryFile) {
+    $arguments += @("--trajectory-file", ('"{0}"' -f $TrajectoryFile.Replace('"', '\"')))
+}
+Start-Process -FilePath $pythonwExe -ArgumentList $arguments -WorkingDirectory $projectDir

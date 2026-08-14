@@ -10,7 +10,6 @@ import time
 from typing import Callable, Iterable, Protocol
 
 from .models import CameraPose, CapturePoint
-from .screen_capture import save_game_screenshot
 
 
 class PoseReader(Protocol):
@@ -25,6 +24,13 @@ class PoseMover(Protocol):
         stop_requested: Callable[[], bool],
         on_update: Callable[[str], None] | None,
     ) -> CameraPose: ...
+
+
+class CaptureTarget(Protocol):
+    index: int
+    label: str
+    pose: CameraPose
+    time_sec: float
 
 
 @dataclass(frozen=True)
@@ -54,6 +60,14 @@ def _pose_columns(prefix: str, pose: CameraPose) -> dict[str, object]:
     return {f"{prefix}_{key}": value for key, value in pose.as_dict().items()}
 
 
+def _capture_metadata(point: CaptureTarget) -> dict[str, object]:
+    getter = getattr(point, "capture_metadata", None)
+    if not callable(getter):
+        return {}
+    value = getter()
+    return dict(value) if isinstance(value, dict) else {}
+
+
 class CaptureRunner:
     def __init__(
         self,
@@ -61,9 +75,9 @@ class CaptureRunner:
         bridge: PoseReader,
         mover: PoseMover,
         pid: int,
-        settle_seconds: float = 0.35,
+        settle_seconds: float = 0.12,
         image_format: str = "png",
-        screenshotter: Callable[[int, str | Path], Path] = save_game_screenshot,
+        screenshotter: Callable[[int, str | Path], Path] | None = None,
     ) -> None:
         self.bridge = bridge
         self.mover = mover
@@ -71,10 +85,11 @@ class CaptureRunner:
         self.settle_seconds = max(0.0, settle_seconds)
         self.image_format = image_format.lower().lstrip(".") or "png"
         self.screenshotter = screenshotter
+        self.last_session_dir: Path | None = None
 
     def run(
         self,
-        points: Iterable[CapturePoint],
+        points: Iterable[CaptureTarget],
         output_root: str | Path,
         *,
         mode: str,
@@ -82,13 +97,19 @@ class CaptureRunner:
         on_progress: Callable[[int, int, str], None] | None = None,
         on_log: Callable[[str], None] | None = None,
         respect_timestamps: bool = False,
+        run_metadata: dict[str, object] | None = None,
     ) -> CaptureRunResult:
         values = list(points)
+        if self.screenshotter is None:
+            raise RuntimeError(
+                "黑神话静态采集必须注入 OBS WebSocket 截图器，已禁止窗口截屏回退"
+            )
         if not values:
             raise ValueError("没有可采集的点位")
 
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
         session_dir = Path(output_root) / f"{mode}_{stamp}"
+        self.last_session_dir = session_dir.resolve()
         images_dir = session_dir / "images"
         images_dir.mkdir(parents=True, exist_ok=False)
         manifest_json = session_dir / "manifest.json"
@@ -97,8 +118,14 @@ class CaptureRunner:
         stopped = False
         run_error: str | None = None
         run_started = time.monotonic()
+        start_pose: CameraPose | None = None
+        restore_attempted = False
+        restore_succeeded: bool | None = None
+        restored_pose: CameraPose | None = None
+        restore_error: str | None = None
 
         try:
+            start_pose = self.bridge.read_pose()
             for ordinal, point in enumerate(values, start=1):
                 if stop_requested():
                     raise InterruptedError("采集已停止")
@@ -125,6 +152,7 @@ class CaptureRunner:
                     "point_index": point.index,
                     "label": point.label,
                     "time_sec": point.time_sec,
+                    **_capture_metadata(point),
                     "image": str(Path("images") / image_path.name),
                     "captured_at": captured_at,
                     **_pose_columns("target", point.pose),
@@ -139,13 +167,42 @@ class CaptureRunner:
             run_error = f"{type(exc).__name__}: {exc}"
             raise
         finally:
+            if (run_error is not None or stopped) and start_pose is not None:
+                restore_attempted = True
+                try:
+                    restored_pose = self.mover.move_to(
+                        start_pose,
+                        stop_requested=lambda: False,
+                        on_update=(
+                            (lambda message: on_log(f"回位：{message}"))
+                            if on_log is not None
+                            else None
+                        ),
+                    )
+                    restore_succeeded = True
+                except Exception as exc:
+                    restore_succeeded = False
+                    restore_error = f"{type(exc).__name__}: {exc}"
+                    if on_log is not None:
+                        on_log(f"相机自动回位失败：{restore_error}")
             payload = {
                 "format": "bmw-uuu-capture-manifest-v1",
                 "mode": mode,
                 "status": "failed" if run_error else ("stopped" if stopped else "complete"),
                 "error": run_error,
+                "control_method": "uuu_native_relative_steps_pose_feedback_closed_loop",
+                "absolute_target_pose": True,
+                "atomic_absolute_set_pose": False,
                 "requested_count": len(values),
                 "captured_count": len(rows),
+                "capture_plan": dict(run_metadata or {}),
+                "start_pose": start_pose.as_dict() if start_pose is not None else None,
+                "restore_attempted": restore_attempted,
+                "restore_succeeded": restore_succeeded,
+                "restored_pose": (
+                    restored_pose.as_dict() if restored_pose is not None else None
+                ),
+                "restore_error": restore_error,
                 "created_at": datetime.now().astimezone().isoformat(timespec="seconds"),
                 "frames": rows,
             }

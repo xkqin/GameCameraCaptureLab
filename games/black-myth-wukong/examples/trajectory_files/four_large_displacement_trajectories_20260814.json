@@ -1,0 +1,77 @@
+{
+  "format": "camera-trajectory-set/v1",
+  "game_id": "black-myth-wukong",
+  "scene_id": "scene_1",
+  "trajectory_set_id": "four_large_displacement_trajectories_20260814",
+  "description": "Four smooth long-range camera trajectories with clearly separated start poses, generated around the live scene_1 camera region.",
+  "spacing_contract": {
+    "trajectory_count": 4,
+    "shared_boundary_pose": false,
+    "minimum_start_separation_units": 1600.0,
+    "minimum_net_displacement_units": 1360.0,
+    "duration_sec_per_trajectory": 16.0,
+    "return_to_initial_pose": false
+  },
+  "trajectories": [
+    {
+      "trajectory_id": "large_sweep_01_southwest_to_center",
+      "description": "Long rising diagonal sweep from the southwest side toward the scene center.",
+      "keyframes": [
+        {"index": 1, "label": "large_01_01", "time_sec": 0.0, "x": -24600.0, "y": 89400.0, "z": 3600.0, "yaw_degrees": 46.0, "pitch_degrees": -8.0, "roll_degrees": 0.0, "fov_degrees": 66.0},
+        {"index": 2, "label": "large_01_02", "time_sec": 2.0, "x": -24480.0, "y": 89460.0, "z": 3615.0, "yaw_degrees": 50.0, "pitch_degrees": -6.0, "roll_degrees": 0.0, "fov_degrees": 65.0},
+        {"index": 3, "label": "large_01_03", "time_sec": 4.0, "x": -24340.0, "y": 89550.0, "z": 3640.0, "yaw_degrees": 55.0, "pitch_degrees": -3.5, "roll_degrees": 0.0, "fov_degrees": 63.0},
+        {"index": 4, "label": "large_01_04", "time_sec": 6.0, "x": -24180.0, "y": 89670.0, "z": 3675.0, "yaw_degrees": 61.0, "pitch_degrees": -1.0, "roll_degrees": 0.0, "fov_degrees": 61.0},
+        {"index": 5, "label": "large_01_05", "time_sec": 8.0, "x": -24010.0, "y": 89800.0, "z": 3710.0, "yaw_degrees": 67.0, "pitch_degrees": 1.0, "roll_degrees": 0.0, "fov_degrees": 60.0},
+        {"index": 6, "label": "large_01_06", "time_sec": 10.0, "x": -23860.0, "y": 89940.0, "z": 3745.0, "yaw_degrees": 72.0, "pitch_degrees": 2.0, "roll_degrees": 0.0, "fov_degrees": 60.0},
+        {"index": 7, "label": "large_01_07", "time_sec": 12.0, "x": -23730.0, "y": 90070.0, "z": 3770.0, "yaw_degrees": 76.0, "pitch_degrees": 0.0, "roll_degrees": 0.0, "fov_degrees": 61.0},
+        {"index": 8, "label": "large_01_08", "time_sec": 14.0, "x": -23610.0, "y": 90160.0, "z": 3765.0, "yaw_degrees": 79.0, "pitch_degrees": -3.0, "roll_degrees": 0.0, "fov_degrees": 63.0},
+        {"index": 9, "label": "large_01_09", "time_sec": 16.0, "x": -23500.0, "y": 90200.0, "z": 3750.0, "yaw_degrees": 82.0, "pitch_degrees": -6.0, "roll_degrees": 0.0, "fov_degrees": 65.0}
+      ]
+    },
+    {
+      "trajectory_id": "large_sweep_02_southeast_to_northwest",
+      "description": "Broad opposing diagonal sweep with a gradual climb and wide pan.",
+      "keyframes": [
+        {"index": 1, "label": "large_02_01", "time_sec": 0.0, "x": -23000.0, "y": 89300.0, "z": 3650.0, "yaw_degrees": 132.0, "pitch_degrees": -7.0, "roll_degrees": 0.0, "fov_degrees": 67.0},
+        {"index": 2, "label": "large_02_02", "time_sec": 2.0, "x": -23140.0, "y": 89400.0, "z": 3670.0, "yaw_degrees": 137.0, "pitch_degrees": -5.0, "roll_degrees": 0.0, "fov_degrees": 66.0},
+        {"index": 3, "label": "large_02_03", "time_sec": 4.0, "x": -23320.0, "y": 89550.0, "z": 3700.0, "yaw_degrees": 143.0, "pitch_degrees": -2.0, "roll_degrees": 0.0, "fov_degrees": 64.0},
+        {"index": 4, "label": "large_02_04", "time_sec": 6.0, "x": -23520.0, "y": 89740.0, "z": 3740.0, "yaw_degrees": 150.0, "pitch_degrees": 0.5, "roll_degrees": 0.0, "fov_degrees": 61.0},
+        {"index": 5, "label": "large_02_05", "time_sec": 8.0, "x": -23720.0, "y": 89920.0, "z": 3780.0, "yaw_degrees": 157.0, "pitch_degrees": 2.0, "roll_degrees": 0.0, "fov_degrees": 59.0},
+        {"index": 6, "label": "large_02_06", "time_sec": 10.0, "x": -23900.0, "y": 90100.0, "z": 3820.0, "yaw_degrees": 164.0, "pitch_degrees": 1.0, "roll_degrees": 0.0, "fov_degrees": 59.0},
+        {"index": 7, "label": "large_02_07", "time_sec": 12.0, "x": -24050.0, "y": 90260.0, "z": 3850.0, "yaw_degrees": 170.0, "pitch_degrees": -1.5, "roll_degrees": 0.0, "fov_degrees": 61.0},
+        {"index": 8, "label": "large_02_08", "time_sec": 14.0, "x": -24170.0, "y": 90380.0, "z": 3860.0, "yaw_degrees": 175.0, "pitch_degrees": -4.0, "roll_degrees": 0.0, "fov_degrees": 64.0},
+        {"index": 9, "label": "large_02_09", "time_sec": 16.0, "x": -24250.0, "y": 90450.0, "z": 3850.0, "yaw_degrees": 179.0, "pitch_degrees": -7.0, "roll_degrees": 0.0, "fov_degrees": 66.0}
+      ]
+    },
+    {
+      "trajectory_id": "large_sweep_03_east_arc_to_northwest",
+      "description": "Long elevated arc from the east side across the northern scene boundary.",
+      "keyframes": [
+        {"index": 1, "label": "large_03_01", "time_sec": 0.0, "x": -22800.0, "y": 90950.0, "z": 3800.0, "yaw_degrees": 192.0, "pitch_degrees": -8.0, "roll_degrees": 0.0, "fov_degrees": 68.0},
+        {"index": 2, "label": "large_03_02", "time_sec": 2.0, "x": -22940.0, "y": 91090.0, "z": 3835.0, "yaw_degrees": 198.0, "pitch_degrees": -5.0, "roll_degrees": 0.0, "fov_degrees": 66.0},
+        {"index": 3, "label": "large_03_03", "time_sec": 4.0, "x": -23130.0, "y": 91210.0, "z": 3880.0, "yaw_degrees": 205.0, "pitch_degrees": -2.0, "roll_degrees": 0.0, "fov_degrees": 63.0},
+        {"index": 4, "label": "large_03_04", "time_sec": 6.0, "x": -23350.0, "y": 91310.0, "z": 3930.0, "yaw_degrees": 212.0, "pitch_degrees": 0.0, "roll_degrees": 0.0, "fov_degrees": 60.0},
+        {"index": 5, "label": "large_03_05", "time_sec": 8.0, "x": -23580.0, "y": 91385.0, "z": 3980.0, "yaw_degrees": 219.0, "pitch_degrees": 2.0, "roll_degrees": 0.0, "fov_degrees": 58.0},
+        {"index": 6, "label": "large_03_06", "time_sec": 10.0, "x": -23810.0, "y": 91435.0, "z": 4020.0, "yaw_degrees": 226.0, "pitch_degrees": 1.0, "roll_degrees": 0.0, "fov_degrees": 59.0},
+        {"index": 7, "label": "large_03_07", "time_sec": 12.0, "x": -24020.0, "y": 91465.0, "z": 4040.0, "yaw_degrees": 232.0, "pitch_degrees": -1.0, "roll_degrees": 0.0, "fov_degrees": 61.0},
+        {"index": 8, "label": "large_03_08", "time_sec": 14.0, "x": -24200.0, "y": 91465.0, "z": 4030.0, "yaw_degrees": 237.0, "pitch_degrees": -4.0, "roll_degrees": 0.0, "fov_degrees": 64.0},
+        {"index": 9, "label": "large_03_09", "time_sec": 16.0, "x": -24350.0, "y": 91450.0, "z": 4000.0, "yaw_degrees": 241.0, "pitch_degrees": -7.0, "roll_degrees": 0.0, "fov_degrees": 67.0}
+      ]
+    },
+    {
+      "trajectory_id": "large_sweep_04_northwest_to_southeast",
+      "description": "Longest descending cross-scene sweep, ending above the southeast side.",
+      "keyframes": [
+        {"index": 1, "label": "large_04_01", "time_sec": 0.0, "x": -24800.0, "y": 91000.0, "z": 3900.0, "yaw_degrees": 318.0, "pitch_degrees": -8.0, "roll_degrees": 0.0, "fov_degrees": 68.0},
+        {"index": 2, "label": "large_04_02", "time_sec": 2.0, "x": -24640.0, "y": 90840.0, "z": 3940.0, "yaw_degrees": 322.0, "pitch_degrees": -5.0, "roll_degrees": 0.0, "fov_degrees": 66.0},
+        {"index": 3, "label": "large_04_03", "time_sec": 4.0, "x": -24430.0, "y": 90660.0, "z": 3990.0, "yaw_degrees": 327.0, "pitch_degrees": -2.0, "roll_degrees": 0.0, "fov_degrees": 63.0},
+        {"index": 4, "label": "large_04_04", "time_sec": 6.0, "x": -24190.0, "y": 90450.0, "z": 4040.0, "yaw_degrees": 333.0, "pitch_degrees": 0.0, "roll_degrees": 0.0, "fov_degrees": 60.0},
+        {"index": 5, "label": "large_04_05", "time_sec": 8.0, "x": -23940.0, "y": 90240.0, "z": 4090.0, "yaw_degrees": 339.0, "pitch_degrees": 2.0, "roll_degrees": 0.0, "fov_degrees": 58.0},
+        {"index": 6, "label": "large_04_06", "time_sec": 10.0, "x": -23700.0, "y": 90050.0, "z": 4130.0, "yaw_degrees": 345.0, "pitch_degrees": 1.0, "roll_degrees": 0.0, "fov_degrees": 59.0},
+        {"index": 7, "label": "large_04_07", "time_sec": 12.0, "x": -23490.0, "y": 89900.0, "z": 4150.0, "yaw_degrees": 350.0, "pitch_degrees": -1.0, "roll_degrees": 0.0, "fov_degrees": 61.0},
+        {"index": 8, "label": "large_04_08", "time_sec": 14.0, "x": -23320.0, "y": 89800.0, "z": 4140.0, "yaw_degrees": 354.0, "pitch_degrees": -4.0, "roll_degrees": 0.0, "fov_degrees": 64.0},
+        {"index": 9, "label": "large_04_09", "time_sec": 16.0, "x": -23200.0, "y": 89750.0, "z": 4100.0, "yaw_degrees": 357.0, "pitch_degrees": -7.0, "roll_degrees": 0.0, "fov_degrees": 67.0}
+      ]
+    }
+  ]
+}

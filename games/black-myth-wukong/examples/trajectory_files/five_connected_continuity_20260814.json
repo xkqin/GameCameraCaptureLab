@@ -1,0 +1,525 @@
+{
+  "format": "camera-trajectory-set/v1",
+  "game_id": "black-myth-wukong",
+  "scene_id": "scene_1",
+  "trajectory_set_id": "five_connected_continuity_20260814",
+  "description": "Five connected trajectories for testing batch capture continuity. Each next start pose exactly equals the previous terminal pose.",
+  "continuity_contract": {
+    "trajectory_count": 5,
+    "shared_boundary_pose": true,
+    "return_to_initial_pose": false,
+    "local_duration_sec": 4.2
+  },
+  "trajectories": [
+    {
+      "trajectory_id": "continuity_segment_01",
+      "description": "Connected continuity segment 1/5",
+      "keyframes": [
+        {
+          "index": 1,
+          "label": "continuity_01_01",
+          "time_sec": 0,
+          "x": -24328.553,
+          "y": 89790.57,
+          "z": 3538.163,
+          "yaw_degrees": 27.45,
+          "pitch_degrees": -7.155,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 2,
+          "label": "continuity_01_02",
+          "time_sec": 0.6,
+          "x": -24313.553,
+          "y": 89816.913,
+          "z": 3543.082,
+          "yaw_degrees": 30.214,
+          "pitch_degrees": -6.546,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 3,
+          "label": "continuity_01_03",
+          "time_sec": 1.2,
+          "x": -24298.553,
+          "y": 89842.307,
+          "z": 3547.374,
+          "yaw_degrees": 32.91,
+          "pitch_degrees": -5.985,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 4,
+          "label": "continuity_01_04",
+          "time_sec": 1.8,
+          "x": -24283.553,
+          "y": 89865.852,
+          "z": 3550.491,
+          "yaw_degrees": 35.477,
+          "pitch_degrees": -5.515,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 5,
+          "label": "continuity_01_05",
+          "time_sec": 2.4,
+          "x": -24268.553,
+          "y": 89886.74,
+          "z": 3552.036,
+          "yaw_degrees": 37.855,
+          "pitch_degrees": -5.173,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 6,
+          "label": "continuity_01_06",
+          "time_sec": 3,
+          "x": -24253.553,
+          "y": 89904.295,
+          "z": 3551.812,
+          "yaw_degrees": 39.999,
+          "pitch_degrees": -4.986,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 7,
+          "label": "continuity_01_07",
+          "time_sec": 3.6,
+          "x": -24238.553,
+          "y": 89918.01,
+          "z": 3549.847,
+          "yaw_degrees": 41.871,
+          "pitch_degrees": -4.969,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 8,
+          "label": "continuity_01_08",
+          "time_sec": 4.2,
+          "x": -24223.553,
+          "y": 89927.57,
+          "z": 3546.392,
+          "yaw_degrees": 43.45,
+          "pitch_degrees": -5.122,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        }
+      ]
+    },
+    {
+      "trajectory_id": "continuity_segment_02",
+      "description": "Connected continuity segment 2/5",
+      "keyframes": [
+        {
+          "index": 1,
+          "label": "continuity_02_01",
+          "time_sec": 0,
+          "x": -24223.553,
+          "y": 89927.57,
+          "z": 3546.392,
+          "yaw_degrees": 43.45,
+          "pitch_degrees": -5.122,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 2,
+          "label": "continuity_02_02",
+          "time_sec": 0.6,
+          "x": -24208.553,
+          "y": 89932.867,
+          "z": 3541.888,
+          "yaw_degrees": 44.728,
+          "pitch_degrees": -5.435,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 3,
+          "label": "continuity_02_03",
+          "time_sec": 1.2,
+          "x": -24193.553,
+          "y": 89934.009,
+          "z": 3536.908,
+          "yaw_degrees": 45.713,
+          "pitch_degrees": -5.882,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 4,
+          "label": "continuity_02_04",
+          "time_sec": 1.8,
+          "x": -24178.553,
+          "y": 89931.311,
+          "z": 3532.089,
+          "yaw_degrees": 46.427,
+          "pitch_degrees": -6.428,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 5,
+          "label": "continuity_02_05",
+          "time_sec": 2.4,
+          "x": -24163.553,
+          "y": 89925.281,
+          "z": 3528.044,
+          "yaw_degrees": 46.905,
+          "pitch_degrees": -7.032,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 6,
+          "label": "continuity_02_06",
+          "time_sec": 3,
+          "x": -24148.553,
+          "y": 89916.593,
+          "z": 3525.29,
+          "yaw_degrees": 47.196,
+          "pitch_degrees": -7.645,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 7,
+          "label": "continuity_02_07",
+          "time_sec": 3.6,
+          "x": -24133.553,
+          "y": 89906.056,
+          "z": 3524.177,
+          "yaw_degrees": 47.357,
+          "pitch_degrees": -8.219,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 8,
+          "label": "continuity_02_08",
+          "time_sec": 4.2,
+          "x": -24118.553,
+          "y": 89894.57,
+          "z": 3524.848,
+          "yaw_degrees": 47.45,
+          "pitch_degrees": -8.711,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        }
+      ]
+    },
+    {
+      "trajectory_id": "continuity_segment_03",
+      "description": "Connected continuity segment 3/5",
+      "keyframes": [
+        {
+          "index": 1,
+          "label": "continuity_03_01",
+          "time_sec": 0,
+          "x": -24118.553,
+          "y": 89894.57,
+          "z": 3524.848,
+          "yaw_degrees": 47.45,
+          "pitch_degrees": -8.711,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 2,
+          "label": "continuity_03_02",
+          "time_sec": 0.6,
+          "x": -24103.553,
+          "y": 89883.084,
+          "z": 3527.217,
+          "yaw_degrees": 47.543,
+          "pitch_degrees": -9.08,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 3,
+          "label": "continuity_03_03",
+          "time_sec": 1.2,
+          "x": -24088.553,
+          "y": 89872.547,
+          "z": 3530.982,
+          "yaw_degrees": 47.704,
+          "pitch_degrees": -9.3,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 4,
+          "label": "continuity_03_04",
+          "time_sec": 1.8,
+          "x": -24073.553,
+          "y": 89863.859,
+          "z": 3535.663,
+          "yaw_degrees": 47.995,
+          "pitch_degrees": -9.352,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 5,
+          "label": "continuity_03_05",
+          "time_sec": 2.4,
+          "x": -24058.553,
+          "y": 89857.829,
+          "z": 3540.663,
+          "yaw_degrees": 48.473,
+          "pitch_degrees": -9.232,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 6,
+          "label": "continuity_03_06",
+          "time_sec": 3,
+          "x": -24043.553,
+          "y": 89855.131,
+          "z": 3545.344,
+          "yaw_degrees": 49.187,
+          "pitch_degrees": -8.949,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 7,
+          "label": "continuity_03_07",
+          "time_sec": 3.6,
+          "x": -24028.553,
+          "y": 89856.273,
+          "z": 3549.109,
+          "yaw_degrees": 50.172,
+          "pitch_degrees": -8.527,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 8,
+          "label": "continuity_03_08",
+          "time_sec": 4.2,
+          "x": -24013.553,
+          "y": 89861.57,
+          "z": 3551.478,
+          "yaw_degrees": 51.45,
+          "pitch_degrees": -7.997,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        }
+      ]
+    },
+    {
+      "trajectory_id": "continuity_segment_04",
+      "description": "Connected continuity segment 4/5",
+      "keyframes": [
+        {
+          "index": 1,
+          "label": "continuity_04_01",
+          "time_sec": 0,
+          "x": -24013.553,
+          "y": 89861.57,
+          "z": 3551.478,
+          "yaw_degrees": 51.45,
+          "pitch_degrees": -7.997,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 2,
+          "label": "continuity_04_02",
+          "time_sec": 0.6,
+          "x": -23998.553,
+          "y": 89871.13,
+          "z": 3552.149,
+          "yaw_degrees": 53.029,
+          "pitch_degrees": -7.401,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 3,
+          "label": "continuity_04_03",
+          "time_sec": 1.2,
+          "x": -23983.553,
+          "y": 89884.845,
+          "z": 3551.036,
+          "yaw_degrees": 54.901,
+          "pitch_degrees": -6.786,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 4,
+          "label": "continuity_04_04",
+          "time_sec": 1.8,
+          "x": -23968.553,
+          "y": 89902.4,
+          "z": 3548.282,
+          "yaw_degrees": 57.045,
+          "pitch_degrees": -6.2,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 5,
+          "label": "continuity_04_05",
+          "time_sec": 2.4,
+          "x": -23953.553,
+          "y": 89923.288,
+          "z": 3544.237,
+          "yaw_degrees": 59.423,
+          "pitch_degrees": -5.689,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 6,
+          "label": "continuity_04_06",
+          "time_sec": 3,
+          "x": -23938.553,
+          "y": 89946.833,
+          "z": 3539.418,
+          "yaw_degrees": 61.99,
+          "pitch_degrees": -5.292,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 7,
+          "label": "continuity_04_07",
+          "time_sec": 3.6,
+          "x": -23923.553,
+          "y": 89972.227,
+          "z": 3534.438,
+          "yaw_degrees": 64.686,
+          "pitch_degrees": -5.041,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 8,
+          "label": "continuity_04_08",
+          "time_sec": 4.2,
+          "x": -23908.553,
+          "y": 89998.57,
+          "z": 3529.934,
+          "yaw_degrees": 67.45,
+          "pitch_degrees": -4.955,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        }
+      ]
+    },
+    {
+      "trajectory_id": "continuity_segment_05",
+      "description": "Connected continuity segment 5/5",
+      "keyframes": [
+        {
+          "index": 1,
+          "label": "continuity_05_01",
+          "time_sec": 0,
+          "x": -23908.553,
+          "y": 89998.57,
+          "z": 3529.934,
+          "yaw_degrees": 67.45,
+          "pitch_degrees": -4.955,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 2,
+          "label": "continuity_05_02",
+          "time_sec": 0.6,
+          "x": -23893.553,
+          "y": 90024.913,
+          "z": 3526.479,
+          "yaw_degrees": 70.214,
+          "pitch_degrees": -5.041,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 3,
+          "label": "continuity_05_03",
+          "time_sec": 1.2,
+          "x": -23878.553,
+          "y": 90050.307,
+          "z": 3524.514,
+          "yaw_degrees": 72.91,
+          "pitch_degrees": -5.292,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 4,
+          "label": "continuity_05_04",
+          "time_sec": 1.8,
+          "x": -23863.553,
+          "y": 90073.852,
+          "z": 3524.29,
+          "yaw_degrees": 75.477,
+          "pitch_degrees": -5.689,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 5,
+          "label": "continuity_05_05",
+          "time_sec": 2.4,
+          "x": -23848.553,
+          "y": 90094.74,
+          "z": 3525.835,
+          "yaw_degrees": 77.855,
+          "pitch_degrees": -6.2,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 6,
+          "label": "continuity_05_06",
+          "time_sec": 3,
+          "x": -23833.553,
+          "y": 90112.295,
+          "z": 3528.952,
+          "yaw_degrees": 79.999,
+          "pitch_degrees": -6.786,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 7,
+          "label": "continuity_05_07",
+          "time_sec": 3.6,
+          "x": -23818.553,
+          "y": 90126.01,
+          "z": 3533.244,
+          "yaw_degrees": 81.871,
+          "pitch_degrees": -7.401,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        },
+        {
+          "index": 8,
+          "label": "continuity_05_08",
+          "time_sec": 4.2,
+          "x": -23803.553,
+          "y": 90135.57,
+          "z": 3538.163,
+          "yaw_degrees": 83.45,
+          "pitch_degrees": -7.997,
+          "roll_degrees": 0,
+          "fov_degrees": 65
+        }
+      ]
+    }
+  ]
+}

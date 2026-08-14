@@ -3,9 +3,8 @@ from __future__ import annotations
 import ctypes
 from ctypes import wintypes
 from pathlib import Path
+import sys
 import time
-
-from PIL import ImageGrab
 
 
 class RECT(ctypes.Structure):
@@ -22,6 +21,8 @@ class POINT(ctypes.Structure):
 
 
 def _user32() -> ctypes.WinDLL:
+    if sys.platform != "win32":
+        raise RuntimeError("游戏窗口控制目前仅支持 Windows；Linux 请使用 OBS/Proton 适配器")
     user32 = ctypes.WinDLL("user32", use_last_error=True)
     user32.GetWindowThreadProcessId.argtypes = [
         wintypes.HWND,
@@ -48,6 +49,8 @@ def _user32() -> ctypes.WinDLL:
 
 
 def enable_dpi_awareness() -> None:
+    if sys.platform != "win32":
+        return
     user32 = _user32()
     try:
         user32.SetProcessDpiAwarenessContext.argtypes = [ctypes.c_void_p]
@@ -99,6 +102,16 @@ def focus_game_window(pid: int) -> None:
         time.sleep(0.06)
 
 
+def foreground_process_id() -> int | None:
+    user32 = _user32()
+    hwnd = user32.GetForegroundWindow()
+    if not hwnd:
+        return None
+    owner = wintypes.DWORD()
+    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
+    return int(owner.value) if owner.value else None
+
+
 def client_bbox(pid: int) -> tuple[int, int, int, int]:
     hwnd = find_main_window(pid)
     user32 = _user32()
@@ -119,7 +132,7 @@ def client_bbox(pid: int) -> tuple[int, int, int, int]:
 def save_game_screenshot(pid: int, path: str | Path) -> Path:
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    image = ImageGrab.grab(bbox=client_bbox(pid), all_screens=True)
+    raise RuntimeError("窗口截屏已禁用，请通过 OBS WebSocket 保存静态采集图像")
     if image.width < 320 or image.height < 240:
         raise RuntimeError("截取到的游戏画面尺寸异常")
     image.save(target)

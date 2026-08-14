@@ -1,0 +1,21 @@
+{
+  "format": "camera-trajectory/v1",
+  "game_id": "black-myth-wukong",
+  "scene_id": "scene_1",
+  "trajectory_id": "current_pose_local_arc_20260813",
+  "description": "Local 12-keyframe arc generated around the live camera pose captured on 2026-08-13.",
+  "keyframes": [
+    {"index": 1, "label": "arc_001", "time_sec": 0.0, "x": -24328.553, "y": 89790.570, "z": 3538.163, "yaw_degrees": 27.450, "pitch_degrees": -7.155, "roll_degrees": 0.0, "fov_degrees": 65.0},
+    {"index": 2, "label": "arc_002", "time_sec": 0.8, "x": -24275.000, "y": 89818.390, "z": 3544.163, "yaw_degrees": 32.450, "pitch_degrees": -6.000, "roll_degrees": 0.0, "fov_degrees": 65.0},
+    {"index": 3, "label": "arc_003", "time_sec": 1.6, "x": -24226.000, "y": 89852.000, "z": 3552.163, "yaw_degrees": 38.450, "pitch_degrees": -4.000, "roll_degrees": 0.0, "fov_degrees": 65.0},
+    {"index": 4, "label": "arc_004", "time_sec": 2.4, "x": -24189.000, "y": 89896.000, "z": 3560.163, "yaw_degrees": 45.450, "pitch_degrees": -2.000, "roll_degrees": 0.0, "fov_degrees": 65.0},
+    {"index": 5, "label": "arc_005", "time_sec": 3.2, "x": -24170.000, "y": 89946.000, "z": 3566.163, "yaw_degrees": 52.450, "pitch_degrees": 0.000, "roll_degrees": 0.0, "fov_degrees": 65.0},
+    {"index": 6, "label": "arc_006", "time_sec": 4.0, "x": -24169.000, "y": 89998.000, "z": 3569.163, "yaw_degrees": 58.450, "pitch_degrees": 1.500, "roll_degrees": 0.0, "fov_degrees": 65.0},
+    {"index": 7, "label": "arc_007", "time_sec": 4.8, "x": -24188.000, "y": 90048.000, "z": 3566.163, "yaw_degrees": 62.450, "pitch_degrees": 0.000, "roll_degrees": 0.0, "fov_degrees": 65.0},
+    {"index": 8, "label": "arc_008", "time_sec": 5.6, "x": -24225.000, "y": 90091.000, "z": 3560.163, "yaw_degrees": 64.450, "pitch_degrees": -2.000, "roll_degrees": 0.0, "fov_degrees": 65.0},
+    {"index": 9, "label": "arc_009", "time_sec": 6.4, "x": -24273.000, "y": 90124.000, "z": 3552.163, "yaw_degrees": 62.450, "pitch_degrees": -4.000, "roll_degrees": 0.0, "fov_degrees": 65.0},
+    {"index": 10, "label": "arc_010", "time_sec": 7.2, "x": -24327.000, "y": 90142.000, "z": 3544.163, "yaw_degrees": 57.450, "pitch_degrees": -6.000, "roll_degrees": 0.0, "fov_degrees": 65.0},
+    {"index": 11, "label": "arc_011", "time_sec": 8.0, "x": -24379.000, "y": 90138.000, "z": 3538.163, "yaw_degrees": 49.450, "pitch_degrees": -7.000, "roll_degrees": 0.0, "fov_degrees": 65.0},
+    {"index": 12, "label": "arc_012", "time_sec": 8.8, "x": -24423.000, "y": 90112.000, "z": 3534.163, "yaw_degrees": 40.450, "pitch_degrees": -7.155, "roll_degrees": 0.0, "fov_degrees": 65.0}
+  ]
+}

@@ -30,7 +30,7 @@
 |---|---|---|---|---|---|---|
 | RE Engine / RE9 | RE Engine | 已验证 | 已验证 Lua `setPose` | 已验证 | 已验证回放 | 稳定 |
 | Kingdom Come: Deliverance II | CryEngine | 已验证 | 游戏画面结果未确认 | 已实现，OBS 联动 | 已验证相对随机运镜；精确回放待确认 | Beta |
-| Black Myth: Wukong | Unreal Engine 5 | 需要 UUU Connector 握手 | UUU 未公开绝对接口 | 已实现 | 热键反馈式相对控制，实验性 | 实验性 |
+| Black Myth: Wukong | Unreal Engine 5 | 需要 UUU Connector 握手 | UUU 相对步进＋Pose 反馈闭环到绝对目标；非原子 `setPose`，游戏内验收待完成 | 已实现 | 原生 Pose 闭环回放，实验性 | 实验性 |
 
 “能读到 pose”“内存写回值变化”和“游戏画面确实到达目标位姿”是三件不同的事。上表只把实际验证过的能力标为已验证，不把 RE9 的能力自动套到其他游戏。
 
@@ -81,6 +81,25 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup_windows.ps1
 ```
 
 KCD2 与黑神话适配器仍可使用各自目录内的独立启动脚本。
+
+## Linux 兼容版本
+
+黑神话适配器现在提供 Linux 启动脚本，可运行采集界面的跨平台部分：
+
+```bash
+cd games/black-myth-wukong
+sudo apt install python3 python3-venv python3-tk  # Debian/Ubuntu 缺少依赖时执行
+chmod +x launch_bmw_capture_studio.sh
+./launch_bmw_capture_studio.sh
+```
+
+也可以在启动时预选轨迹：
+
+```bash
+./launch_bmw_capture_studio.sh --trajectory-file /path/to/trajectory.json
+```
+
+Linux 版本支持启动界面、JSON/CSV 点位和轨迹管理、离线数据处理、打开输出目录，以及在 Linux 本机运行 OBS 时使用 OBS WebSocket。黑神话的实时 Pose 读取、UUU 注入、Native Bridge 和游戏内相机控制仍需要 Windows，因为 UUU 5.8.21 与当前 Bridge 依赖 Windows 进程注入和命名共享内存。Linux 界面会明确显示兼容模式，不会把界面启动误报为游戏相机已连接；Windows 版本仍使用 `launch_bmw_capture_studio.ps1`。
 
 ## 仓库结构
 

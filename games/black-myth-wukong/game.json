@@ -5,18 +5,18 @@
   "short_name": "Black Myth",
   "engine": "Unreal Engine 5",
   "maturity": "experimental",
-  "summary": "通过 UUU Connector 读取位姿，记录点位，并用 UUU 热键做低频闭环移动。",
+  "summary": "通过 UUU Connector 读取位姿，并用 UUU 5.8.21 原生相对步进和 Pose 反馈闭环到绝对目标；非原子 setPose。",
   "documentation": "README.md",
   "examples": "examples",
   "capabilities": {
     "free_camera": "verified_with_uuu",
     "pose_read": "requires_connector_handshake",
-    "absolute_pose_control": "not_available",
-    "relative_pose_control": "experimental_hotkey_feedback",
+    "absolute_pose_control": "feedback_closed_loop_target_pending_visual_acceptance",
+    "relative_pose_control": "native_feedback",
     "point_capture": "implemented",
     "still_capture": "implemented",
     "trajectory_capture": "implemented",
-    "trajectory_replay": "experimental_relative_only"
+    "trajectory_replay": "experimental_native_pose_feedback"
   },
   "actions": [
     {
@@ -32,6 +32,17 @@
         "Bypass",
         "-File",
         "{game}/launch_bmw_capture_studio.ps1"
+      ]
+    },
+    {
+      "id": "capture-linux",
+      "label": "打开黑神话采集界面（Linux）",
+      "description": "启动 Linux 兼容界面；UUU 实时相机链路仍需 Windows。",
+      "platforms": ["linux"],
+      "working_directory": ".",
+      "command": [
+        "bash",
+        "{game}/launch_bmw_capture_studio.sh"
       ]
     }
   ]

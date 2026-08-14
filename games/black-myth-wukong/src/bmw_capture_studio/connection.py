@@ -31,6 +31,19 @@ def classify_connection(
     pid_value = integration.get("pid")
     pid = int(pid_value) if isinstance(pid_value, int) else None
 
+    if integration.get("platform_unsupported"):
+        return ConnectionReport(
+            code="platform_unsupported",
+            level="warning",
+            title="Linux 兼容模式",
+            detail=str(
+                integration.get(
+                    "message",
+                    "UUU 原生位姿控制需要 Windows；当前可使用文件管理和 OBS 功能。",
+                )
+            ),
+        )
+
     if not integration.get("game_running"):
         return ConnectionReport(
             code="game_missing",
@@ -140,6 +153,48 @@ def classify_connection(
             pose=pose,
             metadata=metadata,
         )
+    control = pose_status.get("control")
+    if control is None:
+        return ConnectionReport(
+            code="native_control_outdated",
+            level="error",
+            title="Pose 已连接 · 原生控制桥过旧",
+            detail=(
+                "当前游戏中加载的 Connector 不含 UUU 原生相机控制。"
+                "请彻底退出游戏，重新准备位姿桥，再注入 UUU 5.8.21。"
+            ),
+            pid=pid,
+            pose=pose,
+            metadata=metadata,
+        )
+    if not control.ready:
+        error_message = getattr(control, "error_message", "native control unavailable")
+        return ConnectionReport(
+            code="native_control_waiting",
+            level="warning",
+            title="Pose 已连接 · 等待原生控制",
+            detail=(
+                "请确认 UUU 版本为 5.8.21、按 Insert 启用 Camera，并等待日志出现 "
+                f"Camera found。当前状态：{error_message}。"
+            ),
+            pid=pid,
+            pose=pose,
+            metadata=metadata,
+        )
+    trajectory = pose_status.get("trajectory")
+    if trajectory is None:
+        return ConnectionReport(
+            code="smooth_trajectory_outdated",
+            level="error",
+            title="原生平滑轨迹桥过旧",
+            detail=(
+                "当前游戏进程仍加载旧版 Bridge，不能保证轨迹连续播放。"
+                "请彻底退出游戏和采集器，重新启动后按 1 → 2 注入新版 Bridge。"
+            ),
+            pid=pid,
+            pose=pose,
+            metadata=metadata,
+        )
     return ConnectionReport(
         code="ready",
         level="success",
@@ -153,6 +208,8 @@ def classify_connection(
 
 def probe_connection(bridge: UuuPoseBridge) -> ConnectionReport:
     integration = integration_status()
+    if integration.get("platform_unsupported"):
+        return classify_connection(integration, None, {"connected": False})
     metadata = bridge.read_metadata()
     pose_status = bridge.status()
     return classify_connection(integration, metadata, pose_status)

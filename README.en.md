@@ -30,7 +30,7 @@ The preview above comes from a real KCD2 free-camera motion capture. Open the [f
 |---|---|---|---|---|---|---|
 | RE Engine / RE9 | RE Engine | Verified | Verified with Lua `setPose` | Verified | Verified replay | Stable |
 | Kingdom Come: Deliverance II | CryEngine | Verified | In-game visual result not confirmed | Implemented, with OBS integration | Relative random motion verified; precise replay pending | Beta |
-| Black Myth: Wukong | Unreal Engine 5 | Requires UUU Connector handshake | No public absolute UUU API | Implemented | Experimental relative control with hotkey feedback | Experimental |
+| Black Myth: Wukong | Unreal Engine 5 | Requires UUU Connector handshake | Relative UUU steps plus pose feedback reach an absolute target; not an atomic `setPose`, in-game acceptance pending | Implemented | Experimental native pose-feedback replay | Experimental |
 
 Reading a pose, observing a changed value after a memory write, and visually reaching the target pose in the game are three different checks. The table marks only capabilities that were actually verified; RE9 capabilities are not automatically assumed for other games.
 
@@ -81,6 +81,25 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup_windows.ps1
 ```
 
 KCD2 and Black Myth: Wukong can be started with the standalone scripts in their adapter directories.
+
+## Linux compatibility
+
+The Black Myth adapter now has a native Linux launcher for the cross-platform parts of the studio:
+
+```bash
+cd games/black-myth-wukong
+sudo apt install python3 python3-venv python3-tk  # Debian/Ubuntu, if needed
+chmod +x launch_bmw_capture_studio.sh
+./launch_bmw_capture_studio.sh
+```
+
+An initial trajectory can be selected from the command line:
+
+```bash
+./launch_bmw_capture_studio.sh --trajectory-file /path/to/trajectory.json
+```
+
+On Linux the UI, JSON/CSV point and trajectory management, offline planning, output-folder opening, and OBS WebSocket connection are available. Black Myth real-time pose reading, UUU injection, the Native Bridge, and in-game camera control remain Windows-only because UUU 5.8.21 and the current Bridge use Windows process injection and named shared memory. The Linux build therefore reports a compatibility mode instead of pretending that the game camera is connected. The Windows launcher remains `launch_bmw_capture_studio.ps1`.
 
 ## Repository layout
 
@@ -159,4 +178,3 @@ The repository evolved from `RE9_Still_Scan`. To avoid breaking existing scripts
 - [RE9 / RE Engine adapter](games/re9/README.en.md)
 - [KCD2 adapter](games/kcd2/README.en.md)
 - [Black Myth: Wukong adapter](games/black-myth-wukong/README.en.md)
-

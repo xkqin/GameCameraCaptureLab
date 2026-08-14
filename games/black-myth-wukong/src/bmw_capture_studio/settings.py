@@ -9,14 +9,22 @@ from .paths import DEFAULT_UUU_DIR, SETTINGS_PATH
 
 DEFAULTS: dict[str, Any] = {
     "uuu_dir": str(DEFAULT_UUU_DIR),
-    "capture_interval_sec": 0.35,
+    "capture_interval_sec": 0.12,
     "position_tolerance": 4.0,
     "angle_tolerance_degrees": 1.5,
     "fov_tolerance_degrees": 0.5,
     "move_pulse_sec": 0.035,
     "rotate_pulse_sec": 0.025,
     "max_move_seconds": 25.0,
-    "screenshot_format": "png",
+    "native_feedback_timeout_sec": 0.5,
+    "screenshot_format": "jpg",
+    "obs_host": "127.0.0.1",
+    "obs_port": 4455,
+    "pose_log_hz": 30.0,
+    "trajectory_playback_hz": 60.0,
+    "scene_id": "scene_1",
+    "autoload_trajectory": "",
+    "always_on_top": True,
 }
 
 

@@ -105,3 +105,18 @@ class CapturePoint:
             "time_sec": self.time_sec,
             **self.pose.as_dict(),
         }
+
+
+@dataclass(frozen=True)
+class ImportedTrajectory:
+    """One trajectory loaded from a single- or multi-trajectory file."""
+
+    index: int
+    trajectory_id: str
+    points: tuple[CapturePoint, ...]
+
+    @property
+    def duration_sec(self) -> float:
+        if len(self.points) < 2:
+            return 0.0
+        return max(0.0, self.points[-1].time_sec - self.points[0].time_sec)
