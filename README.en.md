@@ -22,7 +22,7 @@
 
 This is a complete multi-game camera-data capture project—not merely a free camera and not merely a screenshot script. It connects **camera control, pose feedback, spatial point maps, 22-view still scans, continuous trajectories, OBS capture, resumable progress, and dataset manifests** into one reproducible pipeline.
 
-The project began with RE9 and now discovers independent adapters through `games/*/game.json`. Its new, self-developed **UE Camera Runtime** removes the UUU dependency for supported offline Unreal games: inject a free camera, read real poses, issue absolute `setPose`, hide the HUD, and play smooth paths inside the game process. All project-owned code is open source and free.
+The project began with RE9 and now discovers independent adapters through `games/*/game.json`. Its new, self-developed **UE Camera Runtime** can inject a free camera into supported offline Unreal games, read real poses, issue absolute `setPose`, hide the HUD, and play smooth paths inside the game process. All project-owned code is open source and free.
 
 ## What it captures
 
@@ -171,7 +171,7 @@ Release checks also cover profile schemas, hook match counts, the native build, 
 
 ## Open source, free, and distribution boundaries
 
-Project-owned source code is free and open under the [MIT License](LICENSE). The repository contains only original source, configuration templates, schemas, tests, and small public examples. It does not include commercial game files, saves, closed UUU/KCD2 Camera Tools binaries, unauthorized Mods/PAKs, credentials, runtime logs, or full captured datasets.
+Project-owned source code is free and open under the [MIT License](LICENSE). The repository contains only original source, configuration templates, schemas, tests, and small public examples. It does not include commercial game files, saves, third-party closed-source camera-tool binaries, unauthorized Mods/PAKs, credentials, runtime logs, or full captured datasets.
 
 ## Adapter guides
 

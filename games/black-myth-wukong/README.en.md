@@ -2,7 +2,7 @@
 
 [中文](README.md) · [English](README.en.md)
 
-This adapter defaults to the project's generic `UeCameraRuntime.dll` plus the Black Myth profile. It does not require UUU, IGCSClient, or Connector. The runtime hooks the UE5 LWC camera-copy path and exposes a free camera, precise pose feedback, atomic absolute `setPose`, 22-view still scans, and in-process smooth trajectories to the complete capture UI. The old `BmwCameraBridge` name remains only as a local compatibility fallback.
+This adapter defaults to the project's generic `UeCameraRuntime.dll` plus the Black Myth profile. It does not require third-party camera tools, IGCSClient, or Connector. The runtime hooks the UE5 LWC camera-copy path and exposes a free camera, precise pose feedback, atomic absolute `setPose`, 22-view still scans, and in-process smooth trajectories to the complete capture UI. The old `BmwCameraBridge` name remains only as a local compatibility fallback.
 
 ## Capabilities
 
@@ -26,10 +26,10 @@ The source build and offline protocol tests pass. Our runtime has also completed
 
 ## Windows workflow
 
-1. Fully exit the game, UUU, and IGCSClient.
+1. Fully exit the game, other camera tools, and IGCSClient.
 2. Start only Black Myth: Wukong and enter a rendered scene; borderless mode is recommended.
 3. Start the capture UI.
-4. Click **Inject Camera Bridge**. The UI uses `UeCameraInjector.exe` by default and refuses to stack over UUU or an old Connector.
+4. Click **Inject Camera Bridge**. The UI uses `UeCameraInjector.exe` by default and refuses to stack over another camera runtime or an old Connector.
 5. Start capture after Pose, absolute `setPose`, and trajectory capabilities are ready.
 
 Controls: `Insert` toggles the camera; `Home` toggles movement lock; `Delete` toggles HUD visibility; `WASD/QE` moves; mouse movement controls yaw/pitch; arrow keys rotate; `Z/C` rolls; numpad `+/-` changes FOV; hold `Shift` for 5x speed; `Ctrl` slows down. Mouse sensitivity can be set with `BMW_CAMERA_MOUSE_SENSITIVITY`. Automated capture enables the camera itself.
@@ -53,7 +53,7 @@ native/build_standalone_v1/Release/
 └─ BmwCameraInjector.exe        # compatibility name
 ```
 
-No UUU binary is included or redistributed.
+No third-party closed-source binary is included or redistributed.
 
 ## Linux/Proton
 

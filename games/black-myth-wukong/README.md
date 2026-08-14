@@ -2,7 +2,7 @@
 
 [中文](README.md) · [English](README.en.md)
 
-这个适配器默认使用项目自研的通用 `UeCameraRuntime.dll` 和黑神话 profile，不需要 UUU、IGCSClient 或 Connector。它直接挂接《黑神话：悟空》的 UE5 LWC 相机复制路径，并向完整采集界面提供自由相机、精确位姿、绝对 `setPose`、22 方向静态扫描和进程内平滑轨迹。旧 `BmwCameraBridge` 名称只作为本地兼容回退保留。
+这个适配器默认使用项目自研的通用 `UeCameraRuntime.dll` 和黑神话 profile，不需要第三方相机工具、IGCSClient 或 Connector。它直接挂接《黑神话：悟空》的 UE5 LWC 相机复制路径，并向完整采集界面提供自由相机、精确位姿、绝对 `setPose`、22 方向静态扫描和进程内平滑轨迹。旧 `BmwCameraBridge` 名称只作为本地兼容回退保留。
 
 ## 当前能力
 
@@ -26,10 +26,10 @@
 
 ## Windows 使用顺序
 
-1. 完全退出游戏、UUU 和 IGCSClient，确认旧游戏进程已经消失。
+1. 完全退出游戏、其他相机工具和 IGCSClient，确认旧游戏进程已经消失。
 2. 只启动《黑神话：悟空》，进入正在渲染的场景；建议使用无边框窗口。
 3. 运行 `启动黑神话采集工具.bat` 或 `launch_bmw_capture_studio.ps1`。
-4. 点击“注入 Camera Bridge”。界面默认调用通用 `UeCameraInjector.exe`，并拒绝与 UUU/旧 Connector 叠加 Hook。
+4. 点击“注入 Camera Bridge”。界面默认调用通用 `UeCameraInjector.exe`，并拒绝与其他相机运行时/旧 Connector 叠加 Hook。
 5. 状态显示 Pose、绝对 `setPose` 和轨迹能力就绪后开始采集。
 
 手动控制：
@@ -65,7 +65,7 @@ native/build_standalone_v1/Release/
 └─ BmwCameraInjector.exe        # 兼容名称
 ```
 
-仓库不包含或分发 UUU 二进制。
+仓库不包含或分发第三方闭源二进制。
 
 ## Linux/Proton
 
