@@ -1,0 +1,140 @@
+{
+  "scene_id": "scene_1.1",
+  "purpose": "high_score_start_terminal_gain_to_single_global_max",
+  "generation_status": "candidate_set_requires_smoke_capture",
+  "source_scored_pose_count": 9522,
+  "anchor_selection_diagnostics": {
+    "eligible_start_anchor_count": 2,
+    "selection_policy": "all unique XYZ starts inside configured terminal-gain and distance bounds",
+    "rejected": {
+      "start_distance": 30,
+      "terminal_gain": 9487,
+      "yaw_difference": 2
+    },
+    "eligible_start_anchors": [
+      {
+        "node_id": "scene_1|scene_1.1_y03_medium_dense_y03_3p13|4976|17",
+        "score": 6.924417,
+        "distance_to_global_max_m": 1.27
+      },
+      {
+        "node_id": "scene_1|scene_1.1_y02_medium_dense_y02_1p86|3128|38",
+        "score": 6.692405,
+        "distance_to_global_max_m": 1.8825
+      }
+    ]
+  },
+  "start_anchors": [
+    {
+      "family_id": "family_01",
+      "node_id": "scene_1|scene_1.1_y03_medium_dense_y03_3p13|4976|17",
+      "score": 6.924417,
+      "x": 72.79,
+      "y": 3.13,
+      "z": -1.81,
+      "yaw": 135.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.202687
+    },
+    {
+      "family_id": "family_02",
+      "node_id": "scene_1|scene_1.1_y02_medium_dense_y02_1p86|3128|38",
+      "score": 6.692405,
+      "x": 72.79,
+      "y": 1.86,
+      "z": 0.07249999999999979,
+      "yaw": 135.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.4347
+    }
+  ],
+  "global_max": {
+    "node_id": "scene_1|scene_1.1_y02_medium_dense_y02_1p86|2666|17",
+    "score": 7.127104,
+    "x": 72.79,
+    "y": 1.86,
+    "z": -1.81,
+    "yaw": 135.0,
+    "pitch": 0.0
+  },
+  "generation_parameters": {
+    "scene_id": "scene_1.1",
+    "scored_jsonl": "datasets/scene_1.1/aesthetic_scored/all_scores_with_annotations.jsonl",
+    "extra_scored_jsonl": "../scene_1_extra/aesthetic_scored/all_scores_with_annotations.jsonl",
+    "output_dir": "datasets/scene_1.1/trajectories_top2_sameview_gain0p435_globalmax_interpolated_preview_500",
+    "num_trajectories": 500,
+    "keyframe_count": 24,
+    "time_step_sec": 0.1,
+    "maximum_lateral_offset_m": 0.18,
+    "maximum_lateral_ratio": 0.12,
+    "maximum_yaw_bulge_deg": 3.0,
+    "maximum_pitch_bulge_deg": 1.5,
+    "signature_quantization_m": 0.01,
+    "minimum_terminal_gain": 0.0,
+    "maximum_terminal_gain": 0.435,
+    "minimum_start_distance_m": 0.4,
+    "maximum_start_distance_m": 6.0,
+    "maximum_start_yaw_difference_deg": 45.0,
+    "maximum_start_pitch_difference_deg": 45.0,
+    "seed": 20260814
+  },
+  "candidate_attempts": {
+    "family_01": 250,
+    "family_02": 251
+  },
+  "statistics": {
+    "terminal_gain": {
+      "min": 0.202687,
+      "mean": 0.318694,
+      "median": 0.318693,
+      "max": 0.4347
+    },
+    "path_xyz_length": {
+      "min": 1.27,
+      "mean": 1.609325,
+      "median": 1.6217,
+      "max": 1.972178
+    },
+    "net_xyz_distance": {
+      "min": 1.27,
+      "mean": 1.57625,
+      "median": 1.57625,
+      "max": 1.8825
+    },
+    "path_to_net_ratio": {
+      "min": 1.0,
+      "mean": 1.021901,
+      "median": 1.020507,
+      "max": 1.071575
+    },
+    "max_xyz_step": {
+      "min": 0.103402,
+      "mean": 0.128337,
+      "median": 0.128337,
+      "max": 0.153272
+    },
+    "max_speed_mps": {
+      "min": 1.03402,
+      "mean": 1.28337,
+      "median": 1.28337,
+      "max": 1.53272
+    },
+    "max_yaw_step_deg": {
+      "min": 0.0,
+      "mean": 0.222454,
+      "median": 0.223421,
+      "max": 0.443916
+    },
+    "max_pitch_step_deg": {
+      "min": 0.0,
+      "mean": 0.111062,
+      "median": 0.111125,
+      "max": 0.222312
+    }
+  },
+  "score_semantics": {
+    "measured_frames_per_trajectory": 2,
+    "unscored_interpolated_frames_per_trajectory": 22,
+    "intermediate_monotonicity_required": false
+  }
+}

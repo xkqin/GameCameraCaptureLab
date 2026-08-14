@@ -1,0 +1,139 @@
+{
+  "scene_id": "scene_1.2",
+  "purpose": "high_score_start_terminal_gain_to_single_global_max",
+  "generation_status": "candidate_set_requires_smoke_capture",
+  "source_scored_pose_count": 14080,
+  "anchor_selection_diagnostics": {
+    "eligible_start_anchor_count": 2,
+    "selection_policy": "all unique XYZ starts inside configured terminal-gain and distance bounds",
+    "rejected": {
+      "start_distance": 4,
+      "terminal_gain": 14073
+    },
+    "eligible_start_anchors": [
+      {
+        "node_id": "scene_1|scene_1.2_y01_dense_strip_y05_2p75|10787|71",
+        "score": 6.912251,
+        "distance_to_global_max_m": 2.625998
+      },
+      {
+        "node_id": "scene_1|scene_1.2_y01_dense_strip_y05_2p75|12195|135",
+        "score": 6.901432,
+        "distance_to_global_max_m": 2.625998
+      }
+    ]
+  },
+  "start_anchors": [
+    {
+      "family_id": "family_01",
+      "node_id": "scene_1|scene_1.2_y01_dense_strip_y05_2p75|10787|71",
+      "score": 6.912251,
+      "x": 57.11774193548388,
+      "y": 2.75,
+      "z": 10.525,
+      "yaw": 270.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.150311
+    },
+    {
+      "family_id": "family_02",
+      "node_id": "scene_1|scene_1.2_y01_dense_strip_y05_2p75|12195|135",
+      "score": 6.901432,
+      "x": 57.11774193548388,
+      "y": 2.75,
+      "z": 11.49,
+      "yaw": 270.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.16113
+    }
+  ],
+  "global_max": {
+    "node_id": "scene_1|scene_1.2_y01_dense_strip_y05_2p75|11513|104",
+    "score": 7.062562,
+    "x": 59.69903225806452,
+    "y": 2.75,
+    "z": 11.0075,
+    "yaw": 270.0,
+    "pitch": 0.0
+  },
+  "generation_parameters": {
+    "scene_id": "scene_1.2",
+    "scored_jsonl": "scene_1/datasets/scene_1.2/aesthetic_scored/all_scores_with_annotations.jsonl",
+    "extra_scored_jsonl": null,
+    "output_dir": "scene_1/datasets/scene_1.2/trajectories_terminal_gain0p25_globalmax_interpolated_preview_1000",
+    "num_trajectories": 1000,
+    "keyframe_count": 30,
+    "time_step_sec": 0.1,
+    "maximum_lateral_offset_m": 0.18,
+    "maximum_lateral_ratio": 0.12,
+    "maximum_yaw_bulge_deg": 3.0,
+    "maximum_pitch_bulge_deg": 1.5,
+    "signature_quantization_m": 0.01,
+    "minimum_terminal_gain": 0.0,
+    "maximum_terminal_gain": 0.25,
+    "minimum_start_distance_m": 0.4,
+    "maximum_start_distance_m": 6.0,
+    "maximum_start_yaw_difference_deg": 45.0,
+    "maximum_start_pitch_difference_deg": 45.0,
+    "seed": 20260814
+  },
+  "candidate_attempts": {
+    "family_01": 500,
+    "family_02": 500
+  },
+  "statistics": {
+    "terminal_gain": {
+      "min": 0.150311,
+      "mean": 0.155721,
+      "median": 0.15572,
+      "max": 0.16113
+    },
+    "path_xyz_length": {
+      "min": 2.625998,
+      "mean": 2.649592,
+      "median": 2.648441,
+      "max": 2.694044
+    },
+    "net_xyz_distance": {
+      "min": 2.625998,
+      "mean": 2.625998,
+      "median": 2.625998,
+      "max": 2.625998
+    },
+    "path_to_net_ratio": {
+      "min": 1.0,
+      "mean": 1.008985,
+      "median": 1.008547,
+      "max": 1.025912
+    },
+    "max_xyz_step": {
+      "min": 0.169649,
+      "mean": 0.16965,
+      "median": 0.16965,
+      "max": 0.16965
+    },
+    "max_speed_mps": {
+      "min": 1.696492,
+      "mean": 1.696498,
+      "median": 1.696502,
+      "max": 1.696504
+    },
+    "max_yaw_step_deg": {
+      "min": 0.0,
+      "mean": 0.175578,
+      "median": 0.175565,
+      "max": 0.350468
+    },
+    "max_pitch_step_deg": {
+      "min": 0.0,
+      "mean": 0.087744,
+      "median": 0.087731,
+      "max": 0.175601
+    }
+  },
+  "score_semantics": {
+    "measured_frames_per_trajectory": 2,
+    "unscored_interpolated_frames_per_trajectory": 28,
+    "intermediate_monotonicity_required": false
+  }
+}
