@@ -82,7 +82,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup_windows.ps1
 
 KCD2 and Black Myth: Wukong can be started with the standalone scripts in their adapter directories.
 
-## Linux compatibility
+## Linux/Proton compatibility
 
 The Black Myth adapter now has a native Linux launcher for the cross-platform parts of the studio:
 
@@ -99,7 +99,7 @@ An initial trajectory can be selected from the command line:
 ./launch_bmw_capture_studio.sh --trajectory-file /path/to/trajectory.json
 ```
 
-On Linux the UI, JSON/CSV point and trajectory management, offline planning, output-folder opening, and OBS WebSocket connection are available. Black Myth real-time pose reading, UUU injection, the Native Bridge, and in-game camera control remain Windows-only because UUU 5.8.21 and the current Bridge use Windows process injection and named shared memory. The Linux build therefore reports a compatibility mode instead of pretending that the game camera is connected. The Windows launcher remains `launch_bmw_capture_studio.ps1`.
+On Linux the UI, JSON/CSV point and trajectory management, offline planning, output-folder opening, OBS WebSocket connection, and the Black Myth live camera path are available when the Proton Bridge Relay is configured. UUU 5.8.21 and the Bridge remain Windows binaries inside Proton; the Linux UI accesses the pose/control/trajectory ABI through a loopback TCP relay. Set `BMW_BRIDGE_PORT=28791 %command%` in the game's Steam launch options, then run `export BMW_BRIDGE_ENDPOINT=127.0.0.1:28791` before starting the capture UI. The Bridge DLL still needs to be loaded into the Proton game through UUU. Without the relay, the UI stays in an explicit waiting/compatibility state and does not enable capture. The Windows launcher remains `launch_bmw_capture_studio.ps1`.
 
 Feishu alerts and opt-in repair reuse the RE9 configuration fields. The adapter searches `configs/linux.local.yaml` → `configs/linux.yaml` → `configs/default.yaml` for `notifications.feishu` and `automation.codex_recovery`. Real webhook URLs, signing secrets, and high-trust Codex repair are disabled by default; keep them in an untracked `linux.local.yaml` or provide `RE9_FEISHU_*` / `RE9_CODEX_*` environment variables.
 

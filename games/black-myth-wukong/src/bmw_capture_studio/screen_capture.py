@@ -3,6 +3,8 @@ from __future__ import annotations
 import ctypes
 from ctypes import wintypes
 from pathlib import Path
+import shutil
+import subprocess
 import sys
 import time
 
@@ -91,6 +93,9 @@ def find_main_window(pid: int) -> int:
 
 
 def focus_game_window(pid: int) -> None:
+    if sys.platform.startswith("linux"):
+        _focus_linux_game_window()
+        return
     hwnd = find_main_window(pid)
     user32 = _user32()
     for _ in range(3):
@@ -102,7 +107,64 @@ def focus_game_window(pid: int) -> None:
         time.sleep(0.06)
 
 
+def _focus_linux_game_window() -> None:
+    """Best-effort focus recovery for a Proton game window after OBS restart."""
+
+    wmctrl = shutil.which("wmctrl")
+    if wmctrl:
+        try:
+            result = subprocess.run(
+                [wmctrl, "-l"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=2.0,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            result = None
+        if result is not None:
+            for line in result.stdout.splitlines():
+                fields = line.split(None, 3)
+                title = fields[3].lower() if len(fields) >= 4 else ""
+                if "black myth" in title or "wukong" in title or "b1-win64" in title:
+                    subprocess.run(
+                        [wmctrl, "-ia", fields[0]],
+                        check=False,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
+                    return
+
+    xdotool = shutil.which("xdotool")
+    if xdotool:
+        try:
+            result = subprocess.run(
+                [xdotool, "search", "--name", "Black Myth|Wukong|b1-Win64"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=2.0,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            result = None
+        if result is not None:
+            window_id = next((value.strip() for value in result.stdout.splitlines() if value.strip()), None)
+            if window_id:
+                subprocess.run(
+                    [xdotool, "windowactivate", "--sync", window_id],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                return
+    raise RuntimeError(
+        "Linux Proton 游戏窗口未找到；安装 wmctrl 或 xdotool 后可在 OBS 重启后自动恢复焦点。"
+    )
+
+
 def foreground_process_id() -> int | None:
+    if sys.platform != "win32":
+        return None
     user32 = _user32()
     hwnd = user32.GetForegroundWindow()
     if not hwnd:

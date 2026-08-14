@@ -118,7 +118,10 @@ class FailingSmoothBridge(FakeSmoothBridge):
 class SlowFirstReadSmoothBridge(FakeSmoothBridge):
     def read_trajectory_status(self):
         if self.status_reads == 0:
-            time.sleep(0.01)
+            # Keep the restart deadline deterministic on Windows timers; a
+            # 10 ms sleep can still round to the same monotonic tick as the
+            # 1 ms test interval.
+            time.sleep(0.05)
         return super().read_trajectory_status()
 
 

@@ -82,7 +82,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup_windows.ps1
 
 KCD2 与黑神话适配器仍可使用各自目录内的独立启动脚本。
 
-## Linux 兼容版本
+## Linux/Proton 兼容版本
 
 黑神话适配器现在提供 Linux 启动脚本，可运行采集界面的跨平台部分：
 
@@ -99,7 +99,7 @@ chmod +x launch_bmw_capture_studio.sh
 ./launch_bmw_capture_studio.sh --trajectory-file /path/to/trajectory.json
 ```
 
-Linux 版本支持启动界面、JSON/CSV 点位和轨迹管理、离线数据处理、打开输出目录，以及在 Linux 本机运行 OBS 时使用 OBS WebSocket。黑神话的实时 Pose 读取、UUU 注入、Native Bridge 和游戏内相机控制仍需要 Windows，因为 UUU 5.8.21 与当前 Bridge 依赖 Windows 进程注入和命名共享内存。Linux 界面会明确显示兼容模式，不会把界面启动误报为游戏相机已连接；Windows 版本仍使用 `launch_bmw_capture_studio.ps1`。
+Linux 版本支持启动界面、JSON/CSV 点位和轨迹管理、离线数据处理、打开输出目录、OBS WebSocket，以及配置 Proton Bridge Relay 后的黑神话实时相机链路。UUU 5.8.21 与 Bridge 仍是运行在 Proton 内的 Windows 二进制；Linux 界面通过本机回环 TCP Relay 访问 Pose、控制和轨迹 ABI。将 `BMW_BRIDGE_PORT=28791 %command%` 写入游戏 Steam 启动选项，再在启动采集器前执行 `export BMW_BRIDGE_ENDPOINT=127.0.0.1:28791`。Bridge DLL 仍需通过 UUU 加载到 Proton 游戏进程。未配置 Relay 时，界面会明确停在等待/兼容状态，不会误报相机已连接；Windows 版本仍使用 `launch_bmw_capture_studio.ps1`。
 
 飞书报警和自动修复复用 RE9 的配置字段：程序按 `configs/linux.local.yaml` → `configs/linux.yaml` → `configs/default.yaml` 读取 `notifications.feishu` 和 `automation.codex_recovery`。真实 Webhook、签名密钥和 Codex 高权限修复默认关闭，建议只写入未提交的 `linux.local.yaml` 或使用 `RE9_FEISHU_*`、`RE9_CODEX_*` 环境变量。
 

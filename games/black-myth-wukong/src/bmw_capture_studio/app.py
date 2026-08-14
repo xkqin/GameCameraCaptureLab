@@ -11,7 +11,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from typing import Callable
 
-from .bridge import PoseUnavailableError, UuuPoseBridge
+from .bridge import PoseUnavailableError, create_pose_bridge
 from .capture_runner import CaptureRunResult, CaptureRunner
 from .config import load_shared_config
 from .connection import ConnectionReport, probe_connection
@@ -89,7 +89,11 @@ class CaptureStudioApp:
             value=bool(self.settings.get("always_on_top", True))
         )
         self.pin_text_var = tk.StringVar()
-        self.bridge = UuuPoseBridge()
+        # Windows reads the native named mapping directly.  Linux/Proton uses
+        # the optional loopback relay exposed by the injected bridge DLL.
+        self.bridge = create_pose_bridge(
+            str(self.settings.get("bridge_endpoint") or "").strip() or None
+        )
         self.current_pose: CameraPose | None = None
         self.points: list[CapturePoint] = []
         self.point_map_path: Path | None = None
@@ -834,7 +838,11 @@ class CaptureStudioApp:
     def open_uuu(self) -> None:
         try:
             report = probe_connection(self.bridge)
-            if report.code != "uuu_needed":
+            linux_launcher = sys.platform.startswith("linux") and report.code in {
+                "linux_bridge_waiting",
+                "platform_unsupported",
+            }
+            if report.code != "uuu_needed" and not linux_launcher:
                 raise UserActionRequired(report.detail)
             self._persist_settings()
             result = launch_uuu_client(self.uuu_dir_var.get())
@@ -890,7 +898,15 @@ class CaptureStudioApp:
             state="normal" if report.code == "bridge_needed" else "disabled"
         )
         self.open_uuu_button.configure(
-            state="normal" if report.code == "uuu_needed" else "disabled"
+            state=(
+                "normal"
+                if report.code == "uuu_needed"
+                or (
+                    sys.platform.startswith("linux")
+                    and report.code in {"linux_bridge_waiting", "platform_unsupported"}
+                )
+                else "disabled"
+            )
         )
         pose_available = report.pose is not None
         self.record_point_button.configure(
@@ -1230,7 +1246,7 @@ class CaptureStudioApp:
                 if self.connection_report is not None
                 else "正在检查 UUU 连接状态，请稍候。"
             )
-        pid = find_game_pid()
+        pid = self.connection_report.pid or find_game_pid()
         pose = self.bridge.read_pose()
         if not pose.camera_enabled:
             raise UserActionRequired("UUU 相机未启用，请回到游戏按 Insert。")
@@ -1529,7 +1545,7 @@ class CaptureStudioApp:
             self._show_guidance(detail)
             return
         try:
-            pid = find_game_pid()
+            pid = self.connection_report.pid or find_game_pid()
             pose = self.bridge.read_pose()
             if not pose.camera_enabled:
                 raise RuntimeError("UUU 相机未启用，请回到游戏按 Insert")

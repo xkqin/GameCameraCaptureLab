@@ -30,7 +30,7 @@ A loaded DLL alone does not prove that the pose channel is working. The UI enabl
 
 If UUU was injected before the pose bridge started, the current session cannot complete the handshake. Exit the game fully and retry in the order above.
 
-## Linux launcher and boundary
+## Linux/Proton launcher and bridge relay
 
 The adapter can be launched on Linux with:
 
@@ -41,7 +41,20 @@ chmod +x launch_bmw_capture_studio.sh
 ./launch_bmw_capture_studio.sh
 ```
 
-Use `./launch_bmw_capture_studio.sh --trajectory-file /path/to/file.json` to preselect a trajectory. Linux supports the Tk interface, JSON/CSV point and trajectory file management, offline data handling, opening output folders, and OBS WebSocket when OBS is available on the same Linux desktop. The live Black Myth camera path is not Linux-supported: UUU 5.8.21 injection, the Windows Native Bridge, Connector pose shared memory, and in-game camera control still require Windows. On Linux the status panel explicitly shows compatibility mode, and global F8 is disabled; use the visible UI controls for file operations.
+Use `./launch_bmw_capture_studio.sh --trajectory-file /path/to/file.json` to preselect a trajectory. The Linux UI supports the same point/trajectory files, OBS WebSocket capture, pose logging, native trajectory playback, and pose-feedback positioning once a Proton relay is configured. The game and UUU/Bridge remain Windows binaries running inside Proton; the Linux UI reaches them through a loopback TCP relay exposed by the injected Bridge DLL.
+
+Configure both sides with the same port before starting the game and the UI:
+
+```bash
+# Steam launch option for Black Myth: Wukong / Proton
+BMW_BRIDGE_PORT=28791 %command%
+
+# Shell used to start the Linux capture UI
+export BMW_BRIDGE_ENDPOINT=127.0.0.1:28791
+./launch_bmw_capture_studio.sh
+```
+
+The Bridge DLL still has to be loaded into the Proton game with the UUU workflow. Set `BMW_UUU_COMMAND` if the UUU client needs a specific Wine/Proton launcher; otherwise the UI uses `wine`. The UI reports `Linux/Proton Bridge Relay` while waiting and enables capture only after the relay publishes valid metadata, Pose, native-control capabilities, and trajectory state. The relay binds to loopback only. Global F8 is disabled on Linux, so use the visible point-record button.
 
 ## Feishu alerts and opt-in repair
 
@@ -90,7 +103,7 @@ The trajectory file dropdown loads a selection immediately. The primary action c
 
 `playback_plan.csv` records absolute targets sent to UUU 5.8.21's in-process native camera control; measured poses are stored separately in `observed_pose.csv`. The controller converges from real pose feedback and no longer depends on game-window focus or simulated hotkeys. The internal ABI is version-locked to UUU 5.8.21; other versions are rejected.
 
-Trajectory recording now follows the RE9 restart policy by default: every 30 seconds it closes the current OBS segment, restores audio state, closes the WebSocket, terminates and relaunches local OBS, waits for a healthy WebSocket, and starts the next segment. The native UUU trajectory continues independently, so Python does not take over camera control frame by frame; a short, explicitly recorded video gap may occur during the OBS restart. Each `recording_manifest.json` stores `video_segments`, segment time ranges, `obs_restart_events`, and `video_paths`. Set `trajectory_obs_restart_interval_sec` to `0` to disable it. If OBS is remote, configure an explicit `obs_restart_command` so the local OBS process is not killed accidentally.
+Trajectory recording now follows the RE9 restart policy by default on Windows and Linux: every 30 seconds it closes the current OBS segment, restores audio state, closes the WebSocket, terminates and relaunches local OBS, waits for a healthy WebSocket, restores the Proton game-window focus when `wmctrl` or `xdotool` is available, and starts the next segment. The native UUU trajectory continues independently, so Python does not take over camera control frame by frame; a short, explicitly recorded video gap may occur during the OBS restart. Each `recording_manifest.json` stores `video_segments`, segment time ranges, `obs_restart_events`, and `video_paths`. Set `trajectory_obs_restart_interval_sec` to `0` to disable it. If OBS is remote, configure an explicit `obs_restart_command` so the local OBS process is not killed accidentally.
 
 ```powershell
 cd games\black-myth-wukong

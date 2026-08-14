@@ -30,7 +30,7 @@
 
 如果 UUU 先于位姿桥注入，当前会话无法补握手；需要彻底退出游戏后按正确顺序重试。
 
-## Linux 启动与能力边界
+## Linux/Proton 启动与 Bridge Relay
 
 ```bash
 cd games/black-myth-wukong
@@ -39,7 +39,20 @@ chmod +x launch_bmw_capture_studio.sh
 ./launch_bmw_capture_studio.sh
 ```
 
-使用 `./launch_bmw_capture_studio.sh --trajectory-file /path/to/file.json` 可以预选轨迹。Linux 支持 Tk 界面、JSON/CSV 点位和轨迹文件管理、离线数据处理、打开输出目录，以及 OBS WebSocket 连接；但黑神话实时相机链路仍不支持 Linux：UUU 5.8.21 注入、Windows Native Bridge、Connector Pose 共享内存和游戏内相机控制都需要 Windows。Linux 下全局 F8 不启用，请使用界面按钮；状态栏会明确显示兼容模式。
+使用 `./launch_bmw_capture_studio.sh --trajectory-file /path/to/file.json` 可以预选轨迹。配置 Proton Relay 后，Linux 界面可使用与 Windows 相同的点位/轨迹文件、OBS WebSocket 采集、Pose 记录、原生轨迹播放和 Pose 反馈定位。游戏与 UUU/Bridge 仍是运行在 Proton 内的 Windows 二进制；Linux 界面通过注入到游戏内的 Bridge DLL 提供的本机回环 TCP Relay 访问它们。
+
+启动游戏和采集器前，让两侧使用同一个端口：
+
+```bash
+# 黑神话：悟空的 Steam/Proton 启动选项
+BMW_BRIDGE_PORT=28791 %command%
+
+# 启动 Linux 采集器的终端
+export BMW_BRIDGE_ENDPOINT=127.0.0.1:28791
+./launch_bmw_capture_studio.sh
+```
+
+Bridge DLL 仍需通过 UUU 流程加载到 Proton 游戏进程。如果 UUU Client 需要指定 Wine/Proton 启动方式，设置 `BMW_UUU_COMMAND`；未设置时程序使用 `wine`。状态栏会先显示“Linux/Proton Bridge Relay”等待，只有 Relay 发布有效元数据、Pose、原生控制能力和轨迹状态后才启用采集。Relay 只绑定回环地址。Linux 不启用全局 F8，请使用界面中的记录点位按钮。
 
 ## 飞书报警与自动修复
 
@@ -88,7 +101,7 @@ capture_data/trajectory_captures/<scene-id>/<batch-id>/
 
 `playback_plan.csv` 是提交给 UUU 5.8.21 进程内原生相机控制的绝对目标样本；实际回读位姿单独保存在 `observed_pose.csv`。实现以真实 Pose 闭环收敛，不再依赖游戏窗口焦点或模拟按键。该后端锁定 UUU 5.8.21，其他版本会拒绝内部调用。
 
-轨迹录像默认每 30 秒按 RE9 的安全顺序滚动一次 OBS：结束当前分段、恢复音频状态、关闭 WebSocket、终止并重新启动本机 OBS、轮询 WebSocket 健康状态，再开始下一段录像。原生 UUU 轨迹控制不会被 Python 每帧接管，因此相机继续按原生轨迹运行；OBS 重启期间可能出现一个可审计的录像间隔。每条轨迹的 `recording_manifest.json` 会保存 `video_segments`、每段起止时间、`obs_restart_events` 和 `video_paths`。可在 `settings.json` 中设置 `trajectory_obs_restart_interval_sec`，设为 `0` 可关闭；若 OBS 不在本机，需要显式配置 `obs_restart_command`，避免误杀本机 OBS。
+轨迹录像默认在 Windows 和 Linux 上每 30 秒按 RE9 的安全顺序滚动一次 OBS：结束当前分段、恢复音频状态、关闭 WebSocket、终止并重新启动本机 OBS、轮询 WebSocket 健康状态；Linux 在安装 `wmctrl` 或 `xdotool` 时还会恢复 Proton 游戏窗口焦点，再开始下一段录像。原生 UUU 轨迹控制不会被 Python 每帧接管，因此相机继续按原生轨迹运行；OBS 重启期间可能出现一个可审计的录像间隔。每条轨迹的 `recording_manifest.json` 会保存 `video_segments`、每段起止时间、`obs_restart_events` 和 `video_paths`。可在 `settings.json` 中设置 `trajectory_obs_restart_interval_sec`，设为 `0` 可关闭；若 OBS 不在本机，需要显式配置 `obs_restart_command`，避免误杀本机 OBS。
 
 ```powershell
 cd games\black-myth-wukong

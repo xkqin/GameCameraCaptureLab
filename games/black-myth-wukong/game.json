@@ -37,7 +37,7 @@
     {
       "id": "capture-linux",
       "label": "打开黑神话采集界面（Linux）",
-      "description": "启动 Linux 兼容界面；UUU 实时相机链路仍需 Windows。",
+      "description": "启动 Linux/Proton 采集界面；设置 BMW_BRIDGE_PORT 与 BMW_BRIDGE_ENDPOINT 后可通过回环 Bridge Relay 使用实时相机链路。",
       "platforms": ["linux"],
       "working_directory": ".",
       "command": [
