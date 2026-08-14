@@ -76,7 +76,9 @@ capture_data/trajectory_captures/<scene-id>/<batch-id>/
 ├─ trajectory_index.csv
 ├─ trajectory_set_source.json/.csv
 └─ traj_0001/
-   ├─ raw/video.*
+   ├─ raw/segment_0001/video.*
+   ├─ raw/segment_0002/video.*  # more segments are created as needed
+   ├─ obs_restart.log
    ├─ source_keyframes.csv
    ├─ playback_plan.csv
    ├─ observed_pose.csv
@@ -87,6 +89,8 @@ capture_data/trajectory_captures/<scene-id>/<batch-id>/
 The trajectory file dropdown loads a selection immediately. The primary action continuously records from the selected trajectory index through the end of the file, while resume locates the newest incomplete batch. Resume checks the actual video, four CSV artifacts, and completion manifest. The OBS password stays in process memory or can be supplied through `BMW_OBS_PASSWORD`; it is not written to `settings.json`.
 
 `playback_plan.csv` records absolute targets sent to UUU 5.8.21's in-process native camera control; measured poses are stored separately in `observed_pose.csv`. The controller converges from real pose feedback and no longer depends on game-window focus or simulated hotkeys. The internal ABI is version-locked to UUU 5.8.21; other versions are rejected.
+
+Trajectory recording now follows the RE9 restart policy by default: every 30 seconds it closes the current OBS segment, restores audio state, closes the WebSocket, terminates and relaunches local OBS, waits for a healthy WebSocket, and starts the next segment. The native UUU trajectory continues independently, so Python does not take over camera control frame by frame; a short, explicitly recorded video gap may occur during the OBS restart. Each `recording_manifest.json` stores `video_segments`, segment time ranges, `obs_restart_events`, and `video_paths`. Set `trajectory_obs_restart_interval_sec` to `0` to disable it. If OBS is remote, configure an explicit `obs_restart_command` so the local OBS process is not killed accidentally.
 
 ```powershell
 cd games\black-myth-wukong

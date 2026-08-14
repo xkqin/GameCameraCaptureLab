@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import tempfile
+import time
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -112,6 +113,13 @@ class FailingSmoothBridge(FakeSmoothBridge):
             failed=True,
             error_message="simulated trajectory failure",
         )
+
+
+class SlowFirstReadSmoothBridge(FakeSmoothBridge):
+    def read_trajectory_status(self):
+        if self.status_reads == 0:
+            time.sleep(0.01)
+        return super().read_trajectory_status()
 
 
 class FakeMover:
@@ -300,6 +308,53 @@ class TrajectoryCaptureTests(unittest.TestCase):
             self.assertEqual(mover.targets, [camera_pose(1.0)])
             self.assertFalse(bridge.stopped)
 
+    def test_long_trajectory_rolls_obs_into_independent_segments(self) -> None:
+        bridge = SlowFirstReadSmoothBridge()
+        initial_obs = FakeOBS()
+        obs_instances = [initial_obs]
+
+        def restart_obs(_output_dir: Path):
+            replacement = FakeOBS()
+            obs_instances.append(replacement)
+            return replacement
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source.json"
+            source.write_text("{}", encoding="utf-8")
+            output = root / "traj_0001"
+            long_path = ImportedTrajectory(
+                index=0,
+                trajectory_id="long",
+                points=(
+                    CapturePoint(1, "start", camera_pose(1.0), 0.0),
+                    CapturePoint(2, "end", camera_pose(2.0), 10.0),
+                ),
+            )
+            recorder = TrajectoryRecorder(
+                bridge=bridge,
+                mover=FakeMover(bridge),
+                obs=initial_obs,
+                output_dir=output,
+                obs_restart_factory=restart_obs,
+                obs_restart_interval_seconds=0.001,
+                pose_hz=120,
+                pre_record_settle_seconds=0,
+            )
+
+            result = recorder.capture(long_path, source_path=source)
+            payload = json.loads(result.manifest_path.read_text(encoding="utf-8"))
+
+            self.assertEqual(result.obs_restart_count, 1)
+            self.assertEqual(len(payload["obs_restart_events"]), 1)
+            self.assertEqual(payload["obs_restart_events"][0]["status"], "completed")
+            self.assertEqual(len(payload["video_segments"]), 2)
+            self.assertEqual(len(payload["video_paths"]), 2)
+            self.assertNotEqual(payload["video_paths"][0], payload["video_paths"][1])
+            self.assertTrue(all(Path(path).is_file() for path in payload["video_paths"]))
+            self.assertEqual(len(obs_instances), 2)
+            self.assertTrue(all(obs.closed for obs in obs_instances))
+
     def test_runtime_failure_keeps_terminal_pose_instead_of_restoring_start(self) -> None:
         bridge = FailingSmoothBridge()
         obs = FakeOBS()
@@ -433,6 +488,46 @@ class TrajectoryCaptureTests(unittest.TestCase):
                 self.assertTrue(trajectory_capture_complete(Path(second["output_dir"]) / "traj_0002"))
                 self.assertIsNone(find_latest_resumable_batch("scene_1"))
                 self.assertEqual(len(obs_instances), 2)
+
+    def test_batch_restarts_obs_at_elapsed_boundary_between_short_paths(self) -> None:
+        bridge = FakeBridge()
+        obs_instances: list[FakeOBS] = []
+        boundary_instances: list[FakeOBS] = []
+
+        def obs_factory():
+            obs = FakeOBS()
+            obs_instances.append(obs)
+            return obs
+
+        def restart_obs(_output_dir: Path):
+            obs = FakeOBS()
+            boundary_instances.append(obs)
+            return obs
+
+        values = [trajectory(0, "one"), trajectory(1, "two")]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source.json"
+            source.write_text("{}", encoding="utf-8")
+            capture_root = root / "trajectory_captures"
+            with patch("bmw_capture_studio.trajectory_capture.TRAJECTORY_CAPTURES_DIR", capture_root):
+                recorder = BatchTrajectoryRecorder(
+                    bridge=bridge,
+                    mover_factory=lambda: FakeMover(bridge),
+                    obs_factory=obs_factory,
+                    obs_restart_factory=restart_obs,
+                    obs_restart_interval_seconds=0.0001,
+                    scene_id="scene_1",
+                    pose_hz=120,
+                )
+                result = recorder.capture(values, source_path=source)
+
+            manifest = json.loads(Path(result["batch_manifest_path"]).read_text(encoding="utf-8"))
+            self.assertEqual(len(obs_instances), 1)
+            self.assertEqual(len(boundary_instances), 1)
+            self.assertEqual(len(manifest["obs_restart_events"]), 1)
+            self.assertEqual(manifest["obs_restart_events"][0]["status"], "completed")
+            self.assertEqual(manifest["completed_trajectories"], 2)
 
     def test_single_planned_trajectory_does_not_resume_other_entries(self) -> None:
         bridge = FakeBridge()

@@ -140,7 +140,7 @@ def _find_video(directory: Path) -> Path | None:
         path
         for root in (directory / "raw", directory)
         if root.is_dir()
-        for path in root.iterdir()
+        for path in root.rglob("*")
         if path.is_file()
         and path.suffix.lower() in VIDEO_EXTENSIONS
         and path.stat().st_size > 0
@@ -234,6 +234,8 @@ class TrajectoryCaptureResult:
     completed_points: int
     requested_points: int
     stopped: bool
+    video_paths: tuple[Path, ...] = ()
+    obs_restart_count: int = 0
 
 
 class TrajectoryRecorder:
@@ -251,6 +253,8 @@ class TrajectoryRecorder:
         mover: PoseMover,
         obs: RecordingOBS,
         output_dir: str | Path,
+        obs_restart_factory: Callable[[Path], RecordingOBS] | None = None,
+        obs_restart_interval_seconds: float = 0.0,
         pose_hz: float = 30.0,
         pre_record_settle_seconds: float = 0.35,
         playback_hz: float = 60.0,
@@ -259,6 +263,8 @@ class TrajectoryRecorder:
         self.mover = mover
         self.obs = obs
         self.output_dir = Path(output_dir).resolve()
+        self.obs_restart_factory = obs_restart_factory
+        self.obs_restart_interval_seconds = max(0.0, float(obs_restart_interval_seconds))
         self.pose_hz = max(1.0, float(pose_hz))
         self.pre_record_settle_seconds = max(0.0, float(pre_record_settle_seconds))
         self.playback_hz = min(240.0, max(30.0, float(playback_hz)))
@@ -312,13 +318,23 @@ class TrajectoryRecorder:
         pose_lock = threading.Lock()
         pose_stop = threading.Event()
         started_monotonic = time.monotonic()
+        obs: RecordingOBS | None = self.obs
         recording_started = False
         audio_muted = False
         muted_count = 0
+        muted_counts: list[int] = []
         completed = 0
         stopped = False
         error: str | None = None
         video_path: Path | None = None
+        video_paths: list[Path] = []
+        video_segments: list[dict[str, Any]] = []
+        obs_restart_events: list[dict[str, Any]] = []
+        segment_index = 0
+        segment_started_monotonic: float | None = None
+        last_camera_elapsed: float | None = None
+        next_obs_restart_monotonic: float | None = None
+        final_obs_stop_error: str | None = None
         start_pose: CameraPose | None = None
         restore_attempted = False
         restore_succeeded: bool | None = None
@@ -355,6 +371,164 @@ class TrajectoryRecorder:
                     "actual_fov_degrees": actual.fov_degrees,
                 }
             )
+
+        def recording_elapsed() -> float:
+            return max(0.0, time.monotonic() - started_monotonic)
+
+        def start_obs_segment(camera_elapsed: float | None = None) -> None:
+            nonlocal audio_muted
+            nonlocal muted_count, recording_started, segment_index
+            nonlocal segment_started_monotonic, started_monotonic
+            nonlocal next_obs_restart_monotonic
+            if obs is None:
+                raise RuntimeError("OBS 连接为空，无法开始录像分段")
+            if segment_index == 0:
+                # The recording clock starts only after the first keyframe has
+                # converged.  It is never reset by an OBS restart.
+                started_monotonic = time.monotonic()
+            segment_index += 1
+            segment_dir = raw_dir / f"segment_{segment_index:04d}"
+            segment_dir.mkdir(parents=True, exist_ok=True)
+            obs.set_record_directory(segment_dir)
+            muted_count = int(obs.mute_all_audio_inputs())
+            muted_counts.append(muted_count)
+            audio_muted = True
+            obs.start_recording()
+            recording_started = True
+            segment_started_monotonic = time.monotonic()
+            video_segments.append(
+                {
+                    "segment_index": segment_index,
+                    "directory": str(segment_dir),
+                    "status": "recording",
+                    "recording_start_elapsed_sec": recording_elapsed(),
+                    "recording_end_elapsed_sec": None,
+                    "recording_duration_sec": None,
+                    "trajectory_start_elapsed_sec": camera_elapsed,
+                    "trajectory_end_elapsed_sec": None,
+                    "video_path": None,
+                    "stop_reason": "pending",
+                    "error": "",
+                }
+            )
+            if self.obs_restart_interval_seconds > 0.0:
+                next_obs_restart_monotonic = (
+                    segment_started_monotonic + self.obs_restart_interval_seconds
+                )
+
+        def finish_obs_segment(
+            reason: str,
+            camera_elapsed: float | None = None,
+        ) -> Path | None:
+            nonlocal audio_muted, final_obs_stop_error, video_path
+            if not video_segments or obs is None:
+                return None
+            segment = video_segments[-1]
+            returned: str | None = None
+            try:
+                returned = obs.stop_recording()
+            except Exception as exc:
+                segment["status"] = "stop_failed"
+                segment["stop_reason"] = reason
+                segment["error"] = str(exc)
+                final_obs_stop_error = str(exc)
+                raise
+            if audio_muted:
+                obs.restore_audio_inputs()
+                audio_muted = False
+            segment_path = Path(returned).resolve() if returned else _find_video(Path(segment["directory"]))
+            if segment_path is not None and segment_path.is_file():
+                segment_path = segment_path.resolve()
+                video_path = segment_path
+                if segment_path not in video_paths:
+                    video_paths.append(segment_path)
+                segment["video_path"] = str(segment_path)
+                segment["status"] = "completed"
+            else:
+                segment["status"] = "no_video"
+            finished_elapsed = recording_elapsed()
+            segment["recording_end_elapsed_sec"] = finished_elapsed
+            segment["recording_duration_sec"] = max(
+                0.0,
+                finished_elapsed - float(segment["recording_start_elapsed_sec"]),
+            )
+            segment["trajectory_end_elapsed_sec"] = camera_elapsed
+            segment["stop_reason"] = reason
+            return segment_path
+
+        def restart_obs_segment(camera_elapsed: float | None) -> None:
+            nonlocal obs
+            if self.obs_restart_factory is None:
+                raise RuntimeError(
+                    "已启用 OBS 定时重启，但没有配置 obs_restart_factory；"
+                    "请检查采集器启动配置。"
+                )
+            event: dict[str, Any] = {
+                "event_index": len(obs_restart_events) + 1,
+                "reason": "interval",
+                "previous_segment": segment_index,
+                "next_segment": segment_index + 1,
+                "requested_elapsed_sec": recording_elapsed(),
+                "camera_elapsed_sec": camera_elapsed,
+                "status": "restarting",
+            }
+            restart_started = time.monotonic()
+            previous_obs = obs
+            try:
+                finish_obs_segment("obs_restart", camera_elapsed)
+                obs = None
+                previous_obs.close()
+                obs = self.obs_restart_factory(self.output_dir)
+                start_obs_segment(camera_elapsed)
+                event.update(
+                    {
+                        "status": "completed",
+                        "completed_elapsed_sec": recording_elapsed(),
+                        "restart_duration_sec": time.monotonic() - restart_started,
+                        "gap_after_previous_segment_sec": max(
+                            0.0,
+                            float(video_segments[-1]["recording_start_elapsed_sec"])
+                            - float(video_segments[-2]["recording_end_elapsed_sec"]),
+                        )
+                        if len(video_segments) >= 2
+                        else None,
+                    }
+                )
+            except Exception as exc:
+                event.update(
+                    {
+                        "status": "failed",
+                        "completed_elapsed_sec": recording_elapsed(),
+                        "restart_duration_sec": time.monotonic() - restart_started,
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+                )
+                if obs is not None and obs is not previous_obs:
+                    try:
+                        obs.close()
+                    except Exception:
+                        pass
+                raise
+            finally:
+                obs_restart_events.append(event)
+
+        def maybe_restart_obs(camera_elapsed: float | None, remaining_seconds: float | None) -> None:
+            if self.obs_restart_interval_seconds <= 0.0:
+                return
+            if self.obs_restart_factory is None:
+                raise RuntimeError(
+                    "OBS 定时重启已启用，但没有可用的 OBS 重启回调。"
+                )
+            if next_obs_restart_monotonic is None:
+                return
+            if time.monotonic() < next_obs_restart_monotonic:
+                return
+            # Do not start a fresh OBS segment when the native path is about
+            # to finish.  This mirrors RE9's boundary-safe restart policy and
+            # avoids a tiny tail segment containing only the final frame.
+            if remaining_seconds is not None and remaining_seconds <= 2.0:
+                return
+            restart_obs_segment(camera_elapsed)
 
         def pose_logger() -> None:
             interval = 1.0 / self.pose_hz
@@ -432,12 +606,12 @@ class TrajectoryRecorder:
                 raise RuntimeError("首点在三次稳定定位后仍超出容差，OBS 未开始录制")
             pre_record_finished = time.monotonic()
 
-            self.obs.set_record_directory(raw_dir)
-            muted_count = int(self.obs.mute_all_audio_inputs())
-            audio_muted = True
-            self.obs.start_recording()
-            recording_started = True
-            started_monotonic = time.monotonic()
+            if self.obs_restart_interval_seconds > 0.0 and self.obs_restart_factory is None:
+                raise RuntimeError(
+                    "轨迹采集已启用 OBS 定时重启，但未配置重启回调；"
+                    "请检查 OBS 重启设置。"
+                )
+            start_obs_segment(0.0)
             logger.start()
             completed = 1
             if progress_callback is not None:
@@ -472,6 +646,12 @@ class TrajectoryRecorder:
                         raise RuntimeError(
                             f"原生平滑轨迹播放失败：{smooth_status.error_message}"
                         )
+                    try:
+                        last_camera_elapsed = float(
+                            getattr(smooth_status, "elapsed_seconds", 0.0)
+                        )
+                    except (TypeError, ValueError):
+                        last_camera_elapsed = None
                     segment = max(0, int(getattr(smooth_status, "current_segment", 0)))
                     while segment > smooth_last_segment and smooth_last_segment + 1 < total:
                         sequence = smooth_last_segment + 2
@@ -497,6 +677,13 @@ class TrajectoryRecorder:
                         stopped = True
                         smooth_start_attempted = False
                         break
+                    remaining_seconds = max(
+                        0.0,
+                        trajectory.points[-1].time_sec
+                        - trajectory.points[0].time_sec
+                        - (last_camera_elapsed or 0.0),
+                    )
+                    maybe_restart_obs(last_camera_elapsed, remaining_seconds)
                     time.sleep(0.005)
             else:
                 # Compatibility path for an old bridge. The first keyframe is
@@ -516,6 +703,8 @@ class TrajectoryRecorder:
                     )
                     move_finished = time.monotonic()
                     completed = sequence
+                    if completed < total:
+                        maybe_restart_obs(None, None)
                     timing.append(
                         {
                             "sequence": sequence,
@@ -547,7 +736,6 @@ class TrajectoryRecorder:
             pose_stop.set()
             if logger.is_alive():
                 logger.join(timeout=2.0)
-            stop_error: str | None = None
             if recording_started:
                 if smooth_start_attempted and callable(smooth_stop):
                     try:
@@ -556,29 +744,35 @@ class TrajectoryRecorder:
                         if error is None:
                             error = f"TrajectoryStopError: {exc}"
                     smooth_start_attempted = False
-                try:
-                    returned = self.obs.stop_recording()
-                    if returned:
-                        video_path = Path(returned).resolve()
-                except Exception as exc:
-                    stop_error = str(exc)
-                    if error is None:
-                        error = f"OBSStopError: {exc}"
-            if audio_muted:
-                restore_allowed = stop_error is None
+                if obs is not None:
+                    try:
+                        finish_obs_segment("trajectory_finished", last_camera_elapsed)
+                    except Exception as exc:
+                        if error is None:
+                            error = f"OBSStopError: {exc}"
+            if audio_muted and obs is not None:
+                restore_allowed = final_obs_stop_error is None
                 if not restore_allowed:
                     try:
-                        restore_allowed = not bool(self.obs.recording_status()["active"])
+                        restore_allowed = not bool(obs.recording_status()["active"])
                     except Exception:
                         restore_allowed = False
                 if restore_allowed:
                     try:
-                        self.obs.restore_audio_inputs()
+                        obs.restore_audio_inputs()
+                        audio_muted = False
                     except Exception as exc:
                         if error is None:
                             error = f"AudioRestoreError: {exc}"
                 elif error is None:
                     error = "AudioRestoreDeferred: OBS 仍在录像，音频保持静音"
+            close_obs = getattr(obs, "close", None) if obs is not None else None
+            if callable(close_obs):
+                try:
+                    close_obs()
+                except Exception as exc:
+                    if log_callback is not None:
+                        log_callback(f"OBS WebSocket 关闭提示：{exc}")
 
             # Restore only if positioning failed before OBS began. Once a
             # trajectory has started, keep its terminal pose so a batch can
@@ -617,6 +811,8 @@ class TrajectoryRecorder:
             _write_csv(timing_csv, timing, timing_fields)
             if video_path is None or not video_path.is_file():
                 video_path = _find_video(self.output_dir)
+            if video_path is not None and video_path.is_file() and video_path not in video_paths:
+                video_paths.append(video_path.resolve())
             if recording_started and video_path is None and error is None:
                 error = "VideoMissingError: OBS 未返回且输出目录中未找到视频"
             status = "failed" if error else ("stopped" if stopped else "completed")
@@ -652,6 +848,11 @@ class TrajectoryRecorder:
                 "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
                 "output_dir": str(self.output_dir),
                 "video_path": str(video_path) if video_path else None,
+                "video_paths": [str(path) for path in video_paths],
+                "video_segments": video_segments,
+                "obs_restart_interval_seconds": self.obs_restart_interval_seconds,
+                "obs_restart_enabled": self.obs_restart_interval_seconds > 0.0,
+                "obs_restart_events": obs_restart_events,
                 "source_keyframes_csv": str(source_csv),
                 "playback_plan_csv": str(playback_csv),
                 "observed_pose_csv": str(pose_csv),
@@ -659,9 +860,15 @@ class TrajectoryRecorder:
                 "requested_points": len(trajectory.points),
                 "completed_points": completed,
                 "pose_samples": len(pose_rows),
-                "audio_capture": "disabled" if audio_muted else "not_started",
-                "audio_muted_input_count": muted_count,
-                "obs_stop_error": stop_error,
+                "audio_capture": (
+                    "disabled_pending_restore"
+                    if audio_muted and recording_started
+                    else "disabled"
+                    if recording_started
+                    else "not_started"
+                ),
+                "audio_muted_input_count": max(muted_counts, default=muted_count),
+                "obs_stop_error": final_obs_stop_error,
                 "start_pose": _pose_row(start_pose) if start_pose is not None else None,
                 "pre_record_positioning": {
                     "performed": pre_record_started is not None,
@@ -691,13 +898,6 @@ class TrajectoryRecorder:
             manifest_path.write_text(
                 json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
             )
-            close_obs = getattr(self.obs, "close", None)
-            if callable(close_obs):
-                try:
-                    close_obs()
-                except Exception as exc:
-                    if log_callback is not None:
-                        log_callback(f"OBS WebSocket 关闭提示：{exc}")
 
         if error:
             raise RuntimeError(error)
@@ -709,6 +909,8 @@ class TrajectoryRecorder:
             completed_points=completed,
             requested_points=len(trajectory.points),
             stopped=stopped,
+            video_paths=tuple(video_paths),
+            obs_restart_count=len(obs_restart_events),
         )
 
 
@@ -720,6 +922,8 @@ class BatchTrajectoryRecorder:
         mover_factory: Callable[[], PoseMover],
         obs_factory: Callable[[], RecordingOBS],
         scene_id: str,
+        obs_restart_factory: Callable[[Path], RecordingOBS] | None = None,
+        obs_restart_interval_seconds: float = 0.0,
         pose_hz: float = 30.0,
         playback_hz: float = 60.0,
     ) -> None:
@@ -727,6 +931,8 @@ class BatchTrajectoryRecorder:
         self.mover_factory = mover_factory
         self.obs_factory = obs_factory
         self.scene_id = safe_id(scene_id)
+        self.obs_restart_factory = obs_restart_factory
+        self.obs_restart_interval_seconds = max(0.0, float(obs_restart_interval_seconds))
         self.pose_hz = pose_hz
         self.playback_hz = min(240.0, max(30.0, float(playback_hz)))
         self.stop_event = threading.Event()
@@ -808,6 +1014,9 @@ class BatchTrajectoryRecorder:
             manifest.update(
                 {
                     "status": status,
+                    "obs_restart_interval_seconds": self.obs_restart_interval_seconds,
+                    "obs_restart_enabled": self.obs_restart_interval_seconds > 0.0,
+                    "obs_restart_events": batch_obs_restart_events,
                     "items": ordered,
                     "completed_trajectories": sum(item.get("status") == "completed" for item in ordered),
                     "failed_trajectories": sum(item.get("status") == "failed" for item in ordered),
@@ -822,6 +1031,8 @@ class BatchTrajectoryRecorder:
         self.active = True
         completed_run = 0
         failed_run = 0
+        batch_next_obs_restart_monotonic: float | None = None
+        batch_obs_restart_events: list[dict[str, Any]] = []
         write_state("resuming" if resumed else "running")
         try:
             for index in indices:
@@ -831,11 +1042,75 @@ class BatchTrajectoryRecorder:
                 output_dir = target / f"traj_{index + 1:04d}"
                 if trajectory_callback:
                     trajectory_callback(index, total, trajectory, "starting")
+                if (
+                    batch_next_obs_restart_monotonic is None
+                    and self.obs_restart_interval_seconds > 0.0
+                ):
+                    batch_next_obs_restart_monotonic = (
+                        time.monotonic() + self.obs_restart_interval_seconds
+                    )
+                obs_for_trajectory: RecordingOBS
+                if (
+                    index != indices[0]
+                    and batch_next_obs_restart_monotonic is not None
+                    and time.monotonic() >= batch_next_obs_restart_monotonic
+                    and self.obs_restart_factory is not None
+                    and not self.stop_event.is_set()
+                ):
+                    boundary_event: dict[str, Any] = {
+                        "event_index": len(batch_obs_restart_events) + 1,
+                        "scope": "batch_boundary",
+                        "after_trajectory_index": index,
+                        "requested_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+                        "status": "restarting",
+                    }
+                    boundary_started = time.monotonic()
+                    try:
+                        if log_callback is not None:
+                            log_callback("批次已达到 OBS 重启间隔，在下一条轨迹前安全重启 OBS")
+                        obs_for_trajectory = self.obs_restart_factory(target)
+                        batch_next_obs_restart_monotonic = (
+                            time.monotonic() + self.obs_restart_interval_seconds
+                        )
+                        boundary_event.update(
+                            {
+                                "status": "completed",
+                                "completed_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+                                "restart_duration_sec": time.monotonic() - boundary_started,
+                            }
+                        )
+                    except Exception as exc:
+                        boundary_event.update(
+                            {
+                                "status": "failed",
+                                "completed_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+                                "restart_duration_sec": time.monotonic() - boundary_started,
+                                "error": f"{type(exc).__name__}: {exc}",
+                            }
+                        )
+                        batch_obs_restart_events.append(boundary_event)
+                        failed_run += 1
+                        items[index + 1] = {
+                            "index": index + 1,
+                            "trajectory_id": trajectory.trajectory_id,
+                            "status": "failed",
+                            "output_dir": str(output_dir),
+                            "error": f"OBS batch-boundary restart failed: {exc}",
+                        }
+                        if trajectory_callback:
+                            trajectory_callback(index, total, trajectory, "failed")
+                        self.stop_event.set()
+                        raise
+                    batch_obs_restart_events.append(boundary_event)
+                else:
+                    obs_for_trajectory = self.obs_factory()
                 recorder = TrajectoryRecorder(
                     bridge=self.bridge,
                     mover=self.mover_factory(),
-                    obs=self.obs_factory(),
+                    obs=obs_for_trajectory,
                     output_dir=output_dir,
+                    obs_restart_factory=self.obs_restart_factory,
+                    obs_restart_interval_seconds=self.obs_restart_interval_seconds,
                     pose_hz=self.pose_hz,
                     playback_hz=self.playback_hz,
                 )
@@ -871,11 +1146,20 @@ class BatchTrajectoryRecorder:
                         "status": status,
                         "output_dir": str(output_dir),
                         "video_path": str(result.video_path),
+                        "video_paths": [str(path) for path in result.video_paths],
+                        "obs_restart_count": result.obs_restart_count,
                         "manifest_path": str(result.manifest_path),
                         "error": "",
                     }
                     if trajectory_callback:
                         trajectory_callback(index, total, trajectory, status)
+                    if (
+                        result.obs_restart_count > 0
+                        and self.obs_restart_interval_seconds > 0.0
+                    ):
+                        batch_next_obs_restart_monotonic = (
+                            time.monotonic() + self.obs_restart_interval_seconds
+                        )
                 finally:
                     self.current = None
                     write_state("running")

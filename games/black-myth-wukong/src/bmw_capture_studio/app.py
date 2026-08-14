@@ -21,6 +21,7 @@ from .global_hotkey import F8_VK, GlobalHotkey
 from .input_control import ClosedLoopMover
 from .models import CameraPose, CapturePoint, ImportedTrajectory
 from .obs_bridge import OBSBridge
+from .obs_restart import OBSProcessRestarter
 from .paths import (
     ACTIVE_POINT_MAP_PATH,
     POINT_FILES_DIR,
@@ -631,6 +632,14 @@ class CaptureStudioApp:
         ttk.Entry(capture_config, textvariable=self.obs_port_var, width=6).grid(row=2, column=3, columnspan=2, sticky="ew", pady=(6, 0))
         ttk.Label(capture_config, text="密码", style="Muted.Card.TLabel").grid(row=3, column=0, sticky="w", pady=(6, 0))
         ttk.Entry(capture_config, textvariable=self.obs_password_var, width=12, show="•").grid(row=3, column=1, columnspan=4, sticky="ew", pady=(6, 0))
+        ttk.Label(
+            capture_config,
+            text=(
+                f"OBS 自动重启：每 {float(self.settings.get('trajectory_obs_restart_interval_sec', 30.0)):.0f}s "
+                "分段（清单记录时间范围）"
+            ),
+            style="Muted.Card.TLabel",
+        ).grid(row=4, column=0, columnspan=5, sticky="w", pady=(6, 0))
 
         self.continuous_capture_button = ttk.Button(
             actions,
@@ -639,15 +648,15 @@ class CaptureStudioApp:
             command=self.start_continuous_trajectory_capture,
             state="disabled",
         )
-        self.continuous_capture_button.grid(row=4, column=0, sticky="ew", pady=(8, 0))
+        self.continuous_capture_button.grid(row=5, column=0, sticky="ew", pady=(8, 0))
         task_buttons = ttk.Frame(actions, style="Card.TFrame")
-        task_buttons.grid(row=5, column=0, sticky="ew", pady=(5, 0))
+        task_buttons.grid(row=6, column=0, sticky="ew", pady=(5, 0))
         task_buttons.columnconfigure(0, weight=1)
         self.resume_capture_button = ttk.Button(task_buttons, text="继续最近未完成批次", command=self.resume_trajectory_capture, style="Compact.TButton")
         self.resume_capture_button.grid(row=0, column=0, sticky="ew")
 
         progress_frame = ttk.Frame(actions, style="Card.TFrame")
-        progress_frame.grid(row=6, column=0, sticky="ew", pady=(7, 0))
+        progress_frame.grid(row=7, column=0, sticky="ew", pady=(7, 0))
         progress_frame.columnconfigure((0, 1), weight=1)
         ttk.Label(progress_frame, textvariable=self.output_var, style="Muted.Card.TLabel").grid(row=0, column=0, columnspan=2, sticky="w")
         self.task_progress = ttk.Progressbar(progress_frame, variable=self.task_progress_var, mode="determinate", maximum=1, style="Capture.Horizontal.TProgressbar")
@@ -1291,6 +1300,49 @@ class CaptureStudioApp:
             return
 
         scene_id = self.scene_id_var.get().strip() or "scene_1"
+        try:
+            obs_restart_interval = max(
+                0.0,
+                float(self.settings.get("trajectory_obs_restart_interval_sec", 30.0)),
+            )
+            obs_restart_manager = (
+                OBSProcessRestarter(
+                    obs_factory=self._make_obs,
+                    host=self.obs_host_var.get().strip() or "127.0.0.1",
+                    command=str(self.settings.get("obs_restart_command") or ""),
+                    wait_seconds=float(self.settings.get("obs_restart_wait_sec", 20.0)),
+                )
+                if obs_restart_interval > 0.0
+                else None
+            )
+            if obs_restart_manager is not None:
+                obs_restart_manager.validate()
+        except Exception as exc:
+            self._show_error("OBS 定时重启配置无效", exc)
+            return
+
+        def restart_obs_for_trajectory(output_dir: Path) -> OBSBridge:
+            if obs_restart_manager is None:
+                raise RuntimeError("OBS 定时重启未初始化")
+            self.log(
+                f"轨迹录像达到 {obs_restart_interval:.0f}s，重启 OBS 并继续分段采集。"
+            )
+            candidate = obs_restart_manager.restart(
+                log_path=output_dir / "obs_restart.log"
+            )
+            try:
+                # RE9 re-activates the game window after OBS relaunch.  The
+                # native bridge does not need focus for pose control, but
+                # refocusing keeps the game's render/input state predictable.
+                focus_game_window(pid)
+            except Exception as exc:
+                self.log(f"OBS 重启后恢复游戏窗口提示：{exc}")
+            if not isinstance(candidate, OBSBridge):
+                # Keep the callback contract honest for future adapters while
+                # allowing test doubles to be used in the recorder tests.
+                return candidate  # type: ignore[return-value]
+            return candidate
+
         self.stop_event.clear()
         self.active_capture_kind = "trajectory"
         self._set_capture_busy(True)
@@ -1306,6 +1358,10 @@ class CaptureStudioApp:
             mover_factory=lambda: self._make_mover(pid),
             obs_factory=self._make_obs,
             scene_id=scene_id,
+            obs_restart_factory=(
+                restart_obs_for_trajectory if obs_restart_manager is not None else None
+            ),
+            obs_restart_interval_seconds=obs_restart_interval,
             pose_hz=float(self.settings["pose_log_hz"]),
             playback_hz=float(self.settings.get("trajectory_playback_hz", 60.0)),
         )
@@ -1350,7 +1406,7 @@ class CaptureStudioApp:
         self.capture_thread.start()
         self.log(
             f"开始连续轨迹采集：从第 {planned[0] + 1} 条开始，共 {len(planned)} 条；"
-            "OBS 录制前强制静音。"
+            f"OBS 录制前强制静音；每 {obs_restart_interval:.0f}s 分段重启 OBS。"
         )
 
     def resume_trajectory_capture(self) -> None:

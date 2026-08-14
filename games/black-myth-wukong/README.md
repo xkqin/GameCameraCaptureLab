@@ -74,7 +74,9 @@ capture_data/trajectory_captures/<scene-id>/<batch-id>/
 ├─ trajectory_index.csv
 ├─ trajectory_set_source.json/.csv
 └─ traj_0001/
-   ├─ raw/video.*
+   ├─ raw/segment_0001/video.*
+   ├─ raw/segment_0002/video.*  # 长轨迹按 OBS 重启分段，数量按需增加
+   ├─ obs_restart.log
    ├─ source_keyframes.csv
    ├─ playback_plan.csv
    ├─ observed_pose.csv
@@ -85,6 +87,8 @@ capture_data/trajectory_captures/<scene-id>/<batch-id>/
 轨迹界面使用文件下拉菜单，选中即自动 Load；主按钮从指定编号连续采集到文件末尾，并可自动继续未完成批次。静态 22 方向采集会先解析 OBS 当前 Program 场景，再逐张通过 OBS WebSocket 保存原图，并在清单中记录截图来源。续采不是只看清单状态，而是检查每条轨迹的视频、四类 CSV 和完成清单是否齐全。OBS 密码只在当前界面内存中使用，也可通过 `BMW_OBS_PASSWORD` 环境变量注入，不写入 `settings.json`。
 
 `playback_plan.csv` 是提交给 UUU 5.8.21 进程内原生相机控制的绝对目标样本；实际回读位姿单独保存在 `observed_pose.csv`。实现以真实 Pose 闭环收敛，不再依赖游戏窗口焦点或模拟按键。该后端锁定 UUU 5.8.21，其他版本会拒绝内部调用。
+
+轨迹录像默认每 30 秒按 RE9 的安全顺序滚动一次 OBS：结束当前分段、恢复音频状态、关闭 WebSocket、终止并重新启动本机 OBS、轮询 WebSocket 健康状态，再开始下一段录像。原生 UUU 轨迹控制不会被 Python 每帧接管，因此相机继续按原生轨迹运行；OBS 重启期间可能出现一个可审计的录像间隔。每条轨迹的 `recording_manifest.json` 会保存 `video_segments`、每段起止时间、`obs_restart_events` 和 `video_paths`。可在 `settings.json` 中设置 `trajectory_obs_restart_interval_sec`，设为 `0` 可关闭；若 OBS 不在本机，需要显式配置 `obs_restart_command`，避免误杀本机 OBS。
 
 ```powershell
 cd games\black-myth-wukong
