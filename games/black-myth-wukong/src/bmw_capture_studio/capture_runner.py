@@ -186,13 +186,13 @@ class CaptureRunner:
                     if on_log is not None:
                         on_log(f"相机自动回位失败：{restore_error}")
             payload = {
-                "format": "bmw-uuu-capture-manifest-v1",
+                "format": "bmw-standalone-capture-manifest-v2",
                 "mode": mode,
                 "status": "failed" if run_error else ("stopped" if stopped else "complete"),
                 "error": run_error,
-                "control_method": "uuu_native_relative_steps_pose_feedback_closed_loop",
+                "control_method": "standalone_absolute_set_pose",
                 "absolute_target_pose": True,
-                "atomic_absolute_set_pose": False,
+                "atomic_absolute_set_pose": True,
                 "requested_count": len(values),
                 "captured_count": len(rows),
                 "capture_plan": dict(run_metadata or {}),

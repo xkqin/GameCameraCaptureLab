@@ -1,114 +1,83 @@
-# Black Myth: Wukong adapter
+# Black Myth: Wukong self-developed UE camera capture
 
 [中文](README.md) · [English](README.en.md)
 
-The Black Myth adapter is a lightweight capture UI that runs alongside UUU. It reads camera poses from Connector shared memory, manages JSON/CSV points and trajectories, and calls UUU 5.8.21's in-process native camera methods under pose feedback control.
+This adapter defaults to the project's generic `UeCameraRuntime.dll` plus the Black Myth profile. It does not require UUU, IGCSClient, or Connector. The runtime hooks the UE5 LWC camera-copy path and exposes a free camera, precise pose feedback, atomic absolute `setPose`, 22-view still scans, and in-process smooth trajectories to the complete capture UI. The old `BmwCameraBridge` name remains only as a local compatibility fallback.
 
-## Capability boundary
+## Capabilities
 
-| Capability | Current status |
+| Capability | Status |
 |---|---|
-| UUU free camera | Available after correct UUU injection |
-| XYZ, quaternion, Yaw/Pitch/Roll, FOV | Requires the Native Bridge, Connector handshake, and a valid pose |
-| Point-map record, load, and export | Implemented; maps retain XYZ, orientation, and FOV |
-| Automatic static 22-view capture per spatial point | Implemented as a one-click multi-point run with the shared RE9/KCD2 8 middle + 6 upper + 6 lower + ceiling/floor pattern |
-| Single/batch trajectory recording with OBS | Implemented with task and sample progress |
-| Automatic resume | Implemented; complete trajectories are detected from artifacts |
-| Silent-video protection | OBS audio inputs are muted before recording and restored afterward |
-| Absolute pose target | Implemented through UUU 5.8.21 relative native steps plus pose-feedback control; this is not a one-command atomic `setPose`, and in-game visual acceptance is pending |
-| Film-quality frame-accurate trajectory | Native backend implemented; frame smoothness and final image still require in-game acceptance |
+| WASD/QE free camera with game-input suppression while Camera ON | Implemented |
+| Mouse-look yaw/pitch | Implemented |
+| Hold Shift for 5x movement speed | Implemented |
+| Delete / UI button HUD visibility toggle | Implemented; full HUD coverage needs in-game visual acceptance |
+| Double-precision XYZ plus Yaw/Pitch/Roll/FOV | Implemented |
+| Atomic absolute `setPose` | Implemented |
+| In-process Hermite trajectory | Implemented; terminal pose is held |
+| Point files and automatic 22-view still capture | Integrated |
+| OBS 1920×1080 JPG screenshots | Integrated |
+| Single/batch trajectory recording and resume | Integrated |
+| 30-second OBS restart segmentation | Integrated |
+| Native Windows injection | Implemented |
+| Linux/Proton loopback relay | Implemented; injector must run in the same Proton prefix |
 
-A loaded DLL alone does not prove that the pose channel is working. The UI enables capture only after the Bridge version, game PID, UUU handshake, valid pose, and Camera ON checks all pass.
+The source build and offline protocol tests pass. Our runtime has also completed live signature discovery, hook installation, and real rendered-pose readout in Black Myth. A clean-game-session acceptance test is still required for the final v1 artifacts' free movement, full HUD coverage, long-distance `setPose`, and rendered trajectory, so the adapter remains experimental rather than being presented as final compatibility.
 
-## Usage order
+## Windows workflow
 
-1. Start the game and enter an interactive scene; borderless windowed mode is recommended.
-2. Double-click `启动黑神话采集工具.bat`.
-3. Select the local UUU directory and run “Prepare Pose Bridge”.
-4. Open UUU, select the current game process, and inject.
-5. Return to the game, press `Insert` to enable the free camera, and wait for live pose data in the UI.
+1. Fully exit the game, UUU, and IGCSClient.
+2. Start only Black Myth: Wukong and enter a rendered scene; borderless mode is recommended.
+3. Start the capture UI.
+4. Click **Inject Camera Bridge**. The UI uses `UeCameraInjector.exe` by default and refuses to stack over UUU or an old Connector.
+5. Start capture after Pose, absolute `setPose`, and trajectory capabilities are ready.
 
-If UUU was injected before the pose bridge started, the current session cannot complete the handshake. Exit the game fully and retry in the order above.
+Controls: `Insert` toggles the camera; `Home` toggles movement lock; `Delete` toggles HUD visibility; `WASD/QE` moves; mouse movement controls yaw/pitch; arrow keys rotate; `Z/C` rolls; numpad `+/-` changes FOV; hold `Shift` for 5x speed; `Ctrl` slows down. Mouse sensitivity can be set with `BMW_CAMERA_MOUSE_SENSITIVITY`. Automated capture enables the camera itself.
 
-## Linux/Proton launcher and bridge relay
+## Build
 
-The adapter can be launched on Linux with:
-
-```bash
-cd games/black-myth-wukong
-sudo apt install python3 python3-venv python3-tk  # Debian/Ubuntu, if needed
-chmod +x launch_bmw_capture_studio.sh
-./launch_bmw_capture_studio.sh
-```
-
-Use `./launch_bmw_capture_studio.sh --trajectory-file /path/to/file.json` to preselect a trajectory. The Linux UI supports the same point/trajectory files, OBS WebSocket capture, pose logging, native trajectory playback, and pose-feedback positioning once a Proton relay is configured. The game and UUU/Bridge remain Windows binaries running inside Proton; the Linux UI reaches them through a loopback TCP relay exposed by the injected Bridge DLL.
-
-Configure both sides with the same port before starting the game and the UI:
-
-```bash
-# Steam launch option for Black Myth: Wukong / Proton
-BMW_BRIDGE_PORT=28791 %command%
-
-# Shell used to start the Linux capture UI
-export BMW_BRIDGE_ENDPOINT=127.0.0.1:28791
-./launch_bmw_capture_studio.sh
-```
-
-The Bridge DLL still has to be loaded into the Proton game with the UUU workflow. Set `BMW_UUU_COMMAND` if the UUU client needs a specific Wine/Proton launcher; otherwise the UI uses `wine`. The UI reports `Linux/Proton Bridge Relay` while waiting and enables capture only after the relay publishes valid metadata, Pose, native-control capabilities, and trajectory state. The relay binds to loopback only. Global F8 is disabled on Linux, so use the visible point-record button.
-
-## Feishu alerts and opt-in repair
-
-The adapter reuses RE9's config search order and fields: `configs/linux.local.yaml` → `configs/linux.yaml` → `configs/default.yaml`. Configure `notifications.feishu.webhook_url`, `secret`, and `mention_open_id` for asynchronous error alerts, or override them with `RE9_FEISHU_WEBHOOK_URL`, `RE9_FEISHU_SECRET`, and `RE9_FEISHU_MENTION_OPEN_ID`. Alerts are disabled by default, and failure logs contain only exception types, never webhook URLs or signing secrets.
-
-`automation.codex_recovery.enabled` is `false` by default. Only when explicitly enabled with `codex_bin` (or `RE9_CODEX_BIN`) will an error queue a detached repair worker. It reuses RE9's `RE9_CODEX_*` fields, cooldown lock, and private state pattern; repair logs stay under `capture_data/logs/`. The default prompt performs offline checks first and does not start the game or capture automatically. Never commit `*.local.yaml`, webhooks, secrets, logs, or datasets.
-
-## Native Bridge
-
-Only the Bridge source is included:
-
-```text
-native/
-├─ BmwUuuPoseBridge.cpp
-├─ CMakeLists.txt
-└─ build_bridge.ps1
-```
-
-The build output `native/build/Release/IgcsConnector.addon64` is ignored. UUU and Connector are not distributed with this repository.
-
-## Data and tests
-
-Runtime data is written to the ignored `capture_data/` directory. Public point and trajectory format examples are in `examples/`.
-
-Static point-map runs are written under `capture_data/still_captures/`. Each spatial point expands to 22 images captured through the OBS WebSocket Program/Source screenshot API; `manifest.json/.csv` records the spatial-point index, view pattern, target pose, observed pose, screenshot source, and image path. There is no window-capture fallback. The UI can continue from a selected spatial-point ordinal.
-
-Trajectory recordings use a KCD2-style resumable layout:
-
-```text
-capture_data/trajectory_captures/<scene-id>/<batch-id>/
-├─ run_manifest.json
-├─ trajectory_index.csv
-├─ trajectory_set_source.json/.csv
-└─ traj_0001/
-   ├─ raw/segment_0001/video.*
-   ├─ raw/segment_0002/video.*  # more segments are created as needed
-   ├─ obs_restart.log
-   ├─ source_keyframes.csv
-   ├─ playback_plan.csv
-   ├─ observed_pose.csv
-   ├─ trajectory_timing.csv
-   └─ recording_manifest.json
-```
-
-The trajectory file dropdown loads a selection immediately. The primary action continuously records from the selected trajectory index through the end of the file, while resume locates the newest incomplete batch. Resume checks the actual video, four CSV artifacts, and completion manifest. The OBS password stays in process memory or can be supplied through `BMW_OBS_PASSWORD`; it is not written to `settings.json`.
-
-`playback_plan.csv` records absolute targets sent to UUU 5.8.21's in-process native camera control; measured poses are stored separately in `observed_pose.csv`. The controller converges from real pose feedback and no longer depends on game-window focus or simulated hotkeys. The internal ABI is version-locked to UUU 5.8.21; other versions are rejected.
-
-Trajectory recording now follows the RE9 restart policy by default on Windows and Linux: every 30 seconds it closes the current OBS segment, restores audio state, closes the WebSocket, terminates and relaunches local OBS, waits for a healthy WebSocket, restores the Proton game-window focus when `wmctrl` or `xdotool` is available, and starts the next segment. The native UUU trajectory continues independently, so Python does not take over camera control frame by frame; a short, explicitly recorded video gap may occur during the OBS restart. Each `recording_manifest.json` stores `video_segments`, segment time ranges, `obs_restart_events`, and `video_paths`. Set `trajectory_obs_restart_interval_sec` to `0` to disable it. If OBS is remote, configure an explicit `obs_restart_command` so the local OBS process is not killed accidentally.
+With Visual Studio 2022 Build Tools, CMake, and x64 MASM:
 
 ```powershell
-cd games\black-myth-wukong
-$env:PYTHONPATH = "src"
-python -m unittest discover -s tests -v
+cd games\black-myth-wukong\native
+.\build_standalone.ps1
 ```
 
-The pre-migration notes are in [`docs/ORIGINAL_GUIDE.md`](docs/ORIGINAL_GUIDE.md).
+Outputs:
+
+```text
+native/build_standalone_v1/Release/
+├─ UeCameraRuntime.dll          # default generic runtime
+├─ UeCameraInjector.exe         # default generic injector
+├─ BmwCameraBridge.dll          # compatibility name
+└─ BmwCameraInjector.exe        # compatibility name
+```
+
+No UUU binary is included or redistributed.
+
+## Linux/Proton
+
+Set the Steam launch option to expose the loopback relay:
+
+```bash
+BMW_BRIDGE_PORT=28791 %command%
+```
+
+Then launch the Linux UI with the same endpoint and Proton environment:
+
+```bash
+export BMW_BRIDGE_ENDPOINT=127.0.0.1:28791
+export BMW_PROTON_COMMAND="/path/to/Proton/proton"
+./launch_bmw_capture_studio.sh
+```
+
+For a custom prefix launcher, set `BMW_CAMERA_INJECT_COMMAND` with an `{injector}` placeholder. The relay binds only to loopback and supports state reads, relative controls, absolute `setPose`, trajectory start, and trajectory stop.
+
+## Tests
+
+```powershell
+$env:PYTHONPATH = "src;games/black-myth-wukong/src"
+python -m unittest discover -s games/black-myth-wukong/tests -v
+```
+
+Game updates can invalidate the audited camera signature. If the UI reports `hook_unavailable`, stop capture and re-audit the signature instead of writing to an unverified address.

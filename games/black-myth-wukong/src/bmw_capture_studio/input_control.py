@@ -6,7 +6,7 @@ import math
 import time
 from typing import Callable
 
-from .bridge import UuuPoseBridge
+from .bridge import CameraPoseBridge
 from .models import CameraPose
 
 
@@ -88,7 +88,7 @@ def _send_key(vk: int, *, up: bool) -> None:
     )
     sent = user32.SendInput(1, ctypes.byref(event), ctypes.sizeof(INPUT))
     if sent != 1:
-        raise RuntimeError(f"发送 UUU 按键失败：VK 0x{vk:02X}")
+        raise RuntimeError(f"发送旧版兼容按键失败：VK 0x{vk:02X}")
 
 
 def hold_keys(keys: list[int], duration: float) -> None:
@@ -115,18 +115,16 @@ def _dot(error: tuple[float, float, float], axis: tuple[float, float, float]) ->
 
 
 class ClosedLoopMover:
-    """Reach an absolute pose through UUU native camera calls and pose feedback.
+    """Reach an absolute pose through the best available in-process bridge.
 
-    UUU 5.8.21 does not export one monolithic setPose function. The in-process
-    bridge calls its movement/rotation/FOV camera methods directly; this class
-    closes the loop in world coordinates until the requested absolute pose is
-    reached. Keyboard input is retained only as an explicit compatibility
-    fallback for older bridges.
+    The standalone Black Myth bridge exposes an atomic absolute ``set_pose``;
+    that path is always preferred. The older relative feedback loop is retained
+    only for compatibility with older non-absolute test doubles.
     """
 
     def __init__(
         self,
-        bridge: UuuPoseBridge,
+        bridge: CameraPoseBridge,
         *,
         position_tolerance: float,
         angle_tolerance: float,
@@ -155,6 +153,13 @@ class ClosedLoopMover:
         status = self.bridge.read_control_status()
         return bool(status is not None and status.ready)
 
+    def _absolute_ready(self) -> bool:
+        reader = getattr(self.bridge, "read_absolute_pose_status", None)
+        if not callable(reader):
+            return False
+        status = reader()
+        return bool(status is not None and status.ready)
+
     def move_to(
         self,
         target: CameraPose,
@@ -162,12 +167,20 @@ class ClosedLoopMover:
         stop_requested: Callable[[], bool] = lambda: False,
         on_update: Callable[[str], None] | None = None,
     ) -> CameraPose:
+        if self.prefer_native and self._absolute_ready():
+            if stop_requested():
+                raise InterruptedError("采集已停止")
+            if on_update is not None:
+                on_update("absolute setPose")
+            setter = getattr(self.bridge, "set_pose")
+            return setter(target, enable_camera=True, timeout_seconds=max(1.0, self.feedback_timeout_sec * 2.0))
+
         last_update_at = 0.0
         native = self.prefer_native and self._native_ready()
         if not native and not self.allow_hotkey_fallback:
             raise RuntimeError(
-                "UUU native camera control is unavailable. Restart the game, "
-                "load the rebuilt bridge before injecting UUU 5.8.21, then enable Camera."
+                "Standalone camera control is unavailable. Restart the game, "
+                "inject BmwCameraBridge.dll, then wait for a rendered pose."
             )
         if not native:
             self.focus_game()
@@ -177,9 +190,9 @@ class ClosedLoopMover:
                 raise InterruptedError("采集已停止")
             current = self.bridge.read_pose()
             if not current.camera_enabled:
-                raise RuntimeError("UUU 相机未启用，请回到游戏按 Insert")
+                raise RuntimeError("自研相机未启用，请回到游戏按 Insert")
             if current.movement_locked:
-                raise RuntimeError("UUU 相机移动被锁定，请解除 Camera Lock")
+                raise RuntimeError("自研相机移动被锁定，请按 Home 解除 Movement Lock")
             return current
 
         def errors(current: CameraPose) -> tuple[float, float, float, float, float]:
@@ -239,7 +252,7 @@ class ClosedLoopMover:
                     return
                 time.sleep(0.002)
             raise TimeoutError(
-                "UUU accepted the native camera command, but no new Pose feedback "
+                "The bridge accepted the native camera command, but no new Pose feedback "
                 f"arrived within {self.feedback_timeout_sec:.2f} seconds"
             )
 
@@ -276,7 +289,7 @@ class ClosedLoopMover:
                 best_distance = distance
                 stagnant_since = now
             elif now - stagnant_since > 4.0:
-                method = "UUU 原生控制桥" if native else "UUU 热键后备控制"
+                method = "自研原生控制桥" if native else "旧版按键兼容控制"
                 raise RuntimeError(
                     f"相机 XYZ 通过{method}没有继续收敛；"
                     f"当前误差 {distance:.2f}，历史最佳 {best_distance:.2f}。"
@@ -296,7 +309,7 @@ class ClosedLoopMover:
             threshold = self.position_tolerance * 0.35
 
             if native:
-                # UUU's move methods are frame-scaled on some game builds. A
+                # Legacy relative move methods can be frame-scaled. A
                 # fixed 8-unit command made an 800-unit target require thousands
                 # of frames. Grow the cap with remaining distance; feedback and
                 # the 0.72 gain keep the final approach conservative.
@@ -322,7 +335,7 @@ class ClosedLoopMover:
                     set_fov=False,
                 )
                 report("XYZ", current)
-                # Command acknowledgement happens before UUU publishes the next
+                # Command acknowledgement can happen before the bridge publishes the next
                 # pose. Wait for that feedback instead of correcting the same
                 # stale frame repeatedly and overshooting.
                 wait_for_native_feedback(current, position=True)
@@ -375,7 +388,7 @@ class ClosedLoopMover:
                 best_orientation_error = orientation_error
                 stagnant_since = now
             elif now - stagnant_since > 4.0:
-                method = "UUU 原生控制桥" if native else "UUU 热键后备控制"
+                method = "自研原生控制桥" if native else "旧版按键兼容控制"
                 raise RuntimeError(
                     f"相机朝向/FOV 通过{method}没有继续收敛；"
                     f"yaw {yaw_error:.2f}°，pitch {pitch_error:.2f}°，"

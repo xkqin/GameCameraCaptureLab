@@ -4,11 +4,10 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .paths import DEFAULT_UUU_DIR, SETTINGS_PATH
+from .paths import SETTINGS_PATH
 
 
 DEFAULTS: dict[str, Any] = {
-    "uuu_dir": str(DEFAULT_UUU_DIR),
     "bridge_endpoint": "",
     "capture_interval_sec": 0.12,
     "position_tolerance": 4.0,

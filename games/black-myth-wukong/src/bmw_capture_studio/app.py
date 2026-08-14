@@ -42,12 +42,11 @@ from .still_scan import (
 )
 from .trajectory_capture import BatchTrajectoryRecorder, find_latest_resumable_batch
 from .trajectory_catalog import build_trajectory_choice_map, discover_trajectory_files
-from .uuu import (
-    UuuIntegrationError,
+from .injection import (
+    CameraIntegrationError,
     find_game_pid,
     inject_bridge,
     integration_status,
-    launch_uuu_client,
 )
 
 
@@ -75,7 +74,7 @@ class CaptureStudioApp:
     ) -> None:
         ensure_directories()
         self.root = root
-        self.root.title("黑神话：悟空 · UUU 相机采集")
+        self.root.title("黑神话：悟空 · 自研 Camera Bridge 采集")
         self.root.geometry("1180x840")
         self.root.minsize(1000, 760)
         self.root.configure(bg=BG)
@@ -121,12 +120,12 @@ class CaptureStudioApp:
 
         self.status_var = tk.StringVar(value="等待连接游戏")
         self.status_detail_var = tk.StringVar(
-            value="先启动游戏，再按顺序完成 1 → 2 → UUU Inject → Insert"
+            value="先启动游戏，再点击“注入 Camera Bridge”；不需要 UUU"
         )
-        self.uuu_dir_var = tk.StringVar(value=str(self.settings["uuu_dir"]))
         self.pose_var = tk.StringVar(value="X --    Y --    Z --")
         self.angle_var = tk.StringVar(value="Yaw --°    Pitch --°    Roll --°    FOV --°")
         self.camera_state_var = tk.StringVar(value="Pose 未连接")
+        self.hud_status_var = tk.StringVar(value="HUD：等待 Bridge")
         self.points_count_var = tk.StringVar(value="0 个空间点 · 预计 0 张")
         self.record_hotkey_status_var = tk.StringVar(value="游戏内 F8：正在注册…")
         self.point_map_var = tk.StringVar(value="尚未记录或 Load 点位图")
@@ -287,23 +286,51 @@ class CaptureStudioApp:
         setup = ttk.Frame(shell, style="Card.TFrame", padding=14)
         setup.pack(fill="x", pady=(10, 7))
         setup.columnconfigure(1, weight=1)
-        ttk.Label(setup, text="UUU 文件夹", style="Muted.Card.TLabel").grid(row=0, column=0, sticky="w", padx=(0, 10))
-        self.uuu_entry = ttk.Entry(setup, textvariable=self.uuu_dir_var)
-        self.uuu_entry.grid(row=0, column=1, sticky="ew")
-        ttk.Button(setup, text="浏览", command=self.browse_uuu).grid(row=0, column=2, padx=(8, 12))
-        self.prepare_button = ttk.Button(setup, text="1  准备位姿桥", style="Accent.TButton", command=self.prepare_bridge)
-        self.prepare_button.grid(row=0, column=3, padx=(0, 8))
-        self.open_uuu_button = ttk.Button(setup, text="2  打开 UUU", command=self.open_uuu)
-        self.open_uuu_button.grid(row=0, column=4, padx=(0, 8))
-        ttk.Button(setup, text="刷新", command=self.refresh_status).grid(row=0, column=5)
+        ttk.Label(
+            setup,
+            text=(
+                "自研相机：WASD/QE 独占移动 · 鼠标自由观察 · Shift 5× 加速 · "
+                "Insert 开关 · Home 锁定"
+            ),
+            style="Muted.Card.TLabel",
+        ).grid(row=0, column=0, sticky="w", padx=(0, 12))
+        self.prepare_button = ttk.Button(
+            setup,
+            text="注入 Camera Bridge",
+            style="Accent.TButton",
+            command=self.prepare_bridge,
+        )
+        self.prepare_button.grid(row=0, column=1, sticky="e", padx=(0, 8))
+        ttk.Button(setup, text="刷新", command=self.refresh_status).grid(row=0, column=2)
 
         status_row = ttk.Frame(setup, style="Card.TFrame")
-        status_row.grid(row=1, column=0, columnspan=6, sticky="ew", pady=(12, 0))
+        status_row.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(12, 0))
         self.status_dot = tk.Canvas(status_row, width=12, height=12, bg=CARD, highlightthickness=0)
         self.status_dot.pack(side="left", padx=(2, 8))
         self.status_dot_id = self.status_dot.create_oval(2, 2, 10, 10, fill=ACCENT, outline="")
         ttk.Label(status_row, textvariable=self.status_var, style="Section.Card.TLabel").pack(side="left")
         ttk.Label(status_row, textvariable=self.status_detail_var, style="Muted.Card.TLabel").pack(side="left", padx=(14, 0))
+
+        camera_controls = ttk.Frame(setup, style="Card.TFrame")
+        camera_controls.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(10, 0))
+        ttk.Label(
+            camera_controls,
+            text="游戏内 Delete 也可切换 HUD",
+            style="Muted.Card.TLabel",
+        ).pack(side="left")
+        ttk.Label(
+            camera_controls,
+            textvariable=self.hud_status_var,
+            style="State.Card.TLabel",
+        ).pack(side="left", padx=(16, 0))
+        self.hud_button = ttk.Button(
+            camera_controls,
+            text="隐藏 HUD",
+            command=self.toggle_hud,
+            style="Compact.TButton",
+            state="disabled",
+        )
+        self.hud_button.pack(side="right")
 
         pose_card = ttk.Frame(shell, style="Card.TFrame", padding=(15, 11))
         pose_card.pack(fill="x", pady=(0, 10))
@@ -702,12 +729,6 @@ class CaptureStudioApp:
         canvas.yview_scroll(-units if delta > 0 else units, "units")
         return "break"
 
-    def browse_uuu(self) -> None:
-        selected = filedialog.askdirectory(initialdir=self.uuu_dir_var.get(), title="选择 UUU_v5.8.21 文件夹")
-        if selected:
-            self.uuu_dir_var.set(selected)
-            self._persist_settings()
-
     def _apply_always_on_top(self) -> None:
         enabled = bool(self.always_on_top_var.get())
         self.root.attributes("-topmost", enabled)
@@ -721,7 +742,6 @@ class CaptureStudioApp:
         self.log(f"窗口置顶已{state}。")
 
     def _persist_settings(self) -> None:
-        self.settings["uuu_dir"] = self.uuu_dir_var.get().strip()
         self.settings["obs_host"] = self.obs_host_var.get().strip()
         self.settings["obs_port"] = int(self.obs_port_var.get().strip() or "4455")
         self.settings["scene_id"] = self.scene_id_var.get().strip() or "scene_1"
@@ -817,44 +837,26 @@ class CaptureStudioApp:
 
     def prepare_bridge(self) -> None:
         def work() -> dict[str, object]:
+            if os.name != "nt":
+                return inject_bridge()
             before = integration_status()
             if not before.get("game_running"):
                 raise UserActionRequired("请先启动《黑神话：悟空》并进入游戏画面。")
             if not before.get("module_scan_ok", True):
-                raise UuuIntegrationError(str(before.get("message", "无法检查游戏模块")))
-            if before.get("uuu_loaded") and not before.get("bridge_loaded"):
+                raise CameraIntegrationError(str(before.get("message", "无法检查游戏模块")))
+            if before.get("conflicting_camera_tool"):
                 raise UserActionRequired(
-                    "UUU 已经先注入。为避免假连接，程序已阻止补注入；请彻底退出游戏后重试。"
+                    "当前游戏已加载 UUU/旧 Connector。请彻底退出游戏和 IGCSClient，"
+                    "重开游戏后只注入自研 Camera Bridge。"
                 )
             pid = find_game_pid()
             return inject_bridge(pid)
 
         def success(result: dict[str, object]) -> None:
-            self.log(f"位姿桥已准备：PID {result['pid']}")
+            self.log(f"自研 Camera Bridge 已注入：PID {result['pid']}")
             self.refresh_status()
 
-        self._background_action("正在准备位姿桥…", work, success)
-
-    def open_uuu(self) -> None:
-        try:
-            report = probe_connection(self.bridge)
-            linux_launcher = sys.platform.startswith("linux") and report.code in {
-                "linux_bridge_waiting",
-                "platform_unsupported",
-            }
-            if report.code != "uuu_needed" and not linux_launcher:
-                raise UserActionRequired(report.detail)
-            self._persist_settings()
-            result = launch_uuu_client(self.uuu_dir_var.get())
-            if result.get("already_running"):
-                self.log("UUU Client 已经在运行，请切换到它并选择当前黑神话进程 Inject。")
-            else:
-                self.log("UUU Client 已打开：选择黑神话进程并点击 Inject。")
-            self.status_detail_var.set("在 UUU 中选择游戏进程并 Inject，然后按 Insert")
-        except UserActionRequired as exc:
-            self._show_guidance(str(exc))
-        except Exception as exc:
-            self._show_error("打开 UUU 失败", exc)
+        self._background_action("正在注入自研 Camera Bridge…", work, success)
 
     def refresh_status(self) -> None:
         if self.status_refresh_inflight or self.closing:
@@ -895,20 +897,19 @@ class CaptureStudioApp:
             self.last_connection_code = report.code
 
         self.prepare_button.configure(
-            state="normal" if report.code == "bridge_needed" else "disabled"
-        )
-        self.open_uuu_button.configure(
             state=(
                 "normal"
-                if report.code == "uuu_needed"
-                or (
-                    sys.platform.startswith("linux")
-                    and report.code in {"linux_bridge_waiting", "platform_unsupported"}
-                )
+                if report.code in {
+                    "bridge_needed",
+                    "linux_bridge_waiting",
+                    "platform_unsupported",
+                }
                 else "disabled"
             )
         )
         pose_available = report.pose is not None
+        hud_ready = bool(report.metadata and report.metadata.hud_control_ready)
+        self.hud_button.configure(state="normal" if hud_ready else "disabled")
         self.record_point_button.configure(
             state="normal" if pose_available and not self.capture_busy else "disabled"
         )
@@ -924,6 +925,7 @@ class CaptureStudioApp:
             self.pose_var.set("X --    Y --    Z --")
             self.angle_var.set("Yaw --°    Pitch --°    Roll --°    FOV --°")
             self.camera_state_var.set("Pose 未连接")
+            self.hud_status_var.set("HUD：等待 Bridge")
 
         if not self.closing:
             self.root.after(1000, self.refresh_status)
@@ -950,14 +952,49 @@ class CaptureStudioApp:
                 state = "Camera ON"
                 if pose.movement_locked:
                     state += " · Locked"
+                if pose.input_captured:
+                    state += " · 输入独占"
                 self.camera_state_var.set(state)
             else:
                 self.camera_state_var.set("Camera OFF · 按 Insert")
+            self.hud_status_var.set("HUD：已隐藏" if pose.hud_hidden else "HUD：显示中")
+            self.hud_button.configure(
+                text="显示 HUD" if pose.hud_hidden else "隐藏 HUD"
+            )
         except (PoseUnavailableError, OSError, ValueError):
             self.current_pose = None
             if self.connection_report is None or self.connection_report.pose is None:
                 self.camera_state_var.set("Pose 未连接")
         self.root.after(250, self._poll_pose)
+
+    def toggle_hud(self) -> None:
+        if self.current_pose is None:
+            self._show_guidance("HUD 控制尚未连接，请先注入当前 Camera Bridge。")
+            return
+        target_hidden = not self.current_pose.hud_hidden
+        self.hud_button.configure(state="disabled")
+
+        def work() -> object:
+            return self.bridge.set_hud_hidden(target_hidden)
+
+        def success(_result: object) -> None:
+            self.hud_status_var.set("HUD：已隐藏" if target_hidden else "HUD：显示中")
+            self.hud_button.configure(
+                text="显示 HUD" if target_hidden else "隐藏 HUD",
+                state="normal",
+            )
+            self.log("已隐藏游戏 HUD。" if target_hidden else "已恢复游戏 HUD。")
+
+        def failed(exc: Exception) -> None:
+            self.hud_button.configure(state="normal")
+            self._show_error("HUD 切换失败", exc)
+
+        self._background_action(
+            "正在切换游戏 HUD…",
+            work,
+            success,
+            on_error=failed,
+        )
 
     def record_point(self) -> None:
         if self.capture_busy:
@@ -1244,12 +1281,9 @@ class CaptureStudioApp:
             raise UserActionRequired(
                 self.connection_report.detail
                 if self.connection_report is not None
-                else "正在检查 UUU 连接状态，请稍候。"
+                else "正在检查 Camera Bridge 连接状态，请稍候。"
             )
         pid = self.connection_report.pid or find_game_pid()
-        pose = self.bridge.read_pose()
-        if not pose.camera_enabled:
-            raise UserActionRequired("UUU 相机未启用，请回到游戏按 Insert。")
         self._persist_settings()
         obs = self._make_obs()
         try:
@@ -1546,10 +1580,8 @@ class CaptureStudioApp:
             return
         try:
             pid = self.connection_report.pid or find_game_pid()
-            pose = self.bridge.read_pose()
-            if not pose.camera_enabled:
-                raise RuntimeError("UUU 相机未启用，请回到游戏按 Insert")
-        except (PoseUnavailableError, UuuIntegrationError, RuntimeError) as exc:
+            self.bridge.read_pose()
+        except (PoseUnavailableError, CameraIntegrationError, RuntimeError) as exc:
             self._show_guidance(str(exc))
             return
 

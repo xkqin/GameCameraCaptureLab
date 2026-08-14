@@ -80,6 +80,18 @@ def default_obs_restart_command(
                 for name in ("ProgramW6432", "ProgramFiles")
                 if variables.get(name)
             ),
+            (
+                Path(variables["LOCALAPPDATA"])
+                / "Programs"
+                / "obs-studio"
+                / "bin"
+                / "64bit"
+                / "obs64.exe"
+                if variables.get("LOCALAPPDATA")
+                else None
+            ),
+            Path(r"C:\Program Files\obs-studio\bin\64bit\obs64.exe"),
+            Path(r"C:\Program Files (x86)\obs-studio\bin\64bit\obs64.exe"),
         ]
         executable = next(
             (

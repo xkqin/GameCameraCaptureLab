@@ -28,6 +28,8 @@ class CameraPose:
     forward_z: float = 0.0
     camera_enabled: bool = True
     movement_locked: bool = False
+    hud_hidden: bool = False
+    input_captured: bool = False
 
     @classmethod
     def from_mapping(cls, value: dict[str, Any]) -> "CameraPose":
@@ -74,6 +76,8 @@ class CameraPose:
             forward_z=number("forward_z"),
             camera_enabled=bool(source.get("camera_enabled", True)),
             movement_locked=bool(source.get("movement_locked", False)),
+            hud_hidden=bool(source.get("hud_hidden", False)),
+            input_captured=bool(source.get("input_captured", False)),
         )
 
     def as_dict(self) -> dict[str, Any]:

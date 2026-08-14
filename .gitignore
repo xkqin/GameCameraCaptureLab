@@ -36,6 +36,7 @@ games/kcd2/capture_studio_settings.json
 games/black-myth-wukong/capture_data/
 games/black-myth-wukong/native/build/
 games/black-myth-wukong/native/build_smooth*/
+games/black-myth-wukong/native/build_standalone*/
 games/black-myth-wukong/qa/
 games/black-myth-wukong/settings.json
 

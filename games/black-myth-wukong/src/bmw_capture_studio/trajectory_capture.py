@@ -817,25 +817,26 @@ class TrajectoryRecorder:
                 error = "VideoMissingError: OBS 未返回且输出目录中未找到视频"
             status = "failed" if error else ("stopped" if stopped else "completed")
             manifest = {
-                "format": "bmw-uuu-trajectory-capture-v3",
+                "format": "bmw-standalone-trajectory-capture-v4",
                 "status": status,
                 "error": error,
                 "control_method": (
-                    "uuu_native_continuous_trajectory_interpolation"
+                    "standalone_in_process_absolute_hermite"
                     if smooth_playback
-                    else "uuu_native_relative_steps_pose_feedback_closed_loop"
+                    else "standalone_absolute_set_pose_feedback"
                 ),
                 "absolute_target_pose": True,
-                "atomic_absolute_set_pose": False,
-                "absolute_set_pose": False,
+                "atomic_absolute_set_pose": True,
+                "absolute_set_pose": True,
                 "smooth_playback": smooth_playback,
                 "native_controller_revision": (
-                    "v7_clear_uuu_smoothing_before_hermite"
+                    "v9_standalone_input_hud_absolute_pose"
                     if smooth_playback
                     else None
                 ),
                 "bridge_metadata_version": METADATA_VERSION if smooth_playback else None,
-                "uuu_smoothing_reset_before_playback": smooth_playback,
+                "standalone_smoothing_reset_before_playback": False,
+                "terminal_pose_held": smooth_playback,
                 "playback_hz": self.playback_hz if smooth_playback else None,
                 "playback_duration_sec": (
                     smooth_playback_finished - smooth_playback_started

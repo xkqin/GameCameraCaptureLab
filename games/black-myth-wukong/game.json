@@ -5,24 +5,24 @@
   "short_name": "Black Myth",
   "engine": "Unreal Engine 5",
   "maturity": "experimental",
-  "summary": "通过 UUU Connector 读取位姿，并用 UUU 5.8.21 原生相对步进和 Pose 反馈闭环到绝对目标；非原子 setPose。",
+  "summary": "使用自研 Camera Bridge 读取精确位姿、执行原子绝对 setPose，并完成静态与平滑轨迹采集；不依赖 UUU。",
   "documentation": "README.md",
   "examples": "examples",
   "capabilities": {
-    "free_camera": "verified_with_uuu",
-    "pose_read": "requires_connector_handshake",
-    "absolute_pose_control": "feedback_closed_loop_target_pending_visual_acceptance",
-    "relative_pose_control": "native_feedback",
+    "free_camera": "standalone_bridge_pending_clean_runtime_acceptance",
+    "pose_read": "standalone_lwc_double_precision",
+    "absolute_pose_control": "atomic_set_pose",
+    "relative_pose_control": "standalone_native",
     "point_capture": "implemented",
-    "still_capture": "implemented",
+    "still_capture": "implemented_obs_1080p_jpg",
     "trajectory_capture": "implemented",
-    "trajectory_replay": "experimental_native_pose_feedback"
+    "trajectory_replay": "standalone_in_process_hermite"
   },
   "actions": [
     {
       "id": "capture",
       "label": "打开黑神话采集界面",
-      "description": "首次启动会创建游戏适配器自己的 .venv。",
+      "description": "启动自研 Camera Bridge、点位和轨迹采集界面。",
       "platforms": ["windows"],
       "working_directory": ".",
       "command": [
@@ -37,13 +37,10 @@
     {
       "id": "capture-linux",
       "label": "打开黑神话采集界面（Linux）",
-      "description": "启动 Linux/Proton 采集界面；设置 BMW_BRIDGE_PORT 与 BMW_BRIDGE_ENDPOINT 后可通过回环 Bridge Relay 使用实时相机链路。",
+      "description": "通过本机回环 Relay 连接 Proton 游戏中的自研 Camera Bridge。",
       "platforms": ["linux"],
       "working_directory": ".",
-      "command": [
-        "bash",
-        "{game}/launch_bmw_capture_studio.sh"
-      ]
+      "command": ["bash", "{game}/launch_bmw_capture_studio.sh"]
     }
   ]
 }

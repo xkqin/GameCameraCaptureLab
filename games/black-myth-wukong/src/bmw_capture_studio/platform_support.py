@@ -15,8 +15,8 @@ def is_linux() -> bool:
     return sys.platform.startswith("linux")
 
 
-def native_uuu_supported() -> bool:
-    """UUU 5.8.21 injection/bridge support is currently Windows-only."""
+def native_camera_supported() -> bool:
+    """Direct injection is Windows-only; Linux connects through Proton relay."""
 
     return is_windows()
 

@@ -6,6 +6,15 @@ import tempfile
 import unittest
 
 from game_camera_capture_lab.registry import REPO_ROOT, load_registry
+from game_camera_capture_lab.ue_runtime import (
+    BytePattern,
+    discover_profiles,
+    load_profile,
+    load_profiles,
+    profile_for_process,
+    scan_executable,
+    validate_match_count,
+)
 from game_camera_capture_lab.validate import SCHEMA_NAMES, validate_repository
 
 
@@ -74,6 +83,33 @@ class GameRegistryTests(unittest.TestCase):
                     encoding="utf-8",
                 )
             self.assertEqual(len(load_registry(root)), 6)
+
+    def test_ue_runtime_profile_is_loaded_and_process_selectable(self) -> None:
+        profile_dir = REPO_ROOT / "runtime" / "ue-camera-runtime" / "profiles"
+        profiles = load_profiles(profile_dir)
+        self.assertEqual(len(profiles), 1)
+        profile = load_profile(profile_dir / "black-myth-wukong.json")
+        self.assertEqual(profile.id, "black-myth-wukong")
+        self.assertEqual(profile.camera_hook.hook_offset, 9)
+        self.assertEqual(profile.camera_hook.continuation_offset, 37)
+        selected = profile_for_process("B1-WIN64-SHIPPING.EXE", profiles)
+        self.assertIsNotNone(selected)
+        self.assertEqual(selected.id, profile.id)
+        self.assertIsNone(profile_for_process("other-game.exe", profiles))
+
+    def test_ue_runtime_pattern_scanner_handles_wildcards(self) -> None:
+        pattern = BytePattern.parse("AA ?? CC")
+        self.assertEqual(pattern.find_all(bytes.fromhex("00 AA 01 CC AA FF CC")), (1, 4))
+
+    def test_ue_runtime_scanner_is_offline_and_counts_real_profile_pattern(self) -> None:
+        profile = load_profile(
+            REPO_ROOT / "runtime" / "ue-camera-runtime" / "profiles" / "black-myth-wukong.json"
+        )
+        executable = Path(r"D:\steam\steamapps\common\BlackMythWukong\b1\Binaries\Win64\b1-Win64-Shipping.exe")
+        if not executable.is_file():
+            self.skipTest("Black Myth executable is not installed on this machine")
+        matches = scan_executable(executable, profile.camera_hook)
+        self.assertTrue(validate_match_count(profile, matches), matches)
 
 
 if __name__ == "__main__":

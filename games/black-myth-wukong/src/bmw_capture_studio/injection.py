@@ -4,16 +4,20 @@ import ctypes
 from ctypes import wintypes
 import os
 from pathlib import Path
+import re
 import shlex
 import shutil
 import subprocess
 import sys
 import time
 
-from .paths import BRIDGE_PATH
+from .paths import BRIDGE_PATH, INJECTOR_PATH
 
 
 PROCESS_NAMES = ("b1-Win64-Shipping.exe", "BlackMythWukong.exe")
+BRIDGE_MODULE_NAME = "UeCameraRuntime.dll"
+CAMERA_RUNTIME_MODULES = {"UeCameraRuntime.dll", "BmwCameraBridge.dll"}
+CONFLICTING_MODULES = {"UniversalUE5Unlocker.dll", "IgcsConnector.addon64"}
 
 TH32CS_SNAPMODULE = 0x00000008
 TH32CS_SNAPMODULE32 = 0x00000010
@@ -31,14 +35,15 @@ WAIT_OBJECT_0 = 0x00000000
 INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
 
 
-class UuuIntegrationError(RuntimeError):
+class CameraIntegrationError(RuntimeError):
     pass
 
 
 def _require_windows() -> None:
     if sys.platform != "win32":
-        raise UuuIntegrationError(
-            "UUU 5.8.21 注入和 Native Bridge 目前仅支持 Windows；Linux 只能使用兼容界面、文件和 OBS 功能。"
+        raise CameraIntegrationError(
+            "游戏内 Camera Bridge 注入需要 Windows/Proton；"
+            "Linux 原生界面请通过 BMW_BRIDGE_ENDPOINT 连接 Proton Relay。"
         )
 
 
@@ -77,25 +82,13 @@ def _kernel32() -> ctypes.WinDLL:
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
     kernel32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
     kernel32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
-    kernel32.Module32FirstW.argtypes = [
-        wintypes.HANDLE,
-        ctypes.POINTER(MODULEENTRY32W),
-    ]
+    kernel32.Module32FirstW.argtypes = [wintypes.HANDLE, ctypes.POINTER(MODULEENTRY32W)]
     kernel32.Module32FirstW.restype = wintypes.BOOL
-    kernel32.Module32NextW.argtypes = [
-        wintypes.HANDLE,
-        ctypes.POINTER(MODULEENTRY32W),
-    ]
+    kernel32.Module32NextW.argtypes = [wintypes.HANDLE, ctypes.POINTER(MODULEENTRY32W)]
     kernel32.Module32NextW.restype = wintypes.BOOL
-    kernel32.Process32FirstW.argtypes = [
-        wintypes.HANDLE,
-        ctypes.POINTER(PROCESSENTRY32W),
-    ]
+    kernel32.Process32FirstW.argtypes = [wintypes.HANDLE, ctypes.POINTER(PROCESSENTRY32W)]
     kernel32.Process32FirstW.restype = wintypes.BOOL
-    kernel32.Process32NextW.argtypes = [
-        wintypes.HANDLE,
-        ctypes.POINTER(PROCESSENTRY32W),
-    ]
+    kernel32.Process32NextW.argtypes = [wintypes.HANDLE, ctypes.POINTER(PROCESSENTRY32W)]
     kernel32.Process32NextW.restype = wintypes.BOOL
     kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
     kernel32.OpenProcess.restype = wintypes.HANDLE
@@ -131,10 +124,7 @@ def _kernel32() -> ctypes.WinDLL:
     kernel32.CreateRemoteThread.restype = wintypes.HANDLE
     kernel32.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
     kernel32.WaitForSingleObject.restype = wintypes.DWORD
-    kernel32.GetExitCodeThread.argtypes = [
-        wintypes.HANDLE,
-        ctypes.POINTER(wintypes.DWORD),
-    ]
+    kernel32.GetExitCodeThread.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
     kernel32.GetExitCodeThread.restype = wintypes.BOOL
     kernel32.VirtualFreeEx.argtypes = [
         wintypes.HANDLE,
@@ -149,19 +139,20 @@ def _kernel32() -> ctypes.WinDLL:
 
 
 def list_processes() -> dict[str, list[int]]:
-    _require_windows()
     kernel32 = _kernel32()
     snapshot = kernel32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
     if snapshot in (None, 0, INVALID_HANDLE_VALUE):
-        error = ctypes.get_last_error()
-        raise UuuIntegrationError(f"无法枚举系统进程（Windows 错误 {error}）")
+        raise CameraIntegrationError(
+            f"无法枚举系统进程（Windows 错误 {ctypes.get_last_error()}）"
+        )
     entry = PROCESSENTRY32W()
     entry.dwSize = ctypes.sizeof(entry)
     result: dict[str, list[int]] = {}
     try:
         if not kernel32.Process32FirstW(snapshot, ctypes.byref(entry)):
-            error = ctypes.get_last_error()
-            raise UuuIntegrationError(f"无法读取系统进程（Windows 错误 {error}）")
+            raise CameraIntegrationError(
+                f"无法读取系统进程（Windows 错误 {ctypes.get_last_error()}）"
+            )
         while True:
             result.setdefault(entry.szExeFile.lower(), []).append(entry.th32ProcessID)
             if not kernel32.Process32NextW(snapshot, ctypes.byref(entry)):
@@ -171,18 +162,13 @@ def list_processes() -> dict[str, list[int]]:
     return result
 
 
-def find_process_pid(process_name: str) -> int | None:
-    values = list_processes().get(process_name.lower(), [])
-    return values[0] if values else None
-
-
 def find_game_pid() -> int:
-    candidates = list_processes()
+    processes = list_processes()
     for name in PROCESS_NAMES:
-        values = candidates.get(name.lower(), [])
+        values = processes.get(name.lower(), [])
         if values:
             return values[0]
-    raise UuuIntegrationError("没有检测到《黑神话：悟空》游戏进程")
+    raise CameraIntegrationError("没有检测到《黑神话：悟空》游戏进程")
 
 
 def list_modules(pid: int) -> list[str]:
@@ -191,9 +177,8 @@ def list_modules(pid: int) -> list[str]:
         TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, pid
     )
     if snapshot in (None, 0, INVALID_HANDLE_VALUE):
-        error = ctypes.get_last_error()
-        raise UuuIntegrationError(
-            f"无法读取游戏模块（Windows 错误 {error}）。"
+        raise CameraIntegrationError(
+            f"无法读取游戏模块（Windows 错误 {ctypes.get_last_error()}）。"
             "如果游戏以管理员身份运行，请也以管理员身份启动本工具。"
         )
     entry = MODULEENTRY32W()
@@ -201,8 +186,9 @@ def list_modules(pid: int) -> list[str]:
     names: list[str] = []
     try:
         if not kernel32.Module32FirstW(snapshot, ctypes.byref(entry)):
-            error = ctypes.get_last_error()
-            raise UuuIntegrationError(f"无法枚举游戏模块（Windows 错误 {error}）")
+            raise CameraIntegrationError(
+                f"无法枚举游戏模块（Windows 错误 {ctypes.get_last_error()}）"
+            )
         while True:
             names.append(entry.szModule)
             if not kernel32.Module32NextW(snapshot, ctypes.byref(entry)):
@@ -212,13 +198,70 @@ def list_modules(pid: int) -> list[str]:
     return names
 
 
-def inject_bridge(pid: int, bridge_path: Path = BRIDGE_PATH) -> dict[str, object]:
-    _require_windows()
+def _inject_bridge_with_helper(bridge_path: Path) -> dict[str, object]:
     bridge = bridge_path.resolve()
-    if not bridge.exists():
-        raise UuuIntegrationError(f"位姿桥不存在：{bridge}")
+    injector = INJECTOR_PATH.resolve()
+    if not bridge.is_file() or not injector.is_file():
+        raise CameraIntegrationError(
+            "缺少自研 Camera Bridge 或 Injector；请先运行 native/build_standalone.ps1。"
+        )
+    configured = os.environ.get("BMW_CAMERA_INJECT_COMMAND", "").strip()
+    if configured:
+        command = [
+            token.format(injector=str(injector), bridge=str(bridge))
+            for token in shlex.split(configured)
+        ]
+    else:
+        proton = os.environ.get("BMW_PROTON_COMMAND", "").strip()
+        if proton:
+            command = [*shlex.split(proton), "run", str(injector)]
+        else:
+            wine = shutil.which("wine64") or shutil.which("wine")
+            if not wine:
+                raise CameraIntegrationError(
+                    "Linux 注入需要设置 BMW_PROTON_COMMAND，或设置包含 {injector} 的 "
+                    "BMW_CAMERA_INJECT_COMMAND。"
+                )
+            command = [wine, str(injector)]
+    completed = subprocess.run(
+        command,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    output = "\n".join(part.strip() for part in (completed.stdout, completed.stderr) if part.strip())
+    if completed.returncode != 0:
+        raise CameraIntegrationError(output or "BmwCameraInjector 执行失败")
+    match = re.search(r"\bpid=(\d+)\b", output)
+    return {
+        "pid": int(match.group(1)) if match else 0,
+        "already_loaded": "already_loaded=1" in output,
+        "bridge": str(bridge),
+        "injector": str(injector),
+        "linux_helper": True,
+    }
+
+
+def inject_bridge(
+    pid: int | None = None,
+    bridge_path: Path = BRIDGE_PATH,
+) -> dict[str, object]:
+    if sys.platform != "win32":
+        return _inject_bridge_with_helper(bridge_path)
+    if pid is None or pid <= 0:
+        pid = find_game_pid()
+    bridge = bridge_path.resolve()
+    if not bridge.is_file():
+        raise CameraIntegrationError(f"自研 Camera Bridge 不存在：{bridge}")
     existing = {name.lower() for name in list_modules(pid)}
-    if bridge.name.lower() in existing:
+    conflicts = sorted(name for name in existing if name in {v.lower() for v in CONFLICTING_MODULES})
+    if conflicts:
+        raise CameraIntegrationError(
+            "当前游戏进程已加载 UUU/旧 Connector，不能安全叠加自研 hook。"
+            "请彻底退出游戏和 IGCSClient，再只启动游戏并点击一次注入。"
+        )
+    if any(module.casefold() in existing for module in CAMERA_RUNTIME_MODULES):
         return {"pid": pid, "already_loaded": True, "bridge": str(bridge)}
 
     kernel32 = _kernel32()
@@ -231,58 +274,44 @@ def inject_bridge(pid: int, bridge_path: Path = BRIDGE_PATH) -> dict[str, object
     )
     process = kernel32.OpenProcess(access, False, pid)
     if not process:
-        raise UuuIntegrationError(
-            "无法打开游戏进程。若游戏以管理员身份运行，"
-            "请也以管理员身份启动本工具。"
+        raise CameraIntegrationError(
+            "无法打开游戏进程。若游戏以管理员身份运行，请也以管理员身份启动本工具。"
         )
-
     encoded = (str(bridge) + "\0").encode("utf-16-le")
     remote = None
     thread = None
     try:
         remote = kernel32.VirtualAllocEx(
-            process,
-            None,
-            len(encoded),
-            MEM_COMMIT | MEM_RESERVE,
-            PAGE_READWRITE,
+            process, None, len(encoded), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE
         )
         if not remote:
-            raise UuuIntegrationError("无法在游戏进程中分配位姿桥路径")
-        encoded_buffer = ctypes.create_string_buffer(encoded)
+            raise CameraIntegrationError("无法在游戏进程中分配 Camera Bridge 路径")
         written = ctypes.c_size_t()
+        payload = ctypes.create_string_buffer(encoded)
         if not kernel32.WriteProcessMemory(
             process,
             remote,
-            encoded_buffer,
+            payload,
             len(encoded),
             ctypes.byref(written),
         ) or written.value != len(encoded):
-            raise UuuIntegrationError("无法把位姿桥路径写入游戏进程")
-
+            raise CameraIntegrationError("无法把 Camera Bridge 路径写入游戏进程")
         kernel_module = kernel32.GetModuleHandleW("kernel32.dll")
         load_library = kernel32.GetProcAddress(kernel_module, b"LoadLibraryW")
         if not load_library:
-            raise UuuIntegrationError("无法定位 LoadLibraryW")
+            raise CameraIntegrationError("无法定位 LoadLibraryW")
         thread = kernel32.CreateRemoteThread(
-            process,
-            None,
-            0,
-            load_library,
-            remote,
-            0,
-            None,
+            process, None, 0, load_library, remote, 0, None
         )
         if not thread:
-            raise UuuIntegrationError("无法创建位姿桥加载线程")
-        wait_result = kernel32.WaitForSingleObject(thread, 15000)
-        if wait_result != WAIT_OBJECT_0:
-            raise UuuIntegrationError("等待位姿桥加载超时")
+            raise CameraIntegrationError("无法创建 Camera Bridge 加载线程")
+        if kernel32.WaitForSingleObject(thread, 15000) != WAIT_OBJECT_0:
+            raise CameraIntegrationError("等待 Camera Bridge 加载超时")
         exit_code = wintypes.DWORD()
         if not kernel32.GetExitCodeThread(thread, ctypes.byref(exit_code)):
-            raise UuuIntegrationError("无法读取位姿桥加载结果")
+            raise CameraIntegrationError("无法读取 Camera Bridge 加载结果")
         if exit_code.value == 0:
-            raise UuuIntegrationError("位姿桥加载失败，LoadLibraryW 返回 0")
+            raise CameraIntegrationError("Camera Bridge 加载失败，LoadLibraryW 返回 0")
     finally:
         if thread:
             kernel32.CloseHandle(thread)
@@ -295,48 +324,7 @@ def inject_bridge(pid: int, bridge_path: Path = BRIDGE_PATH) -> dict[str, object
         if bridge.name.lower() in {name.lower() for name in list_modules(pid)}:
             return {"pid": pid, "already_loaded": False, "bridge": str(bridge)}
         time.sleep(0.1)
-    raise UuuIntegrationError("位姿桥已注入，但模块验证失败")
-
-
-def launch_uuu_client(uuu_dir: str | Path) -> dict[str, object]:
-    directory = Path(uuu_dir)
-    client = directory / "IGCSClient.exe"
-    dll = directory / "UniversalUE5Unlocker.dll"
-    if not client.exists() or not dll.exists():
-        raise UuuIntegrationError(f"UUU 文件夹不完整：{directory}")
-    if sys.platform != "win32":
-        wine = shutil.which("wine")
-        configured = os.environ.get("BMW_UUU_COMMAND", "").strip()
-        if configured:
-            launch_command = [*shlex.split(configured), str(client)]
-            launcher = "BMW_UUU_COMMAND"
-        elif wine:
-            launch_command = [wine, str(client)]
-            launcher = "wine"
-        else:
-            raise UuuIntegrationError(
-                "Linux/Proton 未找到 wine；请设置 BMW_UUU_COMMAND，或安装 Wine 后再打开 UUU。"
-            )
-        process = subprocess.Popen(
-            launch_command,
-            cwd=str(directory),
-            start_new_session=True,
-        )
-        return {
-            "pid": process.pid,
-            "already_running": False,
-            "client": str(client),
-            "launcher": launcher,
-        }
-    existing_pid = find_process_pid("IGCSClient.exe")
-    if existing_pid is not None:
-        return {"pid": existing_pid, "already_running": True, "client": str(client)}
-    process = subprocess.Popen(
-        [str(client)],
-        cwd=str(directory),
-        creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
-    )
-    return {"pid": process.pid, "already_running": False, "client": str(client)}
+    raise CameraIntegrationError("Camera Bridge 已注入，但模块验证失败")
 
 
 def integration_status() -> dict[str, object]:
@@ -350,11 +338,8 @@ def integration_status() -> dict[str, object]:
                 "game_running": False,
                 "module_scan_ok": False,
                 "bridge_loaded": False,
-                "uuu_loaded": False,
-                "message": (
-                    f"Linux/Proton Bridge Relay 已配置 ({endpoint})；"
-                    "等待游戏内 Bridge DLL 启动并监听 Relay。"
-                ),
+                "conflicting_camera_tool": False,
+                "message": f"Linux/Proton Camera Bridge Relay 已配置 ({endpoint})",
             }
         return {
             "platform_unsupported": True,
@@ -362,31 +347,32 @@ def integration_status() -> dict[str, object]:
             "game_running": False,
             "module_scan_ok": False,
             "bridge_loaded": False,
-            "uuu_loaded": False,
-            "message": (
-                "Linux 兼容模式：界面、点位/轨迹文件和 OBS 可用；"
-                "黑神话 UUU 原生位姿控制需要 Windows。"
-            ),
+            "conflicting_camera_tool": False,
+            "message": "Linux 原生界面需要配置 BMW_BRIDGE_ENDPOINT 连接 Proton 内的 Bridge。",
         }
     try:
         pid = find_game_pid()
-    except UuuIntegrationError as exc:
+    except CameraIntegrationError as exc:
         return {"game_running": False, "message": str(exc)}
     try:
         modules = {name.lower() for name in list_modules(pid)}
-    except UuuIntegrationError as exc:
+    except CameraIntegrationError as exc:
         return {
             "game_running": True,
             "pid": pid,
             "module_scan_ok": False,
             "bridge_loaded": False,
-            "uuu_loaded": False,
+            "conflicting_camera_tool": False,
             "message": str(exc),
         }
+    conflicts = sorted(
+        name for name in modules if name in {value.lower() for value in CONFLICTING_MODULES}
+    )
     return {
         "game_running": True,
         "pid": pid,
         "module_scan_ok": True,
-        "bridge_loaded": "igcsconnector.addon64" in modules,
-        "uuu_loaded": "universalue5unlocker.dll" in modules,
+        "bridge_loaded": BRIDGE_MODULE_NAME.lower() in modules,
+        "conflicting_camera_tool": bool(conflicts),
+        "conflicting_modules": conflicts,
     }

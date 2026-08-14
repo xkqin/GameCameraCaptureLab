@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pjlabpr.local/schemas/ue_camera_profile_v1.schema.json",
+  "title": "UE Camera Runtime profile",
+  "type": "object",
+  "required": ["schema_version", "id", "engine", "process_names", "camera_hook"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "name": { "type": "string", "minLength": 1 },
+    "engine": { "type": "string", "enum": ["ue4", "ue5", "ue"] },
+    "process_names": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "module": { "type": "string", "enum": ["main_executable"] },
+    "camera_hook": { "$ref": "#/$defs/hook" },
+    "hud_hook": {
+      "anyOf": [
+        { "$ref": "#/$defs/hook" },
+        { "type": "null" }
+      ]
+    },
+    "coordinate_system": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "position_unit": { "type": "string" },
+        "position_scale_to_meters": { "type": ["number", "null"] },
+        "handedness": { "type": "string", "enum": ["left", "right", "unknown"] },
+        "rotation_unit": { "type": "string", "enum": ["degrees", "radians"] }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "hook": {
+      "type": "object",
+      "required": ["abi", "pattern", "hook_offset", "continuation_offset", "min_matches", "max_matches"],
+      "additionalProperties": false,
+      "properties": {
+        "abi": { "type": "string", "minLength": 1 },
+        "pattern": { "type": "string", "minLength": 1 },
+        "hook_offset": { "type": "integer", "minimum": 0 },
+        "continuation_offset": { "type": "integer", "minimum": 1 },
+        "min_matches": { "type": "integer", "minimum": 1 },
+        "max_matches": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

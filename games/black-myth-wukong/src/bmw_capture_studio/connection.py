@@ -3,9 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from .bridge import BridgeMetadata, PoseUnavailableError, UuuPoseBridge
+from .bridge import BridgeMetadata, CameraPoseBridge, PoseUnavailableError
+from .injection import integration_status
 from .models import CameraPose
-from .uuu import integration_status
 
 
 @dataclass(frozen=True)
@@ -35,21 +35,15 @@ def classify_connection(
         return ConnectionReport(
             code="platform_unsupported",
             level="warning",
-            title="Linux 兼容模式",
-            detail=str(
-                integration.get(
-                    "message",
-                    "UUU 原生位姿控制需要 Windows；当前可使用文件管理和 OBS 功能。",
-                )
-            ),
+            title="Linux 等待 Proton Relay",
+            detail=str(integration.get("message", "请配置 BMW_BRIDGE_ENDPOINT。")),
         )
-
     if not integration.get("game_running"):
         return ConnectionReport(
             code="game_missing",
             level="error",
             title="未检测到游戏",
-            detail="请先启动《黑神话：悟空》并进入游戏画面。",
+            detail="请先启动《黑神话：悟空》并进入可渲染的游戏画面。",
         )
     if not integration.get("module_scan_ok", True):
         return ConnectionReport(
@@ -59,31 +53,32 @@ def classify_connection(
             detail=str(integration.get("message", "请检查程序权限。")),
             pid=pid,
         )
-
-    bridge_loaded = bool(integration.get("bridge_loaded"))
-    uuu_loaded = bool(integration.get("uuu_loaded"))
-    if uuu_loaded and not bridge_loaded:
+    if integration.get("conflicting_camera_tool"):
+        names = ", ".join(integration.get("conflicting_modules") or [])
         return ConnectionReport(
-            code="restart_required",
+            code="camera_tool_conflict",
             level="error",
-            title="需要彻底重启游戏",
-            detail="UUU 已经先注入，程序不会再补注入位姿桥。退出游戏后按 1 → 2 重试。",
+            title="检测到 UUU/旧 Connector 冲突",
+            detail=(
+                f"当前游戏已加载 {names or '第三方相机模块'}。"
+                "请彻底退出游戏和 IGCSClient，重开游戏后只注入自研 Camera Bridge。"
+            ),
             pid=pid,
         )
-    if not bridge_loaded:
+    if not integration.get("bridge_loaded"):
         return ConnectionReport(
             code="bridge_needed",
             level="warning",
             title=f"游戏运行中 · PID {pid}",
-            detail="下一步：点击“1 准备位姿桥”。",
+            detail="点击“注入 Camera Bridge”，不需要再打开 UUU。",
             pid=pid,
         )
     if metadata is None:
         return ConnectionReport(
-            code="bridge_outdated",
-            level="error",
-            title="位姿桥版本不匹配",
-            detail="游戏中加载的是旧版位姿桥。彻底退出游戏，再重新点击“1 准备位姿桥”。",
+            code="bridge_starting",
+            level="warning",
+            title="Camera Bridge 正在启动",
+            detail="DLL 已加载，正在建立共享内存并扫描相机 hook。",
             pid=pid,
         )
     if metadata.process_id != pid:
@@ -91,122 +86,152 @@ def classify_connection(
             code="stale_bridge",
             level="error",
             title="检测到上一局残留状态",
-            detail="当前共享数据不属于这个游戏进程。退出游戏和采集工具后重新启动。",
+            detail="共享内存不属于当前游戏进程；请关闭采集器后重新打开。",
             pid=pid,
             metadata=metadata,
         )
-    if not uuu_loaded:
+    if not metadata.hooks_installed:
         return ConnectionReport(
-            code="uuu_needed",
-            level="warning",
-            title="位姿桥已就绪",
-            detail="下一步：点击“2 打开 UUU”，在 UUU 中选择游戏并 Inject。",
-            pid=pid,
-            metadata=metadata,
-        )
-    if not metadata.buffer_requested:
-        return ConnectionReport(
-            code="handshake_missing",
+            code="hook_unavailable",
             level="error",
-            title="UUU 未连接位姿桥",
-            detail="DLL 都已加载但没有 Connector 握手。请彻底退出游戏，再按 1 → 2 重试。",
+            title="相机 hook 未安装",
+            detail=(
+                "当前游戏版本没有匹配到已验证的 LWC Camera View 签名。"
+                "不要继续采集；请保留版本信息后更新签名。"
+            ),
+            pid=pid,
+            metadata=metadata,
+        )
+    if not metadata.input_capture_ready:
+        return ConnectionReport(
+            code="input_capture_unavailable",
+            level="error",
+            title="相机输入独占未就绪",
+            detail=(
+                "低级键盘 Hook 安装失败；当前版本不能保证 WASD/QE 不再控制角色。"
+                "请以管理员身份重新启动采集器和游戏后再次注入。"
+            ),
+            pid=pid,
+            metadata=metadata,
+        )
+    if not metadata.hud_control_ready:
+        return ConnectionReport(
+            code="hud_control_unavailable",
+            level="error",
+            title="HUD 控制 Hook 未安装",
+            detail=(
+                "当前游戏版本没有匹配到已验证的 HUD 签名；Delete 和界面按钮不可用。"
+                "不要开始正式采集，请先更新 HUD 签名。"
+            ),
+            pid=pid,
+            metadata=metadata,
+        )
+    if not metadata.pose_observed:
+        return ConnectionReport(
+            code="pose_waiting",
+            level="warning",
+            title="hook 已安装 · 等待首帧相机",
+            detail="回到游戏画面等待一两秒；首次有效 Pose 到达后可按 Insert 启用自由相机。",
             pid=pid,
             metadata=metadata,
         )
     if not pose_status.get("connected"):
         return ConnectionReport(
-            code="pose_waiting",
-            level="warning",
-            title="位姿桥握手完成",
-            detail="正在等待 UUU 输出有效 Pose；回游戏按 Insert，并等待游戏画面稳定。",
+            code="pose_invalid",
+            level="error",
+            title="精确 Pose 数据异常",
+            detail=str(pose_status.get("message", "Camera Bridge 未返回有效 Pose。")),
             pid=pid,
             metadata=metadata,
         )
-
     pose = pose_status.get("pose")
     if not isinstance(pose, CameraPose):
         return ConnectionReport(
             code="pose_invalid",
             level="error",
             title="Pose 数据格式异常",
-            detail="请彻底退出游戏后重试；若重复出现，请保留 UUU 日志。",
+            detail="请重启游戏和采集器后重试。",
             pid=pid,
-            metadata=metadata,
-        )
-    if not pose.camera_enabled:
-        return ConnectionReport(
-            code="camera_off",
-            level="warning",
-            title="Pose 已连接 · Camera OFF",
-            detail="回到游戏按 Insert 启用自由相机。",
-            pid=pid,
-            pose=pose,
-            metadata=metadata,
-        )
-    if pose.movement_locked:
-        return ConnectionReport(
-            code="camera_locked",
-            level="warning",
-            title="Camera ON · Movement Locked",
-            detail="按 Home 解锁相机移动后再采集。",
-            pid=pid,
-            pose=pose,
             metadata=metadata,
         )
     control = pose_status.get("control")
+    absolute_pose = pose_status.get("absolute_pose")
+    hud = pose_status.get("hud")
+    trajectory = pose_status.get("trajectory")
     if control is None:
         return ConnectionReport(
             code="native_control_outdated",
             level="error",
-            title="Pose 已连接 · 原生控制桥过旧",
-            detail=(
-                "当前游戏中加载的 Connector 不含 UUU 原生相机控制。"
-                "请彻底退出游戏，重新准备位姿桥，再注入 UUU 5.8.21。"
-            ),
+            title="缺少相机控制协议",
+            detail="游戏中加载的不是当前自研 Bridge；请彻底重启游戏后重新注入。",
             pid=pid,
             pose=pose,
             metadata=metadata,
         )
     if not control.ready:
-        error_message = getattr(control, "error_message", "native control unavailable")
         return ConnectionReport(
             code="native_control_waiting",
             level="warning",
-            title="Pose 已连接 · 等待原生控制",
-            detail=(
-                "请确认 UUU 版本为 5.8.21、按 Insert 启用 Camera，并等待日志出现 "
-                f"Camera found。当前状态：{error_message}。"
-            ),
+            title="Pose 已连接 · 控制尚未就绪",
+            detail=getattr(control, "error_message", "等待 Camera Bridge 控制能力。"),
             pid=pid,
             pose=pose,
             metadata=metadata,
         )
-    trajectory = pose_status.get("trajectory")
+    if absolute_pose is None or not absolute_pose.ready:
+        return ConnectionReport(
+            code="absolute_pose_outdated",
+            level="error",
+            title="缺少绝对 setPose",
+            detail="游戏中加载的不是当前自研 Bridge；请彻底重启游戏后重新注入。",
+            pid=pid,
+            pose=pose,
+            metadata=metadata,
+        )
+    if hud is None or not hud.ready:
+        return ConnectionReport(
+            code="hud_control_outdated",
+            level="error",
+            title="缺少 HUD 显示控制",
+            detail="游戏中加载的不是当前自研 Bridge；请彻底重启游戏后重新注入。",
+            pid=pid,
+            pose=pose,
+            metadata=metadata,
+        )
     if trajectory is None:
         return ConnectionReport(
             code="smooth_trajectory_outdated",
             level="error",
-            title="原生平滑轨迹桥过旧",
-            detail=(
-                "当前游戏进程仍加载旧版 Bridge，不能保证轨迹连续播放。"
-                "请彻底退出游戏和采集器，重新启动后按 1 → 2 注入新版 Bridge。"
-            ),
+            title="缺少进程内平滑轨迹",
+            detail="请彻底重启游戏后重新注入当前 BmwCameraBridge.dll。",
             pid=pid,
             pose=pose,
             metadata=metadata,
         )
+    if not pose.camera_enabled:
+        title = "自研 Camera Bridge 已连接 · Camera OFF"
+        detail = "Insert 开启自由相机；鼠标观察；Delete 隐藏 HUD；按住 Shift 可 5× 加速。"
+    elif pose.movement_locked:
+        title = "自研 Camera Bridge 已连接 · Movement Locked"
+        detail = "自动 setPose/轨迹可用；手动 WASD 移动请回到游戏按 Home 解锁。"
+    else:
+        title = "自研 Camera Bridge 已连接 · Camera ON"
+        detail = (
+            "WASD/QE 和鼠标视角已由相机独占，Shift 5× 加速，Delete 切换 HUD；"
+            "绝对 setPose、点位和轨迹采集均已就绪。"
+        )
     return ConnectionReport(
         code="ready",
         level="success",
-        title="Pose 已连接 · Camera ON",
-        detail="可以记录点位、Load 文件并开始采集。",
+        title=title,
+        detail=detail,
         pid=pid,
         pose=pose,
         metadata=metadata,
     )
 
 
-def probe_connection(bridge: UuuPoseBridge) -> ConnectionReport:
+def probe_connection(bridge: CameraPoseBridge) -> ConnectionReport:
     integration = integration_status()
     if getattr(bridge, "is_linux_relay", False):
         integration = dict(integration)
@@ -217,7 +242,6 @@ def probe_connection(bridge: UuuPoseBridge) -> ConnectionReport:
                 "message": f"Linux/Proton Bridge Relay {getattr(bridge, 'relay_endpoint', '')}",
             }
         )
-    if integration.get("linux_relay"):
         try:
             metadata = bridge.read_metadata()
             if metadata is None:
@@ -225,33 +249,26 @@ def probe_connection(bridge: UuuPoseBridge) -> ConnectionReport:
                     code="linux_bridge_waiting",
                     level="warning",
                     title="Linux/Proton Relay 已连接，等待 Bridge",
-                    detail=(
-                        "Relay 已配置，但游戏内 Bridge 尚未发布有效元数据；"
-                        "请在 Proton 环境设置 BMW_BRIDGE_PORT，并重新注入 Bridge DLL。"
-                    ),
+                    detail="Relay 可达，但游戏内 Bridge 尚未发布有效元数据。",
                 )
             pose_status = bridge.status()
         except (PoseUnavailableError, OSError, TimeoutError, ConnectionError) as exc:
             return ConnectionReport(
                 code="linux_bridge_waiting",
                 level="warning",
-                title="等待 Linux/Proton Bridge Relay",
-                detail=(
-                    f"无法连接 {integration.get('message', 'Bridge Relay')} "
-                    f"({exc})"
-                ),
+                title="等待 Linux/Proton Camera Bridge Relay",
+                detail=f"无法连接 Relay：{exc}",
             )
-        relay_integration = dict(integration)
-        relay_integration.update(
+        integration.update(
             {
                 "game_running": True,
                 "module_scan_ok": True,
                 "bridge_loaded": True,
-                "uuu_loaded": metadata.native_control_ready,
+                "conflicting_camera_tool": False,
                 "pid": metadata.process_id,
             }
         )
-        return classify_connection(relay_integration, metadata, pose_status)
+        return classify_connection(integration, metadata, pose_status)
     if integration.get("platform_unsupported"):
         return classify_connection(integration, None, {"connected": False})
     metadata = bridge.read_metadata()

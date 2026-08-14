@@ -14,17 +14,23 @@ from typing import Any
 from .models import CameraPose
 
 
-MAPPING_NAME = "Local\\BmwUuuPoseBridge.v2"
+MAPPING_NAME = "Local\\BmwCameraBridge.v1"
 MAPPING_SIZE = 64 * 1024
 CAMERA_DATA = struct.Struct("<4Bf3f4f3f3f3f3f")
+PRECISE_POSE_OFFSET = 128
+PRECISE_POSE = struct.Struct("<4I6dfI")
+PRECISE_POSE_MAGIC = 0x50574D42
+PRECISE_POSE_VERSION = 1
 METADATA_OFFSET = 256
 BRIDGE_METADATA = struct.Struct("<8IQ")
 METADATA_MAGIC = 0x42574D42
-METADATA_VERSION = 7
+METADATA_VERSION = 9
 FLAG_BRIDGE_LOADED = 1 << 0
-FLAG_CONNECT_CALLED = 1 << 1
-FLAG_BUFFER_REQUESTED = 1 << 2
+FLAG_CONNECT_CALLED = 1 << 1  # standalone camera hooks installed
+FLAG_BUFFER_REQUESTED = 1 << 2  # at least one rendered pose observed
 FLAG_NATIVE_CONTROL_READY = 1 << 3
+FLAG_INPUT_CAPTURE_READY = 1 << 4
+FLAG_HUD_CONTROL_READY = 1 << 5
 
 CONTROL_OFFSET = 512
 CONTROL_HEADER = struct.Struct("<8I")
@@ -53,12 +59,24 @@ CONTROL_CAP_SET_POSE = (
 )
 CONTROL_ERRORS = {
     0: "no error",
-    1: "UUU is not loaded",
-    2: "unsupported UUU version (this bridge is locked to 5.8.21)",
-    3: "UUU camera feature is not available yet",
-    4: "invalid native-control command",
-    5: "UUU internal camera call failed",
+    1: "standalone camera hooks are unavailable",
+    2: "unsupported Black Myth game build",
+    3: "the game camera has not rendered a pose yet",
+    4: "invalid camera-control command",
+    5: "standalone camera control failed internally",
 }
+
+ABSOLUTE_POSE_OFFSET = 768
+ABSOLUTE_POSE = struct.Struct("<8I3d4fI3I")
+ABSOLUTE_POSE_MAGIC = 0x41574D42
+ABSOLUTE_POSE_VERSION = 1
+ABSOLUTE_POSE_CAPABILITY = 1 << 7
+
+HUD_CONTROL_OFFSET = 896
+HUD_CONTROL = struct.Struct("<16I")
+HUD_CONTROL_MAGIC = 0x48574D42
+HUD_CONTROL_VERSION = 1
+HUD_CONTROL_CAPABILITY = 1
 
 TRAJECTORY_OFFSET = 1024
 TRAJECTORY_HEADER = struct.Struct("<8I2fIfI3I")
@@ -75,10 +93,10 @@ TRAJECTORY_STATE_STOPPED = 4
 TRAJECTORY_STATE_ERROR = 5
 TRAJECTORY_ERRORS = {
     0: "no error",
-    1: "UUU native camera control is unavailable",
+    1: "standalone camera control is unavailable",
     2: "invalid trajectory command",
     3: "invalid trajectory keyframes",
-    4: "UUU internal camera call failed during trajectory playback",
+    4: "standalone camera failed during trajectory playback",
 }
 MAX_TRAJECTORY_KEYFRAMES = (
     MAPPING_SIZE - TRAJECTORY_OFFSET - TRAJECTORY_HEADER.size
@@ -108,12 +126,28 @@ class BridgeMetadata:
         return bool(self.flags & FLAG_CONNECT_CALLED)
 
     @property
+    def hooks_installed(self) -> bool:
+        return self.connector_called
+
+    @property
     def buffer_requested(self) -> bool:
         return bool(self.flags & FLAG_BUFFER_REQUESTED)
 
     @property
+    def pose_observed(self) -> bool:
+        return self.buffer_requested
+
+    @property
     def native_control_ready(self) -> bool:
         return bool(self.flags & FLAG_NATIVE_CONTROL_READY)
+
+    @property
+    def input_capture_ready(self) -> bool:
+        return bool(self.flags & FLAG_INPUT_CAPTURE_READY)
+
+    @property
+    def hud_control_ready(self) -> bool:
+        return bool(self.flags & FLAG_HUD_CONTROL_READY)
 
 
 @dataclass(frozen=True)
@@ -127,6 +161,45 @@ class NativeControlStatus:
     @property
     def ready(self) -> bool:
         return (self.capabilities & CONTROL_CAP_SET_POSE) == CONTROL_CAP_SET_POSE
+
+    @property
+    def error_message(self) -> str:
+        if self.ready and self.state != CONTROL_STATE_ERROR:
+            return CONTROL_ERRORS[0]
+        return CONTROL_ERRORS.get(self.error_code, f"unknown error {self.error_code}")
+
+
+@dataclass(frozen=True)
+class AbsolutePoseStatus:
+    request_sequence: int
+    acknowledge_sequence: int
+    state: int
+    error_code: int
+    capabilities: int
+
+    @property
+    def ready(self) -> bool:
+        return bool(self.capabilities & ABSOLUTE_POSE_CAPABILITY)
+
+    @property
+    def error_message(self) -> str:
+        if self.ready and self.state != CONTROL_STATE_ERROR:
+            return CONTROL_ERRORS[0]
+        return CONTROL_ERRORS.get(self.error_code, f"unknown error {self.error_code}")
+
+
+@dataclass(frozen=True)
+class HudControlStatus:
+    request_sequence: int
+    acknowledge_sequence: int
+    state: int
+    error_code: int
+    capabilities: int
+    hidden: bool
+
+    @property
+    def ready(self) -> bool:
+        return bool(self.capabilities & HUD_CONTROL_CAPABILITY)
 
     @property
     def error_message(self) -> str:
@@ -170,7 +243,9 @@ class NativeTrajectoryStatus:
         )
 
 
-class UuuPoseBridge:
+class CameraPoseBridge:
+    """Windows shared-memory transport for the standalone camera bridge."""
+
     def __init__(self, mapping_name: str = MAPPING_NAME) -> None:
         self.mapping_name = mapping_name
         self.mapping: mmap.mmap | None = None
@@ -182,13 +257,13 @@ class UuuPoseBridge:
                 return
             if sys.platform != "win32":
                 raise PoseUnavailableError(
-                    "Linux 兼容模式不提供 UUU 共享内存；黑神话 UUU 原生位姿控制需要 Windows。"
+                    "Linux 不能直接打开 Windows 共享内存；请配置 Camera Bridge Proton Relay。"
                 )
             try:
                 self.mapping = mmap.mmap(-1, MAPPING_SIZE, self.mapping_name)
             except (OSError, TypeError) as exc:
                 raise PoseUnavailableError(
-                    "无法打开 UUU 位姿共享内存；请先运行 Windows 版程序"
+                    "无法打开 Camera Bridge 共享内存；请先把 BmwCameraBridge.dll 注入游戏。"
                 ) from exc
 
     def close(self) -> None:
@@ -241,12 +316,21 @@ class UuuPoseBridge:
                 raw = second
                 if first == second:
                     break
+            precise_raw = b""
+            for _ in range(3):
+                self.mapping.seek(PRECISE_POSE_OFFSET)
+                first_precise = self.mapping.read(PRECISE_POSE.size)
+                self.mapping.seek(PRECISE_POSE_OFFSET)
+                second_precise = self.mapping.read(PRECISE_POSE.size)
+                precise_raw = second_precise
+                if first_precise == second_precise:
+                    break
         values = CAMERA_DATA.unpack(raw)
         (
             camera_enabled,
             movement_locked,
-            _reserved1,
-            _reserved2,
+            hud_hidden,
+            input_captured,
             fov,
             x,
             y,
@@ -268,6 +352,33 @@ class UuuPoseBridge:
             yaw,
             roll,
         ) = values
+        if len(precise_raw) == PRECISE_POSE.size:
+            (
+                precise_magic,
+                precise_version,
+                precise_size,
+                precise_sequence,
+                precise_x,
+                precise_y,
+                precise_z,
+                precise_pitch,
+                precise_yaw,
+                precise_roll,
+                precise_fov,
+                _precise_flags,
+            ) = PRECISE_POSE.unpack(precise_raw)
+            if (
+                precise_magic == PRECISE_POSE_MAGIC
+                and precise_version == PRECISE_POSE_VERSION
+                and precise_size == PRECISE_POSE.size
+                and precise_sequence > 0
+                and precise_sequence % 2 == 0
+            ):
+                x, y, z = precise_x, precise_y, precise_z
+                pitch = math.radians(precise_pitch)
+                yaw = math.radians(precise_yaw)
+                roll = math.radians(precise_roll)
+                fov = precise_fov
         pose = CameraPose(
             x=x,
             y=y,
@@ -291,11 +402,13 @@ class UuuPoseBridge:
             forward_z=forward_z,
             camera_enabled=bool(camera_enabled),
             movement_locked=bool(movement_locked),
+            hud_hidden=bool(hud_hidden),
+            input_captured=bool(input_captured),
         )
         if not self._looks_valid(pose):
             raise PoseUnavailableError(
-                "共享内存已建立，但 UUU 尚未写入有效位姿。"
-                "请确认先加载位姿桥、再由 UUU 注入，并按 Insert 启用相机。"
+                "共享内存已建立，但自研 Camera Bridge 尚未观察到有效游戏相机。"
+                "请确认游戏画面正在渲染，且当前进程没有加载 UUU/旧 Connector。"
             )
         return pose
 
@@ -328,6 +441,44 @@ class UuuPoseBridge:
             error_code=error_code,
             capabilities=capabilities,
         )
+
+    def read_absolute_pose_status(self) -> AbsolutePoseStatus | None:
+        with self._lock:
+            self.connect()
+            assert self.mapping is not None
+            self.mapping.seek(ABSOLUTE_POSE_OFFSET)
+            raw = self.mapping.read(CONTROL_HEADER.size)
+        (
+            magic,
+            version,
+            size,
+            request_sequence,
+            acknowledge_sequence,
+            state,
+            error_code,
+            capabilities,
+        ) = CONTROL_HEADER.unpack(raw)
+        if (
+            magic != ABSOLUTE_POSE_MAGIC
+            or version != ABSOLUTE_POSE_VERSION
+            or size != ABSOLUTE_POSE.size
+        ):
+            return None
+        return AbsolutePoseStatus(
+            request_sequence=request_sequence,
+            acknowledge_sequence=acknowledge_sequence,
+            state=state,
+            error_code=error_code,
+            capabilities=capabilities,
+        )
+
+    def read_hud_status(self) -> HudControlStatus | None:
+        with self._lock:
+            self.connect()
+            assert self.mapping is not None
+            self.mapping.seek(HUD_CONTROL_OFFSET)
+            raw = self.mapping.read(HUD_CONTROL.size)
+        return _decode_hud(raw)
 
     def read_trajectory_status(self) -> NativeTrajectoryStatus | None:
         with self._lock:
@@ -524,17 +675,17 @@ class UuuPoseBridge:
             fov_degrees,
         )
         if not all(math.isfinite(value) for value in values):
-            raise ValueError("native UUU control values must be finite")
+            raise ValueError("native camera control values must be finite")
         status = self.read_control_status()
         if status is None:
             raise PoseUnavailableError(
-                "Loaded pose bridge is too old for native UUU control. "
-                "Restart the game and prepare/inject the rebuilt bridge first."
+                "Loaded Camera Bridge is too old for native camera control. "
+                "Restart the game and inject the rebuilt standalone bridge first."
             )
         if not status.ready:
             raise PoseUnavailableError(
-                "Native UUU control is not ready. UUU 5.8.21 must be injected, "
-                "the free camera enabled, and Camera found must appear in its log."
+                "Native camera control is not ready. The standalone hooks must be installed "
+                "and the game must have rendered at least one valid camera pose."
             )
         sequence = max(status.request_sequence, status.acknowledge_sequence) + 1
         if sequence > 0x7FFFFFFF:
@@ -559,15 +710,162 @@ class UuuPoseBridge:
             if result is not None and result.acknowledge_sequence == sequence:
                 if result.state != CONTROL_STATE_APPLIED:
                     raise PoseUnavailableError(
-                        f"Native UUU command failed: {result.error_message}"
+                        f"Native camera command failed: {result.error_message}"
                     )
                 return result
             time.sleep(0.001)
-        raise TimeoutError("Timed out waiting for native UUU camera command acknowledgement")
+        raise TimeoutError("Timed out waiting for native camera command acknowledgement")
+
+    def set_pose(
+        self,
+        pose: CameraPose,
+        *,
+        enable_camera: bool = True,
+        timeout_seconds: float = 1.0,
+    ) -> CameraPose:
+        values = (
+            pose.x,
+            pose.y,
+            pose.z,
+            pose.yaw_degrees,
+            pose.pitch_degrees,
+            pose.roll_degrees,
+            pose.fov_degrees,
+        )
+        if not all(math.isfinite(value) for value in values):
+            raise ValueError("absolute camera pose values must be finite")
+        if not 1.0 <= pose.fov_degrees <= 179.0:
+            raise ValueError("absolute camera FOV must be between 1 and 179 degrees")
+        status = self.read_absolute_pose_status()
+        if status is None or not status.ready:
+            raise PoseUnavailableError(
+                "The loaded bridge does not provide standalone absolute setPose. "
+                "Restart the game without UUU and inject BmwCameraBridge.dll."
+            )
+        sequence = max(status.request_sequence, status.acknowledge_sequence) + 1
+        if sequence > 0x7FFFFFFF:
+            sequence = 1
+        payload = ABSOLUTE_POSE.pack(
+            ABSOLUTE_POSE_MAGIC,
+            ABSOLUTE_POSE_VERSION,
+            ABSOLUTE_POSE.size,
+            status.request_sequence,
+            status.acknowledge_sequence,
+            CONTROL_STATE_IDLE,
+            0,
+            status.capabilities,
+            float(pose.x),
+            float(pose.y),
+            float(pose.z),
+            float(pose.yaw_degrees),
+            float(pose.pitch_degrees),
+            float(pose.roll_degrees),
+            float(pose.fov_degrees),
+            int(enable_camera),
+            0,
+            0,
+            0,
+        )
+        with self._lock:
+            self.connect()
+            assert self.mapping is not None
+            self.mapping.seek(ABSOLUTE_POSE_OFFSET)
+            self.mapping.write(payload)
+            self.mapping.seek(ABSOLUTE_POSE_OFFSET + 12)
+            self.mapping.write(struct.pack("<I", sequence))
+
+        deadline = time.monotonic() + max(0.1, timeout_seconds)
+        while time.monotonic() < deadline:
+            result = self.read_absolute_pose_status()
+            if result is not None and result.acknowledge_sequence == sequence:
+                if result.state != CONTROL_STATE_APPLIED:
+                    raise PoseUnavailableError(
+                        f"Absolute setPose failed: {result.error_message}"
+                    )
+                break
+            time.sleep(0.001)
+        else:
+            raise TimeoutError("Timed out waiting for absolute setPose acknowledgement")
+
+        feedback_deadline = time.monotonic() + max(0.1, timeout_seconds)
+        last_pose: CameraPose | None = None
+        while time.monotonic() < feedback_deadline:
+            last_pose = self.read_pose()
+            position_error = math.dist(
+                (last_pose.x, last_pose.y, last_pose.z),
+                (pose.x, pose.y, pose.z),
+            )
+            angle_error = max(
+                abs((last_pose.yaw_degrees - pose.yaw_degrees + 180.0) % 360.0 - 180.0),
+                abs((last_pose.pitch_degrees - pose.pitch_degrees + 180.0) % 360.0 - 180.0),
+                abs((last_pose.roll_degrees - pose.roll_degrees + 180.0) % 360.0 - 180.0),
+            )
+            if position_error <= 0.02 and angle_error <= 0.02:
+                return last_pose
+            time.sleep(0.002)
+        if last_pose is not None:
+            raise PoseUnavailableError(
+                "setPose was acknowledged but precise pose feedback did not converge"
+            )
+        raise PoseUnavailableError("setPose was acknowledged but no pose feedback arrived")
+
+    def set_hud_hidden(
+        self,
+        hidden: bool,
+        *,
+        timeout_seconds: float = 1.0,
+    ) -> HudControlStatus:
+        status = self.read_hud_status()
+        if status is None or not status.ready:
+            raise PoseUnavailableError(
+                "当前 Camera Bridge 没有可用的 HUD 控制 Hook；请彻底重启游戏后重新注入。"
+            )
+        sequence = max(status.request_sequence, status.acknowledge_sequence) + 1
+        if sequence > 0x7FFFFFFF:
+            sequence = 1
+        payload = HUD_CONTROL.pack(
+            HUD_CONTROL_MAGIC,
+            HUD_CONTROL_VERSION,
+            HUD_CONTROL.size,
+            status.request_sequence,
+            status.acknowledge_sequence,
+            CONTROL_STATE_IDLE,
+            0,
+            status.capabilities,
+            int(bool(hidden)),
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        )
+        with self._lock:
+            self.connect()
+            assert self.mapping is not None
+            self.mapping.seek(HUD_CONTROL_OFFSET)
+            self.mapping.write(payload)
+            self.mapping.seek(HUD_CONTROL_OFFSET + 12)
+            self.mapping.write(struct.pack("<I", sequence))
+
+        deadline = time.monotonic() + max(0.1, timeout_seconds)
+        while time.monotonic() < deadline:
+            result = self.read_hud_status()
+            if result is not None and result.acknowledge_sequence == sequence:
+                if result.state != CONTROL_STATE_APPLIED:
+                    raise PoseUnavailableError(
+                        f"HUD visibility command failed: {result.error_message}"
+                    )
+                return result
+            time.sleep(0.001)
+        raise TimeoutError("Timed out waiting for HUD visibility acknowledgement")
 
     def status(self) -> dict[str, Any]:
         metadata = self.read_metadata()
         control = self.read_control_status()
+        absolute_pose = self.read_absolute_pose_status()
+        hud = self.read_hud_status()
         trajectory = self.read_trajectory_status()
         try:
             pose = self.read_pose()
@@ -577,6 +875,8 @@ class UuuPoseBridge:
                 "message": str(exc),
                 "metadata": metadata,
                 "control": control,
+                "absolute_pose": absolute_pose,
+                "hud": hud,
                 "trajectory": trajectory,
             }
         return {
@@ -586,6 +886,8 @@ class UuuPoseBridge:
             "pose": pose,
             "metadata": metadata,
             "control": control,
+            "absolute_pose": absolute_pose,
+            "hud": hud,
             "trajectory": trajectory,
         }
 
@@ -616,19 +918,21 @@ class UuuPoseBridge:
 
 # Linux/Proton transport -------------------------------------------------
 #
-# The injected bridge is still a Windows PE DLL because UUU and the game run
+# The injected bridge is still a Windows PE DLL because the game runs
 # inside Proton.  A Linux Python process cannot open Wine's named
 # CreateFileMapping object directly, so the DLL exposes the same data/control
 # ABI over a loopback-only relay when BMW_BRIDGE_PORT is set in the Proton
 # environment.  Requests are short-lived and stateless: reconnecting after an
 # OBS restart or a UI crash cannot leave a stale control socket in the game.
 RELAY_MAGIC = b"BMWP"
-RELAY_VERSION = 1
+RELAY_VERSION = 3
 RELAY_DEFAULT_PORT = 28791
 RELAY_READ_STATE = 1
 RELAY_APPLY_CONTROL = 2
 RELAY_START_TRAJECTORY = 3
 RELAY_STOP_TRAJECTORY = 4
+RELAY_SET_POSE = 5
+RELAY_SET_HUD = 6
 RELAY_HEADER = struct.Struct("<4sBBHI")
 RELAY_STATUS_OK = 0
 RELAY_STATUS_ERROR = 1
@@ -712,15 +1016,15 @@ def _decode_metadata(raw: bytes) -> BridgeMetadata | None:
     )
 
 
-def _decode_pose(raw: bytes) -> CameraPose:
+def _decode_pose(raw: bytes, precise_raw: bytes | None = None) -> CameraPose:
     if len(raw) != CAMERA_DATA.size:
         raise PoseUnavailableError("Linux Bridge Relay returned an invalid pose block")
     values = CAMERA_DATA.unpack(raw)
     (
         camera_enabled,
         movement_locked,
-        _reserved1,
-        _reserved2,
+        hud_hidden,
+        input_captured,
         fov,
         x,
         y,
@@ -742,6 +1046,33 @@ def _decode_pose(raw: bytes) -> CameraPose:
         yaw,
         roll,
     ) = values
+    if precise_raw is not None and len(precise_raw) == PRECISE_POSE.size:
+        (
+            precise_magic,
+            precise_version,
+            precise_size,
+            precise_sequence,
+            precise_x,
+            precise_y,
+            precise_z,
+            precise_pitch,
+            precise_yaw,
+            precise_roll,
+            precise_fov,
+            _precise_flags,
+        ) = PRECISE_POSE.unpack(precise_raw)
+        if (
+            precise_magic == PRECISE_POSE_MAGIC
+            and precise_version == PRECISE_POSE_VERSION
+            and precise_size == PRECISE_POSE.size
+            and precise_sequence > 0
+            and precise_sequence % 2 == 0
+        ):
+            x, y, z = precise_x, precise_y, precise_z
+            pitch = math.radians(precise_pitch)
+            yaw = math.radians(precise_yaw)
+            roll = math.radians(precise_roll)
+            fov = precise_fov
     return CameraPose(
         x=x,
         y=y,
@@ -765,6 +1096,8 @@ def _decode_pose(raw: bytes) -> CameraPose:
         forward_z=forward_z,
         camera_enabled=bool(camera_enabled),
         movement_locked=bool(movement_locked),
+        hud_hidden=bool(hud_hidden),
+        input_captured=bool(input_captured),
     )
 
 
@@ -793,6 +1126,65 @@ def _decode_control(raw: bytes) -> NativeControlStatus | None:
         state=state,
         error_code=error_code,
         capabilities=capabilities,
+    )
+
+
+def _decode_absolute_pose(raw: bytes) -> AbsolutePoseStatus | None:
+    if len(raw) != CONTROL_HEADER.size:
+        raise PoseUnavailableError("Linux Bridge Relay returned an invalid setPose block")
+    (
+        magic,
+        version,
+        size,
+        request_sequence,
+        acknowledge_sequence,
+        state,
+        error_code,
+        capabilities,
+    ) = CONTROL_HEADER.unpack(raw)
+    if (
+        magic != ABSOLUTE_POSE_MAGIC
+        or version != ABSOLUTE_POSE_VERSION
+        or size != ABSOLUTE_POSE.size
+    ):
+        return None
+    return AbsolutePoseStatus(
+        request_sequence=request_sequence,
+        acknowledge_sequence=acknowledge_sequence,
+        state=state,
+        error_code=error_code,
+        capabilities=capabilities,
+    )
+
+
+def _decode_hud(raw: bytes) -> HudControlStatus | None:
+    if len(raw) != HUD_CONTROL.size:
+        raise PoseUnavailableError("Linux Bridge Relay returned an invalid HUD block")
+    (
+        magic,
+        version,
+        size,
+        request_sequence,
+        acknowledge_sequence,
+        state,
+        error_code,
+        capabilities,
+        hidden,
+        *_reserved,
+    ) = HUD_CONTROL.unpack(raw)
+    if (
+        magic != HUD_CONTROL_MAGIC
+        or version != HUD_CONTROL_VERSION
+        or size != HUD_CONTROL.size
+    ):
+        return None
+    return HudControlStatus(
+        request_sequence=request_sequence,
+        acknowledge_sequence=acknowledge_sequence,
+        state=state,
+        error_code=error_code,
+        capabilities=capabilities,
+        hidden=bool(hidden),
     )
 
 
@@ -836,8 +1228,8 @@ def _decode_trajectory(raw: bytes) -> NativeTrajectoryStatus | None:
     )
 
 
-class LinuxRelayUuuPoseBridge:
-    """Linux-side client for the Windows bridge relay running under Proton."""
+class LinuxRelayCameraPoseBridge:
+    """Linux-side client for the standalone Windows bridge under Proton."""
 
     is_linux_relay = True
 
@@ -897,12 +1289,15 @@ class LinuxRelayUuuPoseBridge:
                 f"Linux Bridge Relay {self.relay_endpoint} is unavailable: {exc}"
             ) from exc
 
-    def _read_state(self) -> tuple[bytes, bytes, bytes, bytes]:
+    def _read_state(self) -> tuple[bytes, bytes, bytes, bytes, bytes, bytes, bytes]:
         payload = self._request(RELAY_READ_STATE)
         expected = (
             BRIDGE_METADATA.size
             + CAMERA_DATA.size
+            + PRECISE_POSE.size
             + CONTROL_HEADER.size
+            + CONTROL_HEADER.size
+            + HUD_CONTROL.size
             + TRAJECTORY_HEADER.size
         )
         if len(payload) != expected:
@@ -912,10 +1307,16 @@ class LinuxRelayUuuPoseBridge:
         cursor += BRIDGE_METADATA.size
         camera = payload[cursor : cursor + CAMERA_DATA.size]
         cursor += CAMERA_DATA.size
+        precise = payload[cursor : cursor + PRECISE_POSE.size]
+        cursor += PRECISE_POSE.size
         control = payload[cursor : cursor + CONTROL_HEADER.size]
         cursor += CONTROL_HEADER.size
+        absolute_pose = payload[cursor : cursor + CONTROL_HEADER.size]
+        cursor += CONTROL_HEADER.size
+        hud = payload[cursor : cursor + HUD_CONTROL.size]
+        cursor += HUD_CONTROL.size
         trajectory = payload[cursor : cursor + TRAJECTORY_HEADER.size]
-        return metadata, camera, control, trajectory
+        return metadata, camera, precise, control, absolute_pose, hud, trajectory
 
     def connect(self) -> None:
         self._read_state()
@@ -924,24 +1325,32 @@ class LinuxRelayUuuPoseBridge:
         return None
 
     def read_metadata(self) -> BridgeMetadata | None:
-        metadata, _camera, _control, _trajectory = self._read_state()
+        metadata, _camera, _precise, _control, _absolute, _hud, _trajectory = self._read_state()
         return _decode_metadata(metadata)
 
     def read_pose(self) -> CameraPose:
-        _metadata, camera, _control, _trajectory = self._read_state()
-        pose = _decode_pose(camera)
-        if not UuuPoseBridge._looks_valid(pose):
+        _metadata, camera, precise, _control, _absolute, _hud, _trajectory = self._read_state()
+        pose = _decode_pose(camera, precise)
+        if not CameraPoseBridge._looks_valid(pose):
             raise PoseUnavailableError(
                 "Linux Bridge Relay is connected, but the injected bridge has not published a valid Pose"
             )
         return pose
 
     def read_control_status(self) -> NativeControlStatus | None:
-        _metadata, _camera, control, _trajectory = self._read_state()
+        _metadata, _camera, _precise, control, _absolute, _hud, _trajectory = self._read_state()
         return _decode_control(control)
 
+    def read_absolute_pose_status(self) -> AbsolutePoseStatus | None:
+        _metadata, _camera, _precise, _control, absolute, _hud, _trajectory = self._read_state()
+        return _decode_absolute_pose(absolute)
+
+    def read_hud_status(self) -> HudControlStatus | None:
+        _metadata, _camera, _precise, _control, _absolute, hud, _trajectory = self._read_state()
+        return _decode_hud(hud)
+
     def read_trajectory_status(self) -> NativeTrajectoryStatus | None:
-        _metadata, _camera, _control, trajectory = self._read_state()
+        _metadata, _camera, _precise, _control, _absolute, _hud, trajectory = self._read_state()
         return _decode_trajectory(trajectory)
 
     def start_native_trajectory(
@@ -1069,10 +1478,10 @@ class LinuxRelayUuuPoseBridge:
             fov_degrees,
         )
         if not all(math.isfinite(value) for value in values):
-            raise ValueError("native UUU control values must be finite")
+            raise ValueError("native camera control values must be finite")
         status = self.read_control_status()
         if status is None or not status.ready:
-            raise PoseUnavailableError("native UUU control is not ready through Linux Bridge Relay")
+            raise PoseUnavailableError("native camera control is not ready through Linux Bridge Relay")
         sequence = max(status.request_sequence, status.acknowledge_sequence) + 1
         if sequence > 0x7FFFFFFF:
             sequence = 1
@@ -1086,19 +1495,149 @@ class LinuxRelayUuuPoseBridge:
             result = self.read_control_status()
             if result is not None and result.acknowledge_sequence == sequence:
                 if result.state != CONTROL_STATE_APPLIED:
-                    raise PoseUnavailableError(f"native UUU command failed: {result.error_message}")
+                    raise PoseUnavailableError(f"native camera command failed: {result.error_message}")
                 return result
             time.sleep(0.001)
         raise TimeoutError("timed out waiting for Linux Bridge Relay camera acknowledgement")
 
+    def set_pose(
+        self,
+        pose: CameraPose,
+        *,
+        enable_camera: bool = True,
+        timeout_seconds: float = 1.0,
+    ) -> CameraPose:
+        values = (
+            pose.x,
+            pose.y,
+            pose.z,
+            pose.yaw_degrees,
+            pose.pitch_degrees,
+            pose.roll_degrees,
+            pose.fov_degrees,
+        )
+        if not all(math.isfinite(value) for value in values):
+            raise ValueError("absolute camera pose values must be finite")
+        if not 1.0 <= pose.fov_degrees <= 179.0:
+            raise ValueError("absolute camera FOV must be between 1 and 179 degrees")
+        status = self.read_absolute_pose_status()
+        if status is None or not status.ready:
+            raise PoseUnavailableError(
+                "absolute setPose is not ready through Linux Bridge Relay"
+            )
+        sequence = max(status.request_sequence, status.acknowledge_sequence) + 1
+        if sequence > 0x7FFFFFFF:
+            sequence = 1
+        payload = ABSOLUTE_POSE.pack(
+            ABSOLUTE_POSE_MAGIC,
+            ABSOLUTE_POSE_VERSION,
+            ABSOLUTE_POSE.size,
+            sequence,
+            status.acknowledge_sequence,
+            CONTROL_STATE_IDLE,
+            0,
+            status.capabilities,
+            float(pose.x),
+            float(pose.y),
+            float(pose.z),
+            float(pose.yaw_degrees),
+            float(pose.pitch_degrees),
+            float(pose.roll_degrees),
+            float(pose.fov_degrees),
+            int(enable_camera),
+            0,
+            0,
+            0,
+        )
+        self._request(RELAY_SET_POSE, payload)
+        deadline = time.monotonic() + max(0.1, timeout_seconds)
+        while time.monotonic() < deadline:
+            result = self.read_absolute_pose_status()
+            if result is not None and result.acknowledge_sequence == sequence:
+                if result.state != CONTROL_STATE_APPLIED:
+                    raise PoseUnavailableError(
+                        f"absolute setPose failed through relay: {result.error_message}"
+                    )
+                break
+            time.sleep(0.001)
+        else:
+            raise TimeoutError("timed out waiting for Linux Bridge Relay setPose acknowledgement")
+        feedback_deadline = time.monotonic() + max(0.1, timeout_seconds)
+        while time.monotonic() < feedback_deadline:
+            feedback = self.read_pose()
+            if math.dist(
+                (feedback.x, feedback.y, feedback.z),
+                (pose.x, pose.y, pose.z),
+            ) <= 0.02:
+                return feedback
+            time.sleep(0.002)
+        raise PoseUnavailableError("relay setPose was acknowledged without precise feedback")
+
+    def set_hud_hidden(
+        self,
+        hidden: bool,
+        *,
+        timeout_seconds: float = 1.0,
+    ) -> HudControlStatus:
+        status = self.read_hud_status()
+        if status is None or not status.ready:
+            raise PoseUnavailableError(
+                "HUD control is not ready through Linux Bridge Relay"
+            )
+        sequence = max(status.request_sequence, status.acknowledge_sequence) + 1
+        if sequence > 0x7FFFFFFF:
+            sequence = 1
+        payload = HUD_CONTROL.pack(
+            HUD_CONTROL_MAGIC,
+            HUD_CONTROL_VERSION,
+            HUD_CONTROL.size,
+            sequence,
+            status.acknowledge_sequence,
+            CONTROL_STATE_IDLE,
+            0,
+            status.capabilities,
+            int(bool(hidden)),
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        )
+        self._request(RELAY_SET_HUD, payload)
+        deadline = time.monotonic() + max(0.1, timeout_seconds)
+        while time.monotonic() < deadline:
+            result = self.read_hud_status()
+            if result is not None and result.acknowledge_sequence == sequence:
+                if result.state != CONTROL_STATE_APPLIED:
+                    raise PoseUnavailableError(
+                        f"HUD visibility command failed through relay: {result.error_message}"
+                    )
+                return result
+            time.sleep(0.001)
+        raise TimeoutError(
+            "timed out waiting for Linux Bridge Relay HUD acknowledgement"
+        )
+
     def status(self) -> dict[str, Any]:
-        metadata_raw, camera_raw, control_raw, trajectory_raw = self._read_state()
+        (
+            metadata_raw,
+            camera_raw,
+            precise_raw,
+            control_raw,
+            absolute_raw,
+            hud_raw,
+            trajectory_raw,
+        ) = self._read_state()
         metadata = _decode_metadata(metadata_raw)
         control = _decode_control(control_raw)
+        absolute_pose = _decode_absolute_pose(absolute_raw)
+        hud = _decode_hud(hud_raw)
         trajectory = _decode_trajectory(trajectory_raw)
         try:
-            pose = _decode_pose(camera_raw)
-            if not UuuPoseBridge._looks_valid(pose):
+            pose = _decode_pose(camera_raw, precise_raw)
+            if not CameraPoseBridge._looks_valid(pose):
                 raise PoseUnavailableError("relay pose is invalid")
         except PoseUnavailableError as exc:
             return {
@@ -1106,6 +1645,8 @@ class LinuxRelayUuuPoseBridge:
                 "message": str(exc),
                 "metadata": metadata,
                 "control": control,
+                "absolute_pose": absolute_pose,
+                "hud": hud,
                 "trajectory": trajectory,
             }
         return {
@@ -1115,16 +1656,18 @@ class LinuxRelayUuuPoseBridge:
             "pose": pose,
             "metadata": metadata,
             "control": control,
+            "absolute_pose": absolute_pose,
+            "hud": hud,
             "trajectory": trajectory,
         }
 
 
 def create_pose_bridge(
     endpoint: str | None = None,
-) -> UuuPoseBridge | LinuxRelayUuuPoseBridge:
+) -> CameraPoseBridge | LinuxRelayCameraPoseBridge:
     """Select the native Windows map or Linux/Proton relay transport."""
 
     selected = endpoint or os.environ.get("BMW_BRIDGE_ENDPOINT")
     if sys.platform.startswith("linux") and selected:
-        return LinuxRelayUuuPoseBridge(selected)
-    return UuuPoseBridge()
+        return LinuxRelayCameraPoseBridge(selected)
+    return CameraPoseBridge()

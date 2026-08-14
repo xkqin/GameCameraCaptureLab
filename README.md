@@ -5,14 +5,34 @@
 <h1 align="center">Game Camera Capture Lab</h1>
 
 <p align="center">
+  <strong>把离线游戏变成可控制、可复现、可批量采集的视觉数据环境</strong>
+</p>
+
+<p align="center">
   <a href="README.md">中文</a> · <a href="README.en.md">English</a>
 </p>
 
 <p align="center">
-  面向多款游戏的相机位姿、场景点、静态扫描与轨迹采集工具箱
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-16A34A?style=flat-square" alt="MIT License"></a>
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/OBS-WebSocket-302E31?style=flat-square&logo=obsstudio&logoColor=white" alt="OBS WebSocket">
+  <img src="https://img.shields.io/badge/UE-Camera_Runtime-0E1128?style=flat-square&logo=unrealengine" alt="UE Camera Runtime">
+  <img src="https://img.shields.io/badge/Open_Source-Free-FF4B4B?style=flat-square" alt="Open Source and Free">
 </p>
 
-这不再是一个只服务 RE9 的项目。仓库把每款游戏封装成独立适配器，同时保留统一的启动中心、JSON Schema 和数据组织方式。当前有 3 个适配器，但注册表会自动发现 `games/*/game.json`，未来可以持续扩展到更多游戏。
+这是一个完整的多游戏相机数据采集项目，不只是自由相机，也不只是截图脚本。它把**相机控制、位姿读取、空间点位、22 方向静态扫描、连续轨迹、OBS 采集、进度恢复和数据清单**连成一条可复现的管线。
+
+项目最初服务于 RE9，现在已重构为动态发现 `games/*/game.json` 的多游戏架构。新增的自研 **UE Camera Runtime** 让我们不再依赖 UUU：可以向受支持的离线 UE 游戏注入自由相机、读取真实 Pose、执行绝对 `setPose`、隐藏 HUD，并在游戏进程内平滑播放轨迹。项目自研代码全部开源、免费。
+
+## 它能完成什么
+
+| 层级 | 能力 | 产物 |
+|---|---|---|
+| 相机层 | 自由移动、鼠标视角、Pose 读取、绝对 `setPose`、FOV、HUD | 可控制且可测量的相机 |
+| 空间层 | 手工记录边界、3D 点位图、分层铺点、导入点位文件 | 可复用的场景扫描计划 |
+| 静态采集 | 每个空间点自动采集 22 个方向，OBS 输出 1920×1080 JPG | 图片、目标/实测 Pose、manifest |
+| 轨迹采集 | 自动加载轨迹、连续回放、录像、批次进度与断点继续 | 视频、关键帧、逐帧 Pose、时间线 |
+| 工程层 | 多游戏注册表、统一 Schema、Windows/Linux、报警与恢复 | 可扩展、可审计的数据采集系统 |
 
 ## Demo
 
@@ -24,19 +44,59 @@
 
 上方预览来自实际 KCD2 自由相机运镜。点击预览可打开 [H.264 完整 Demo](docs/assets/game-camera-capture-demo.mp4)。
 
+## 自研 UE 自由相机：采集链的新增核心能力
+
+```text
+游戏进程
+  └─ UeCameraInjector.exe
+      └─ UeCameraRuntime.dll
+          ├─ Game Profile：进程名、签名、ABI、能力声明
+          ├─ Camera Hook：读取 / 覆盖 FMinimalViewInfo
+          ├─ Shared-memory ABI：Pose / setPose / HUD / Trajectory
+          └─ Python Capture Studio：点位 / OBS / 数据集 / UI
+```
+
+### 原理与算法
+
+1. **Profile 驱动定位**：注入器先按进程名选择游戏 profile；离线检查器和运行时只扫描 PE 可执行段，通过带通配符的字节签名寻找相机路径。
+2. **安全匹配门**：每个 Hook 都声明允许的最少/最多匹配数。数量不符就拒绝安装，绝不在猜测地址上写内存。
+3. **相机 Hook**：当前 UE5 LWC 适配器在已验证的 `FMinimalViewInfo` 复制路径安装 14-byte 绝对跳转，汇编适配器保留寄存器契约，同时观察或覆盖 double 精度 XYZ、Yaw/Pitch/Roll 与 FOV。
+4. **无撕裂 Pose 发布**：相机覆盖值使用双缓冲原子切换，精确 Pose 使用序列锁发布，避免 Python/UI 读到一半新、一半旧的帧。
+5. **相机局部坐标控制**：由 Yaw/Pitch/Roll 构造 `forward/right/up` 正交基，WASD/QE 的位移在相机坐标系中积分；Shift/Ctrl 改变速度倍率，鼠标增量控制朝向。
+6. **原子绝对位姿**：`setPose(x, y, z, yaw, pitch, roll, fov)` 作为一个带序列号的命令提交，运行时在相机帧路径一次性采用完整目标，而不是让 Python 连续模拟按键走过去。
+7. **进程内平滑轨迹**：Python 只提交关键帧。运行时使用高精度单调时钟推进时间，对位置、角度和 FOV 执行三次 Hermite 插值；角度先做最短弧展开，结束后保持终点，不回跳起点。
+
+对相邻关键帧，核心插值为：
+
+```text
+p(u) = h00(u)p0 + h10(u)Δt·m0 + h01(u)p1 + h11(u)Δt·m1,  u ∈ [0, 1]
+```
+
+这让控制循环留在游戏进程中，Python 负责规划和记录，避免逐帧 IPC、脚本调度和磁盘 I/O 把抖动带进运镜。
+
+### 为什么容易扩展到更多 UE5 游戏
+
+我们复用的是整套**注入器、运行时、共享内存协议、轨迹引擎、采集 UI、OBS 管线和数据 Schema**，新游戏只补最薄的一层：
+
+- 如果目标游戏共享现有相机 ABI，通常只需增加一个 profile：进程名、签名、匹配数量和坐标声明；
+- 如果相机结构或寄存器契约不同，再增加一个紧凑的 ABI adapter，其余采集系统全部复用；
+- 每个 profile 都必须重新通过 Pose、绝对 `setPose`、轨迹画面和截图验收，不能因为“同为 UE5”就盲目启用。
+
+所以，对共享 ABI 的 UE5 游戏，适配可能真的只是改一点点配置；对自定义相机管线的游戏，工作集中在一个小适配层，而不是重写整个项目。当前仓库登记并完成运行时 Pose 验证的首个 UE profile 是《黑神话：悟空》。本功能只面向离线单机和获授权的研究环境，不支持在线或反作弊场景。
+
 ## 当前游戏适配器
 
-| 游戏 | 引擎 | 位姿读取 | 绝对位姿控制 | 点位/静态采集 | 轨迹能力 | 成熟度 |
-|---|---|---|---|---|---|---|
-| RE Engine / RE9 | RE Engine | 已验证 | 已验证 Lua `setPose` | 已验证 | 已验证回放 | 稳定 |
-| Kingdom Come: Deliverance II | CryEngine | 已验证 | 游戏画面结果未确认 | 已实现，OBS 联动 | 已验证相对随机运镜；精确回放待确认 | Beta |
-| Black Myth: Wukong | Unreal Engine 5 | 需要 UUU Connector 握手 | UUU 相对步进＋Pose 反馈闭环到绝对目标；非原子 `setPose`，游戏内验收待完成 | 已实现 | 原生 Pose 闭环回放，实验性 | 实验性 |
+| 游戏 | 引擎 | 位姿读取 | 绝对位姿控制 | 静态/轨迹采集 | 成熟度 |
+|---|---|---|---|---|---|
+| RE Engine / RE9 | RE Engine | 已验证 | 已验证 Lua `setPose` | 已验证 | 稳定 |
+| Kingdom Come: Deliverance II | CryEngine | 已验证 | 画面结果待完整确认 | OBS 与批量采集已实现 | Beta |
+| Black Myth: Wukong | Unreal Engine 5 | 自研 Runtime 已实机读取 | 原子 `setPose` 已实现，最终画面验收待完成 | 22 方向静态与进程内轨迹已接入 | 实验性 |
 
-“能读到 pose”“内存写回值变化”和“游戏画面确实到达目标位姿”是三件不同的事。上表只把实际验证过的能力标为已验证，不把 RE9 的能力自动套到其他游戏。
+“读到 Pose”“命令被运行时接收”和“游戏画面到达目标”是三层不同的验收。表格不会把一个游戏的结果自动套到另一个游戏。
 
 ## 界面、规划与数据输出
 
-之前制作的界面图、流程图和数据预览继续作为项目设计的一部分保留。它们主要展示成熟 RE Engine 适配器的完整工作流，也作为后续游戏适配器统一交互的参考。
+原项目的界面图、轨迹图、流程图和数据预览全部保留，它们仍然是这套采集工具主线的一部分。
 
 <table>
   <tr>
@@ -52,128 +112,66 @@
     <td><img src="docs/assets/pipeline.png" alt="Capture pipeline"></td>
   </tr>
   <tr>
-    <td><b>轨迹回放设计</b><br>关键帧、相机路径和实际位姿反馈分开记录。</td>
+    <td><b>轨迹回放设计</b><br>关键帧、相机路径和实测 Pose 分开记录。</td>
     <td><b>完整数据管线</b><br>Pose、OBS、帧对齐、评分与数据集输出。</td>
   </tr>
 </table>
 
 ![Dataset preview](docs/assets/dataset-preview.png)
 
-旧版 RE9 轨迹动画和所有原始说明也仍保存在 [`docs/RE9_ORIGINAL_GUIDE.md`](docs/RE9_ORIGINAL_GUIDE.md)，没有删除。
+旧版 RE9 轨迹动画和详细说明继续保存在 [RE9_ORIGINAL_GUIDE.md](docs/RE9_ORIGINAL_GUIDE.md)。
 
-## Windows 快速开始
-
-1. 克隆仓库并安装 Python 3.10 或更高版本。
-2. 双击 `启动多游戏采集中心.bat`。
-3. 在启动中心选择游戏，查看能力状态、说明和示例文件。
-4. 第三方相机工具按对应游戏说明放到本地目录；仓库不分发闭源 DLL、UUU、PAK、存档或游戏文件。
-
-也可以直接启动：
+## 快速开始
 
 ```powershell
+git clone https://github.com/xkqin/GameCameraCaptureLab.git
+cd GameCameraCaptureLab
 python launcher\game_capture_hub.py
 ```
 
-RE9 的完整依赖较多，首次使用请在启动中心运行“安装 RE9 Python 环境”，或执行：
+Windows 也可以直接双击 `启动多游戏采集中心.bat`，然后选择游戏适配器。各游戏的准备条件、快捷键和验证状态见文末适配器指南。
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup_windows.ps1
-```
+Linux/Proton 支持采集 UI、点位/轨迹文件、OBS WebSocket 和回环 Relay；注入器与 Runtime 仍需在游戏所属 Proton 前缀中运行。未配置实时链路时，界面只进入离线/等待状态，不会伪造已连接。
 
-KCD2 与黑神话适配器仍可使用各自目录内的独立启动脚本。
+## 数据与仓库结构
 
-## Linux/Proton 兼容版本
+统一格式位于 [`schemas/`](schemas/)：
 
-黑神话适配器现在提供 Linux 启动脚本，可运行采集界面的跨平台部分：
-
-```bash
-cd games/black-myth-wukong
-sudo apt install python3 python3-venv python3-tk  # Debian/Ubuntu 缺少依赖时执行
-chmod +x launch_bmw_capture_studio.sh
-./launch_bmw_capture_studio.sh
-```
-
-也可以在启动时预选轨迹：
-
-```bash
-./launch_bmw_capture_studio.sh --trajectory-file /path/to/trajectory.json
-```
-
-Linux 版本支持启动界面、JSON/CSV 点位和轨迹管理、离线数据处理、打开输出目录、OBS WebSocket，以及配置 Proton Bridge Relay 后的黑神话实时相机链路。UUU 5.8.21 与 Bridge 仍是运行在 Proton 内的 Windows 二进制；Linux 界面通过本机回环 TCP Relay 访问 Pose、控制和轨迹 ABI。将 `BMW_BRIDGE_PORT=28791 %command%` 写入游戏 Steam 启动选项，再在启动采集器前执行 `export BMW_BRIDGE_ENDPOINT=127.0.0.1:28791`。Bridge DLL 仍需通过 UUU 加载到 Proton 游戏进程。未配置 Relay 时，界面会明确停在等待/兼容状态，不会误报相机已连接；Windows 版本仍使用 `launch_bmw_capture_studio.ps1`。
-
-飞书报警和自动修复复用 RE9 的配置字段：程序按 `configs/linux.local.yaml` → `configs/linux.yaml` → `configs/default.yaml` 读取 `notifications.feishu` 和 `automation.codex_recovery`。真实 Webhook、签名密钥和 Codex 高权限修复默认关闭，建议只写入未提交的 `linux.local.yaml` 或使用 `RE9_FEISHU_*`、`RE9_CODEX_*` 环境变量。
-
-## 仓库结构
+- `camera-pose/v1`：XYZ、旋转、FOV、坐标系与单位；
+- `camera-point-set/v1`：空间点位、场景和采集元数据；
+- `camera-trajectory/v1`：带时间的轨迹关键帧；
+- `ue_camera_profile_v1`：UE 进程、Hook 签名、ABI 和能力声明。
 
 ```text
 GameCameraCaptureLab/
-├─ games/
-│  ├─ re9/                       # 清单与说明；成熟实现保留在根目录
-│  ├─ kcd2/                      # 独立源码、UI、测试和可公开示例
-│  └─ black-myth-wukong/         # UUU 适配器与 Native Bridge 源码
-├─ src/
-│  ├─ game_camera_capture_lab/   # 动态注册表与多游戏启动中心
-│  └─ re9_pose_recorder/         # 既有 RE Engine 采集实现
-├─ schemas/                      # 统一 Pose、Point Set、Trajectory JSON Schema
-├─ launcher/                     # 无需安装即可运行的启动入口
-├─ data/                         # RE9 点位、扫描计划与代表性轨迹
-├─ configs/                      # RE9 平台与扫描配置
-├─ docs/                         # 架构、格式、扩展和原始 RE9 指南
-└─ tests/                        # 根项目与注册表测试
+├─ games/                       # RE9、KCD2、Black Myth 与未来适配器
+├─ runtime/ue-camera-runtime/   # 自研 UE profile、扫描器和通用注入器
+├─ src/                         # 启动中心、注册表与成熟 RE9 采集实现
+├─ schemas/                     # 跨游戏 Pose、Point、Trajectory、UE Profile
+├─ data/                        # 点位、扫描计划和代表性轨迹
+├─ configs/                     # 平台、OBS、报警与自动恢复配置
+├─ docs/                        # 架构、格式、图片和历史指南
+└─ tests/                       # 根项目及各适配器离线测试
 ```
 
-每个游戏适配器都拥有自己的源码、测试、运行数据目录和能力声明。启动中心不会写死游戏数量，也不会通过名称分支判断游戏。
-
-## 统一数据格式
-
-仓库定义了三个可跨游戏交换的版本化格式：
-
-- `camera-pose/v1`：单个位姿；
-- `camera-point-set/v1`：场景点位集合；
-- `camera-trajectory/v1`：带时间的轨迹关键帧。
-
-Schema 位于 [`schemas/`](schemas/)，可直接查看的跨游戏示例位于 [`schemas/examples/`](schemas/examples/)。各适配器可以继续读取原生格式，再通过转换器映射到统一格式；坐标系、角度单位和游戏 ID 必须显式记录，禁止默默猜测。
-
-更多说明见 [文件格式](docs/FILE_FORMATS.md)。
-
-## 新增游戏
-
-新增适配器不需要修改启动中心：
-
-1. 创建 `games/<game-id>/game.json`；
-2. 放入独立源码、启动脚本、测试和少量可公开示例；
-3. 如实声明 pose、绝对控制、静态采集和轨迹回放的验证状态；
-4. 运行注册表检查和测试。
-
-完整约定见 [ADDING_A_GAME.md](docs/ADDING_A_GAME.md) 和 [ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+新增普通游戏适配器见 [ADDING_A_GAME.md](docs/ADDING_A_GAME.md)；UE 相机 profile 见 [UE Camera Runtime](runtime/ue-camera-runtime/README.md)。
 
 ## 开发与验证
 
 ```powershell
 $env:PYTHONPATH = "src"
 python -m game_camera_capture_lab.validate
-python -m compileall -q src launcher games
 python -m unittest discover -s tests -v
-python -m unittest discover -s games\kcd2\tests -v
+
+$env:PYTHONPATH = "games\black-myth-wukong\src"
 python -m unittest discover -s games\black-myth-wukong\tests -v
 ```
 
-KCD2 和黑神话测试运行时，需要分别把对应 `games/<id>/src` 加入 `PYTHONPATH`；仓库验证脚本会在发布前按适配器隔离运行。
+发布前还会检查 profile Schema、Hook 匹配数量、原生构建和 Git diff。游戏升级后若签名失效，Runtime 会拒绝 Hook，必须重新审计 profile。
 
-## 分发边界
+## 开源、免费与分发边界
 
-本仓库只提交自主编写的源码、配置模板、格式定义、测试和小型示例数据。以下内容被明确排除：
-
-- 商业游戏文件、个人存档与完整进度存档；
-- KCD2 Camera Tools、UUU 等闭源第三方二进制；
-- 游戏 Mod/PAK，除非后续确认有明确再分发许可；
-- 截图、长视频、运行日志、模型缓存和完整采集数据集。
-
-Demo 视频由项目实际采集流程生成，是文档素材，不是游戏或第三方工具的再分发包。
-
-## 历史兼容
-
-仓库由原 `RE9_Still_Scan` 演进而来。为避免破坏已有脚本和 Windows 长路径，RE9 的成熟实现暂时保留在根目录；旧版详细首页归档在 [RE9_ORIGINAL_GUIDE.md](docs/RE9_ORIGINAL_GUIDE.md)。新功能与项目品牌统一使用 **Game Camera Capture Lab**。
+本项目自研源码以 [MIT License](LICENSE) 开源，任何人都可以免费学习、修改和扩展。仓库只提交自主编写的源码、配置模板、Schema、测试和小型示例，不包含商业游戏文件、存档、闭源 UUU/KCD2 Camera Tools、未经许可的 Mod/PAK、密钥、运行日志或完整采集数据集。
 
 ## 适配器指南
 

@@ -250,11 +250,11 @@ class TrajectoryCaptureTests(unittest.TestCase):
             self.assertTrue(trajectory_capture_complete(output))
             self.assertEqual(
                 payload["control_method"],
-                "uuu_native_relative_steps_pose_feedback_closed_loop",
+                "standalone_absolute_set_pose_feedback",
             )
             self.assertTrue(payload["absolute_target_pose"])
-            self.assertFalse(payload["atomic_absolute_set_pose"])
-            self.assertFalse(payload["absolute_set_pose"])
+            self.assertTrue(payload["atomic_absolute_set_pose"])
+            self.assertTrue(payload["absolute_set_pose"])
             self.assertEqual(mover.targets, [camera_pose(1.0), camera_pose(2.0)])
             self.assertEqual(mover.recording_states, [False, True])
             self.assertFalse(payload["pre_record_positioning"]["included_in_video"])
@@ -297,14 +297,15 @@ class TrajectoryCaptureTests(unittest.TestCase):
             self.assertTrue(payload["smooth_playback"])
             self.assertEqual(
                 payload["control_method"],
-                "uuu_native_continuous_trajectory_interpolation",
+                "standalone_in_process_absolute_hermite",
             )
             self.assertEqual(
                 payload["native_controller_revision"],
-                "v7_clear_uuu_smoothing_before_hermite",
+                "v9_standalone_input_hud_absolute_pose",
             )
-            self.assertEqual(payload["bridge_metadata_version"], 7)
-            self.assertTrue(payload["uuu_smoothing_reset_before_playback"])
+            self.assertEqual(payload["bridge_metadata_version"], 9)
+            self.assertFalse(payload["standalone_smoothing_reset_before_playback"])
+            self.assertTrue(payload["terminal_pose_held"])
             self.assertTrue(payload["pre_record_positioning"]["stable_pose_verified"])
             self.assertEqual(len(bridge.started_points), 2)
             self.assertEqual(bridge.started_hz, 60.0)

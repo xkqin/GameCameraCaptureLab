@@ -7,25 +7,32 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
 from bmw_capture_studio.bridge import (
+    ABSOLUTE_POSE,
+    ABSOLUTE_POSE_OFFSET,
     BRIDGE_METADATA,
     CAMERA_DATA,
     CONTROL_COMMAND,
     CONTROL_HEADER,
     CONTROL_OFFSET,
+    HUD_CONTROL,
+    HUD_CONTROL_OFFSET,
     TRAJECTORY_HEADER,
     TRAJECTORY_KEYFRAME,
     TRAJECTORY_OFFSET,
     FLAG_BRIDGE_LOADED,
     FLAG_BUFFER_REQUESTED,
     FLAG_CONNECT_CALLED,
+    FLAG_HUD_CONTROL_READY,
+    FLAG_INPUT_CAPTURE_READY,
     METADATA_VERSION,
     BridgeMetadata,
     NativeControlStatus,
-    UuuPoseBridge,
+    CameraPoseBridge,
 )
 from bmw_capture_studio.capture_runner import CaptureRunner
 from bmw_capture_studio.connection import classify_connection
@@ -316,24 +323,34 @@ class CoreTests(unittest.TestCase):
             )
             self.assertEqual(list(choices.values()), [first.resolve(), second.resolve()])
 
-    def test_v7_timed_playback_clears_smoothing_and_has_no_terminal_feedback(self) -> None:
-        source = (
-            Path(__file__).resolve().parents[1] / "native" / "BmwUuuPoseBridge.cpp"
-        ).read_text(encoding="utf-8")
-        self.assertEqual(METADATA_VERSION, 7)
-        self.assertIn("constexpr std::uint32_t kMetadataVersion = 7;", source)
-        self.assertIn("kMoveRightSmoothingOffset = 0x5C", source)
-        self.assertIn("kMoveForwardSmoothingOffset = 0x60", source)
-        self.assertIn("kMoveUpSmoothingOffset = 0x64", source)
-        self.assertIn("kPitchSmoothingOffset = 0x68", source)
-        self.assertIn("kYawSmoothingOffset = 0x6C", source)
-        self.assertIn("kRollSmoothingOffset = 0x70", source)
-        self.assertIn("clearUuuSmoothingState(feature)", source)
-        self.assertIn("Start from rest.", source)
-        self.assertIn("Finish at rest", source)
-        self.assertIn("mid-path and terminal feedback are deliberately excluded", source)
-        self.assertNotIn("worldX += (target.x - camera.x) * 0.25f;", source)
-        self.assertNotIn("worldX = (target.x - camera.x) * 0.85f;", source)
+    def test_v9_standalone_bridge_owns_input_hud_and_holds_terminal(self) -> None:
+        native = Path(__file__).resolve().parents[1] / "native" / "standalone"
+        protocol = (native / "BmwCameraBridgeProtocol.h").read_text(encoding="utf-8")
+        bridge = (native / "BmwCameraBridge.cpp").read_text(encoding="utf-8")
+        input_layer = (native / "BmwCameraInput.cpp").read_text(encoding="utf-8")
+        hooks = (native / "BmwCameraHooks.asm").read_text(encoding="utf-8")
+        trajectory = (native / "BmwCameraTrajectory.cpp").read_text(encoding="utf-8")
+        self.assertEqual(METADATA_VERSION, 9)
+        self.assertIn("kMetadataVersion = 9", protocol)
+        self.assertIn("double x;", protocol)
+        self.assertIn("AbsolutePoseControl", protocol)
+        self.assertIn("WH_KEYBOARD_LL", input_layer)
+        self.assertIn("WH_MOUSE_LL", input_layer)
+        self.assertIn("isCameraControlKey", input_layer)
+        self.assertIn("inputConsumeMouseDelta", bridge)
+        self.assertIn("BMW_CAMERA_MOUSE_SENSITIVITY", bridge)
+        self.assertIn("return 1;", input_layer)
+        self.assertIn("return wasSwallowed", input_layer)
+        self.assertIn("matching release", input_layer)
+        self.assertNotIn("GetAsyncKeyState", bridge)
+        self.assertIn("BMW_CAMERA_FAST_MULTIPLIER", bridge)
+        self.assertIn("kDefaultFastMultiplier = 5.0f", bridge)
+        self.assertIn("BmwHudHook", hooks)
+        self.assertIn("xorps xmm0, xmm0", hooks)
+        self.assertIn("publishOverride(viewFromAbsolute(command))", bridge)
+        self.assertIn("Deliberately hold the final pose", bridge)
+        self.assertIn("return 0.0;", trajectory)
+        self.assertNotIn("UniversalUE5Unlocker", bridge)
 
     def test_camera_structure_is_84_bytes(self) -> None:
         self.assertEqual(CAMERA_DATA.size, 84)
@@ -350,6 +367,14 @@ class CoreTests(unittest.TestCase):
     def test_native_control_structure_is_64_bytes(self) -> None:
         self.assertEqual(CONTROL_HEADER.size + CONTROL_COMMAND.size, 64)
         self.assertEqual(CONTROL_OFFSET, 512)
+
+    def test_absolute_pose_structure_preserves_lwc_precision(self) -> None:
+        self.assertEqual(ABSOLUTE_POSE.size, 88)
+        self.assertEqual(ABSOLUTE_POSE_OFFSET, 768)
+
+    def test_hud_control_structure_is_64_bytes(self) -> None:
+        self.assertEqual(HUD_CONTROL.size, 64)
+        self.assertEqual(HUD_CONTROL_OFFSET, 896)
 
     def test_native_trajectory_structure_is_64_bytes(self) -> None:
         self.assertEqual(TRAJECTORY_HEADER.size, 64)
@@ -373,54 +398,63 @@ class CoreTests(unittest.TestCase):
         and os.environ.get("BMW_RUN_DLL_INTEGRATION_TESTS") == "1",
         "set BMW_RUN_DLL_INTEGRATION_TESTS=1 to load the compiled bridge",
     )
-    def test_native_bridge_records_connector_handshake(self) -> None:
+    def test_native_bridge_loads_as_standalone_without_uuu(self) -> None:
         import ctypes
 
-        dll = ctypes.WinDLL(str(BRIDGE_PATH))
-        dll.connectFromCameraTools.argtypes = []
-        dll.connectFromCameraTools.restype = ctypes.c_bool
-        dll.getDataFromCameraToolsBuffer.argtypes = []
-        dll.getDataFromCameraToolsBuffer.restype = ctypes.c_void_p
-        bridge = UuuPoseBridge()
+        # A running capture UI can keep the game's named mapping alive after
+        # the game exits. Loading a second runtime into this test process would
+        # then race with that real session and make the PID assertion invalid.
+        existing_bridge = CameraPoseBridge()
         try:
-            initial = bridge.read_metadata()
+            existing = existing_bridge.read_metadata()
+        finally:
+            existing_bridge.close()
+        if existing is not None and existing.process_id not in {0, os.getpid()}:
+            self.skipTest(
+                f"camera shared memory is owned by external PID {existing.process_id}"
+            )
+
+        dll = ctypes.WinDLL(str(BRIDGE_PATH))
+        dll.BMWCameraBridge_IsStandalone.argtypes = []
+        dll.BMWCameraBridge_IsStandalone.restype = ctypes.c_bool
+        bridge = CameraPoseBridge()
+        try:
+            initial = None
+            deadline = time.monotonic() + 2.0
+            while initial is None and time.monotonic() < deadline:
+                initial = bridge.read_metadata()
+                if initial is None:
+                    time.sleep(0.01)
             self.assertIsNotNone(initial)
             assert initial is not None
             self.assertEqual(initial.process_id, os.getpid())
-            self.assertEqual(initial.buffer_request_count, 0)
-            self.assertTrue(dll.connectFromCameraTools())
-            self.assertTrue(dll.getDataFromCameraToolsBuffer())
-            connected = bridge.read_metadata()
-            self.assertIsNotNone(connected)
-            assert connected is not None
-            self.assertGreaterEqual(connected.connect_call_count, 1)
-            self.assertGreaterEqual(connected.buffer_request_count, 1)
-            self.assertTrue(connected.connector_called)
-            self.assertTrue(connected.buffer_requested)
+            self.assertTrue(dll.BMWCameraBridge_IsStandalone())
+            self.assertFalse(initial.hooks_installed)
+            self.assertFalse(initial.pose_observed)
             control = bridge.read_control_status()
             self.assertIsNotNone(control)
             assert control is not None
-            # Unit tests load the bridge without UUU; native control must stay
-            # safely unavailable instead of dereferencing version offsets.
+            # Loading into Python cannot match the game camera signature.
             self.assertFalse(control.ready)
         finally:
             bridge.close()
 
-    def test_connection_blocks_uuu_before_bridge(self) -> None:
+    def test_connection_blocks_third_party_camera_before_bridge(self) -> None:
         report = classify_connection(
             {
                 "game_running": True,
                 "module_scan_ok": True,
                 "pid": 42,
                 "bridge_loaded": False,
-                "uuu_loaded": True,
+                "conflicting_camera_tool": True,
+                "conflicting_modules": ["universalue5unlocker.dll"],
             },
             None,
             {"connected": False},
         )
-        self.assertEqual(report.code, "restart_required")
+        self.assertEqual(report.code, "camera_tool_conflict")
 
-    def test_connection_requires_real_connector_handshake(self) -> None:
+    def test_connection_requires_installed_camera_hooks(self) -> None:
         metadata = BridgeMetadata(
             version=METADATA_VERSION,
             size=BRIDGE_METADATA.size,
@@ -436,12 +470,12 @@ class CoreTests(unittest.TestCase):
                 "module_scan_ok": True,
                 "pid": 42,
                 "bridge_loaded": True,
-                "uuu_loaded": True,
+                "conflicting_camera_tool": False,
             },
             metadata,
             {"connected": False},
         )
-        self.assertEqual(report.code, "handshake_missing")
+        self.assertEqual(report.code, "hook_unavailable")
 
     def test_connection_ready_needs_pose_and_camera(self) -> None:
         metadata = BridgeMetadata(
@@ -451,7 +485,11 @@ class CoreTests(unittest.TestCase):
             connect_call_count=1,
             buffer_request_count=1,
             flags=(
-                FLAG_BRIDGE_LOADED | FLAG_CONNECT_CALLED | FLAG_BUFFER_REQUESTED
+                FLAG_BRIDGE_LOADED
+                | FLAG_CONNECT_CALLED
+                | FLAG_BUFFER_REQUESTED
+                | FLAG_INPUT_CAPTURE_READY
+                | FLAG_HUD_CONTROL_READY
             ),
             load_tick_milliseconds=1,
         )
@@ -462,13 +500,15 @@ class CoreTests(unittest.TestCase):
                 "module_scan_ok": True,
                 "pid": 42,
                 "bridge_loaded": True,
-                "uuu_loaded": True,
+                "conflicting_camera_tool": False,
             },
             metadata,
             {
                 "connected": True,
                 "pose": current,
                 "control": FakeControl(True),
+                "absolute_pose": FakeControl(True),
+                "hud": FakeControl(True),
                 "trajectory": FakeTrajectory(),
             },
         )
@@ -482,7 +522,13 @@ class CoreTests(unittest.TestCase):
             process_id=42,
             connect_call_count=1,
             buffer_request_count=1,
-            flags=FLAG_BRIDGE_LOADED | FLAG_CONNECT_CALLED | FLAG_BUFFER_REQUESTED,
+            flags=(
+                FLAG_BRIDGE_LOADED
+                | FLAG_CONNECT_CALLED
+                | FLAG_BUFFER_REQUESTED
+                | FLAG_INPUT_CAPTURE_READY
+                | FLAG_HUD_CONTROL_READY
+            ),
             load_tick_milliseconds=1,
         )
         report = classify_connection(
@@ -491,7 +537,7 @@ class CoreTests(unittest.TestCase):
                 "module_scan_ok": True,
                 "pid": 42,
                 "bridge_loaded": True,
-                "uuu_loaded": True,
+                "conflicting_camera_tool": False,
             },
             metadata,
             {"connected": True, "pose": pose()},
@@ -505,7 +551,13 @@ class CoreTests(unittest.TestCase):
             process_id=42,
             connect_call_count=1,
             buffer_request_count=1,
-            flags=FLAG_BRIDGE_LOADED | FLAG_CONNECT_CALLED | FLAG_BUFFER_REQUESTED,
+            flags=(
+                FLAG_BRIDGE_LOADED
+                | FLAG_CONNECT_CALLED
+                | FLAG_BUFFER_REQUESTED
+                | FLAG_INPUT_CAPTURE_READY
+                | FLAG_HUD_CONTROL_READY
+            ),
             load_tick_milliseconds=1,
         )
         report = classify_connection(
@@ -514,10 +566,16 @@ class CoreTests(unittest.TestCase):
                 "module_scan_ok": True,
                 "pid": 42,
                 "bridge_loaded": True,
-                "uuu_loaded": True,
+                "conflicting_camera_tool": False,
             },
             metadata,
-            {"connected": True, "pose": pose(), "control": FakeControl(True)},
+            {
+                "connected": True,
+                "pose": pose(),
+                "control": FakeControl(True),
+                "absolute_pose": FakeControl(True),
+                "hud": FakeControl(True),
+            },
         )
         self.assertEqual(report.code, "smooth_trajectory_outdated")
 
@@ -774,7 +832,7 @@ class CoreTests(unittest.TestCase):
             self.assertEqual(result.captured_count, 2)
             self.assertEqual(payload["status"], "complete")
             self.assertTrue(payload["absolute_target_pose"])
-            self.assertFalse(payload["atomic_absolute_set_pose"])
+            self.assertTrue(payload["atomic_absolute_set_pose"])
             self.assertFalse(payload["restore_attempted"])
             self.assertEqual(len(list((result.session_dir / "images").glob("*.png"))), 2)
 

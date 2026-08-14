@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "id": "black-myth-wukong",
+  "name": "Black Myth: Wukong",
+  "engine": "ue5",
+  "process_names": [
+    "b1-Win64-Shipping.exe",
+    "BlackMythWukong.exe"
+  ],
+  "module": "main_executable",
+  "camera_hook": {
+    "abi": "fminimal_view_info_copy_lwc_v1",
+    "pattern": "0F 10 02 ?? ?? ?? ?? ?? ?? 0F 11 01 F2 0F 10 4A 10 F2 0F 11 49 10 0F 10 42 18 0F 11 41 18 F2 0F 10 4A 28 F2 0F 11 49 28 8B 42 30 89 41 30 8B 42 34 89 41 34 8B 42 38 89 41 38",
+    "hook_offset": 9,
+    "continuation_offset": 37,
+    "min_matches": 1,
+    "max_matches": 2
+  },
+  "hud_hook": {
+    "abi": "black_myth_hud_opacity_v1",
+    "pattern": "0F 10 83 70 02 00 00 0F 11 4D 8C 0F 59 F0 0F 11 45 08 0F 11 74 24 6C",
+    "hook_offset": 0,
+    "continuation_offset": 14,
+    "min_matches": 1,
+    "max_matches": 1
+  },
+  "coordinate_system": {
+    "position_unit": "game_units",
+    "position_scale_to_meters": null,
+    "handedness": "unknown",
+    "rotation_unit": "degrees"
+  },
+  "capabilities": [
+    "free_camera",
+    "pose_read",
+    "relative_pose_control",
+    "absolute_pose_control",
+    "trajectory_interpolation",
+    "hud_visibility"
+  ]
+}

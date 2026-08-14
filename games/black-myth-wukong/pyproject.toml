@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "black-myth-wukong-camera-capture-studio"
 version = "0.1.0"
-description = "Simple UUU pose, point-file, still capture, and trajectory capture UI for Black Myth: Wukong."
+description = "Standalone free-camera, absolute-pose, still-capture, and trajectory-capture UI for Black Myth: Wukong."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

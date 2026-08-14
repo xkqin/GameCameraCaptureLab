@@ -42,6 +42,27 @@ class OBSRestartTests(unittest.TestCase):
         self.assertNotIn("--profile", command)
         self.assertNotIn("--collection", command)
 
+    def test_default_command_falls_back_to_local_appdata_install(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            local_appdata = Path(directory) / "AppData" / "Local"
+            executable = (
+                local_appdata
+                / "Programs"
+                / "obs-studio"
+                / "bin"
+                / "64bit"
+                / "obs64.exe"
+            )
+            executable.parent.mkdir(parents=True)
+            executable.write_bytes(b"stub")
+            command = default_obs_restart_command(
+                "windows",
+                environ={"LOCALAPPDATA": str(local_appdata)},
+                which=lambda _name: None,
+            )
+
+        self.assertEqual(command, str(executable))
+
     def test_linux_command_is_split_without_shell(self) -> None:
         self.assertEqual(platform_key("linux"), "linux")
         self.assertEqual(command_for_popen("/usr/bin/obs --verbose", "linux"), ["/usr/bin/obs", "--verbose"])

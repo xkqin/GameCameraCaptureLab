@@ -5,14 +5,34 @@
 <h1 align="center">Game Camera Capture Lab</h1>
 
 <p align="center">
+  <strong>Turn offline games into controllable, reproducible visual-data environments.</strong>
+</p>
+
+<p align="center">
   <a href="README.md">中文</a> · <a href="README.en.md">English</a>
 </p>
 
 <p align="center">
-  A multi-game toolkit for camera poses, scene points, still scans, and trajectory capture.
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-16A34A?style=flat-square" alt="MIT License"></a>
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/OBS-WebSocket-302E31?style=flat-square&logo=obsstudio&logoColor=white" alt="OBS WebSocket">
+  <img src="https://img.shields.io/badge/UE-Camera_Runtime-0E1128?style=flat-square&logo=unrealengine" alt="UE Camera Runtime">
+  <img src="https://img.shields.io/badge/Open_Source-Free-FF4B4B?style=flat-square" alt="Open Source and Free">
 </p>
 
-This repository is no longer limited to RE9. Each game is packaged as an independent adapter while sharing one launcher, versioned JSON Schemas, and a common data layout. The registry discovers `games/*/game.json`, so more games can be added without rewriting the launcher.
+This is a complete multi-game camera-data capture project—not merely a free camera and not merely a screenshot script. It connects **camera control, pose feedback, spatial point maps, 22-view still scans, continuous trajectories, OBS capture, resumable progress, and dataset manifests** into one reproducible pipeline.
+
+The project began with RE9 and now discovers independent adapters through `games/*/game.json`. Its new, self-developed **UE Camera Runtime** removes the UUU dependency for supported offline Unreal games: inject a free camera, read real poses, issue absolute `setPose`, hide the HUD, and play smooth paths inside the game process. All project-owned code is open source and free.
+
+## What it captures
+
+| Layer | Capability | Output |
+|---|---|---|
+| Camera | Free movement, mouse look, pose readout, absolute `setPose`, FOV, HUD | A controllable, measurable camera |
+| Space | Boundary recording, 3D point maps, layered point generation, point-file loading | Reusable scene scan plans |
+| Stills | Automatic 22-view scan per point, 1920×1080 JPEG through OBS | Images, target/measured poses, manifests |
+| Trajectories | Automatic loading, continuous playback, recording, batch progress, resume | Video, keyframes, pose series, timing logs |
+| Platform | Multi-game registry, shared schemas, Windows/Linux, alerts and recovery | An extensible, auditable capture system |
 
 ## Demo
 
@@ -22,21 +42,61 @@ This repository is no longer limited to RE9. Each game is packaged as an indepen
   </a>
 </p>
 
-The preview above comes from a real KCD2 free-camera motion capture. Open the [full H.264 demo](docs/assets/game-camera-capture-demo.mp4) by clicking the preview.
+The preview above comes from a real KCD2 free-camera move. Click it to open the [full H.264 demo](docs/assets/game-camera-capture-demo.mp4).
+
+## Our UE free camera: a new core capability of the capture stack
+
+```text
+Game process
+  └─ UeCameraInjector.exe
+      └─ UeCameraRuntime.dll
+          ├─ Game profile: process, signatures, ABI, capabilities
+          ├─ Camera hook: observe / override FMinimalViewInfo
+          ├─ Shared-memory ABI: pose / setPose / HUD / trajectory
+          └─ Python Capture Studio: points / OBS / datasets / UI
+```
+
+### Principles and algorithms
+
+1. **Profile-driven discovery:** the injector selects a profile by process name. The offline checker and runtime scan executable PE sections for wildcard byte signatures that identify camera paths.
+2. **Match-count safety gate:** every hook declares an allowed match-count range. A mismatch aborts installation; the runtime never writes to a guessed address.
+3. **Camera hook:** the current UE5 LWC adapter installs a 14-byte absolute detour at an audited `FMinimalViewInfo` copy path. A small assembly adapter preserves the register contract while observing or overriding double-precision XYZ, Yaw/Pitch/Roll, and FOV.
+4. **Tear-free pose publication:** camera overrides use atomically switched double buffers, while precise feedback uses a sequence lock, preventing the UI from reading a half-old, half-new frame.
+5. **Camera-local controls:** Yaw/Pitch/Roll produce orthogonal `forward/right/up` basis vectors. WASD/QE integrates translation in camera space; Shift/Ctrl adjusts speed and raw mouse deltas drive orientation.
+6. **Atomic absolute pose:** `setPose(x, y, z, yaw, pitch, roll, fov)` is submitted as one sequenced command and adopted as a complete camera target instead of having Python simulate a long walk.
+7. **In-process smooth trajectories:** Python submits keyframes once. A high-resolution monotonic clock advances time while the runtime applies cubic Hermite interpolation to position, unwrapped angles, and FOV. Playback holds the terminal pose instead of jumping back to the start.
+
+For two neighboring keyframes, the core interpolation is:
+
+```text
+p(u) = h00(u)p0 + h10(u)Δt·m0 + h01(u)p1 + h11(u)Δt·m1,  u ∈ [0, 1]
+```
+
+The control loop stays inside the game process while Python plans and records. That avoids injecting per-frame IPC, script scheduling, and disk I/O jitter into camera motion.
+
+### Why adaptation to more UE5 games is small
+
+The **injector, runtime, shared-memory protocol, trajectory engine, capture UI, OBS stack, and data schemas** are reused. A new title only provides the thinnest game-specific layer:
+
+- If it shares an existing camera ABI, adaptation can be as small as one profile containing process names, signatures, match limits, and coordinate metadata.
+- If its camera structure or register contract differs, it adds a compact ABI adapter while reusing the rest of the project.
+- Every profile must still pass pose, absolute `setPose`, rendered trajectory, and screenshot acceptance tests. “Also UE5” is never treated as automatic compatibility.
+
+So for UE5 titles sharing an existing ABI, the change really can be only a little configuration; custom camera pipelines concentrate the work in one small adapter instead of requiring a new capture system. Black Myth: Wukong is currently the first registered UE profile with live runtime pose validation. This capability is for offline single-player and authorized research environments only, never online or anti-cheat scenarios.
 
 ## Current game adapters
 
-| Game | Engine | Pose readout | Absolute pose control | Points / still capture | Trajectory support | Maturity |
-|---|---|---|---|---|---|---|
-| RE Engine / RE9 | RE Engine | Verified | Verified with Lua `setPose` | Verified | Verified replay | Stable |
-| Kingdom Come: Deliverance II | CryEngine | Verified | In-game visual result not confirmed | Implemented, with OBS integration | Relative random motion verified; precise replay pending | Beta |
-| Black Myth: Wukong | Unreal Engine 5 | Requires UUU Connector handshake | Relative UUU steps plus pose feedback reach an absolute target; not an atomic `setPose`, in-game acceptance pending | Implemented | Experimental native pose-feedback replay | Experimental |
+| Game | Engine | Pose readout | Absolute pose | Still / trajectory capture | Maturity |
+|---|---|---|---|---|---|
+| RE Engine / RE9 | RE Engine | Verified | Verified Lua `setPose` | Verified | Stable |
+| Kingdom Come: Deliverance II | CryEngine | Verified | Full rendered result pending | OBS and batch capture implemented | Beta |
+| Black Myth: Wukong | Unreal Engine 5 | Live pose read through our Runtime | Atomic `setPose` implemented; final visual acceptance pending | 22-view stills and in-process trajectories integrated | Experimental |
 
-Reading a pose, observing a changed value after a memory write, and visually reaching the target pose in the game are three different checks. The table marks only capabilities that were actually verified; RE9 capabilities are not automatically assumed for other games.
+Reading a pose, having the runtime accept a command, and seeing the rendered camera reach the target are three separate acceptance layers. Results are never copied from one game to another.
 
 ## Interface, planning, and outputs
 
-The interface mockups, pipeline diagrams, and dataset previews created during the earlier RE9 work are intentionally retained. They document the mature RE Engine workflow and serve as interaction references for future adapters.
+The original interface, trajectory, pipeline, and dataset visuals are all retained. They remain part of the main capture-tool story.
 
 <table>
   <tr>
@@ -44,139 +104,77 @@ The interface mockups, pipeline diagrams, and dataset previews created during th
     <td width="50%"><img src="docs/assets/capture-gui.png" alt="Still scan and trajectory capture GUI"></td>
   </tr>
   <tr>
-    <td><b>Capture system overview</b><br>From free camera and pose readout to points, screenshots, and trajectory jobs.</td>
-    <td><b>Still-scan and trajectory UI</b><br>A unified view of point plans, task state, and capture progress.</td>
+    <td><b>Capture system overview</b><br>From free camera and pose feedback to points, screenshots, and trajectories.</td>
+    <td><b>Still-scan and trajectory UI</b><br>Point plans, task state, and capture progress in one workspace.</td>
   </tr>
   <tr>
     <td><img src="docs/assets/trajectory-replay.png" alt="Trajectory replay visualization"></td>
     <td><img src="docs/assets/pipeline.png" alt="Capture pipeline"></td>
   </tr>
   <tr>
-    <td><b>Trajectory replay design</b><br>Keyframes, camera paths, and measured pose feedback are recorded separately.</td>
-    <td><b>Complete data pipeline</b><br>Pose, OBS, frame alignment, scoring, and dataset export.</td>
+    <td><b>Trajectory replay</b><br>Keyframes, commanded paths, and measured poses are stored separately.</td>
+    <td><b>Full data pipeline</b><br>Pose, OBS, frame alignment, scoring, and dataset export.</td>
   </tr>
 </table>
 
 ![Dataset preview](docs/assets/dataset-preview.png)
 
-The original RE9 trajectory animation and detailed notes remain in [`docs/RE9_ORIGINAL_GUIDE.md`](docs/RE9_ORIGINAL_GUIDE.md).
+The original RE9 trajectory animation and detailed documentation remain in [RE9_ORIGINAL_GUIDE.md](docs/RE9_ORIGINAL_GUIDE.md).
 
-## Quick start on Windows
-
-1. Clone the repository and install Python 3.10 or newer.
-2. Double-click `启动多游戏采集中心.bat`.
-3. Select a game in the launcher and review its capability status, notes, and examples.
-4. Install legally obtained third-party camera tools according to the adapter guide. This repository does not distribute closed-source DLLs, UUU, PAK files, saves, or game files.
-
-You can also start the hub directly:
+## Quick start
 
 ```powershell
+git clone https://github.com/xkqin/GameCameraCaptureLab.git
+cd GameCameraCaptureLab
 python launcher\game_capture_hub.py
 ```
 
-RE9 has additional dependencies. On first use, run “Install RE9 Python environment” from the hub, or run:
+On Windows, you can also double-click `启动多游戏采集中心.bat` and select an adapter. Preparation, controls, and acceptance status are documented in the adapter guides below.
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup_windows.ps1
-```
+Linux/Proton supports the capture UI, point/trajectory files, OBS WebSocket, and loopback relay. The injector and runtime still run inside the game's Proton prefix. Without a live relay, the UI reports an offline/waiting state rather than a false connection.
 
-KCD2 and Black Myth: Wukong can be started with the standalone scripts in their adapter directories.
+## Data and repository structure
 
-## Linux/Proton compatibility
+Shared formats live under [`schemas/`](schemas/):
 
-The Black Myth adapter now has a native Linux launcher for the cross-platform parts of the studio:
-
-```bash
-cd games/black-myth-wukong
-sudo apt install python3 python3-venv python3-tk  # Debian/Ubuntu, if needed
-chmod +x launch_bmw_capture_studio.sh
-./launch_bmw_capture_studio.sh
-```
-
-An initial trajectory can be selected from the command line:
-
-```bash
-./launch_bmw_capture_studio.sh --trajectory-file /path/to/trajectory.json
-```
-
-On Linux the UI, JSON/CSV point and trajectory management, offline planning, output-folder opening, OBS WebSocket connection, and the Black Myth live camera path are available when the Proton Bridge Relay is configured. UUU 5.8.21 and the Bridge remain Windows binaries inside Proton; the Linux UI accesses the pose/control/trajectory ABI through a loopback TCP relay. Set `BMW_BRIDGE_PORT=28791 %command%` in the game's Steam launch options, then run `export BMW_BRIDGE_ENDPOINT=127.0.0.1:28791` before starting the capture UI. The Bridge DLL still needs to be loaded into the Proton game through UUU. Without the relay, the UI stays in an explicit waiting/compatibility state and does not enable capture. The Windows launcher remains `launch_bmw_capture_studio.ps1`.
-
-Feishu alerts and opt-in repair reuse the RE9 configuration fields. The adapter searches `configs/linux.local.yaml` → `configs/linux.yaml` → `configs/default.yaml` for `notifications.feishu` and `automation.codex_recovery`. Real webhook URLs, signing secrets, and high-trust Codex repair are disabled by default; keep them in an untracked `linux.local.yaml` or provide `RE9_FEISHU_*` / `RE9_CODEX_*` environment variables.
-
-## Repository layout
+- `camera-pose/v1`: XYZ, rotation, FOV, coordinate frame, and units;
+- `camera-point-set/v1`: spatial points, scenes, and capture metadata;
+- `camera-trajectory/v1`: timed trajectory keyframes;
+- `ue_camera_profile_v1`: UE process, signatures, ABI, and capabilities.
 
 ```text
 GameCameraCaptureLab/
-├─ games/
-│  ├─ re9/                       # Manifest and notes; mature implementation stays at the root
-│  ├─ kcd2/                      # Independent source, UI, tests, and public examples
-│  └─ black-myth-wukong/         # UUU adapter and Native Bridge source
-├─ src/
-│  ├─ game_camera_capture_lab/   # Dynamic registry and multi-game launcher
-│  └─ re9_pose_recorder/         # Existing RE Engine capture implementation
-├─ schemas/                      # Shared Pose, Point Set, and Trajectory schemas
-├─ launcher/                     # Direct launcher entry point
-├─ data/                         # RE9 points, scan plans, and representative trajectories
-├─ configs/                      # RE9 platform and scan configuration
-├─ docs/                         # Architecture, formats, extension, and original RE9 guide
-└─ tests/                        # Project and registry tests
+├─ games/                       # RE9, KCD2, Black Myth, and future adapters
+├─ runtime/ue-camera-runtime/   # UE profiles, scanner, and generic injector
+├─ src/                         # Hub, registry, and mature RE9 capture stack
+├─ schemas/                     # Cross-game pose, point, trajectory, UE profile
+├─ data/                        # Point maps, scan plans, representative paths
+├─ configs/                     # Platform, OBS, alert, and recovery settings
+├─ docs/                        # Architecture, formats, visuals, legacy guide
+└─ tests/                       # Root and adapter-level offline tests
 ```
 
-Each adapter owns its source, tests, runtime data directory, and capability declaration. The launcher does not hard-code the number of games or branch on game names.
-
-## Shared data formats
-
-The repository defines three versioned formats that can be exchanged across adapters:
-
-- `camera-pose/v1`: one camera pose;
-- `camera-point-set/v1`: a collection of scene points;
-- `camera-trajectory/v1`: time-ordered trajectory keyframes.
-
-Schemas are in [`schemas/`](schemas/), with cross-game examples in [`schemas/examples/`](schemas/examples/). Adapters may keep their native format and map it through a converter, but coordinate systems, angle units, and game IDs must be explicit.
-
-See [file formats](docs/FILE_FORMATS.md) for details.
-
-## Adding a game
-
-An adapter can be added without modifying the launcher:
-
-1. Create `games/<game-id>/game.json`.
-2. Add its source, launcher scripts, tests, and a small set of redistributable examples.
-3. Declare the verification state for pose readout, absolute control, still capture, and trajectory replay.
-4. Run the registry checks and tests.
-
-See [ADDING_A_GAME.md](docs/ADDING_A_GAME.md) and [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full contract.
+See [ADDING_A_GAME.md](docs/ADDING_A_GAME.md) for regular adapters and [UE Camera Runtime](runtime/ue-camera-runtime/README.en.md) for UE camera profiles.
 
 ## Development and verification
 
 ```powershell
 $env:PYTHONPATH = "src"
 python -m game_camera_capture_lab.validate
-python -m compileall -q src launcher games
 python -m unittest discover -s tests -v
-python -m unittest discover -s games\kcd2\tests -v
+
+$env:PYTHONPATH = "games\black-myth-wukong\src"
 python -m unittest discover -s games\black-myth-wukong\tests -v
 ```
 
-KCD2 and Black Myth tests also need their respective `games/<id>/src` directory on `PYTHONPATH`; the release validation script keeps adapters isolated.
+Release checks also cover profile schemas, hook match counts, the native build, and Git diffs. If a game update invalidates a signature, the runtime refuses to hook until the profile is audited again.
 
-## Distribution boundary
+## Open source, free, and distribution boundaries
 
-This repository contains original source code, configuration templates, format definitions, tests, and small example data. It explicitly excludes:
-
-- commercial game files, personal saves, and complete playthrough saves;
-- closed-source KCD2 Camera Tools, UUU, and other third-party binaries;
-- game mods or PAK files unless redistribution permission is confirmed;
-- screenshots, long videos, runtime logs, model caches, and complete capture datasets.
-
-The demo video was produced by the project capture workflow as documentation; it is not a redistribution package for a game or third-party tool.
-
-## Historical compatibility
-
-The repository evolved from `RE9_Still_Scan`. To avoid breaking existing scripts and Windows paths, the mature RE9 implementation temporarily remains at the root. The archived detailed guide is [`RE9_ORIGINAL_GUIDE.md`](docs/RE9_ORIGINAL_GUIDE.md). New features and the project brand use **Game Camera Capture Lab**.
+Project-owned source code is free and open under the [MIT License](LICENSE). The repository contains only original source, configuration templates, schemas, tests, and small public examples. It does not include commercial game files, saves, closed UUU/KCD2 Camera Tools binaries, unauthorized Mods/PAKs, credentials, runtime logs, or full captured datasets.
 
 ## Adapter guides
 
-- [RE9 / RE Engine adapter](games/re9/README.en.md)
-- [KCD2 adapter](games/kcd2/README.en.md)
-- [Black Myth: Wukong adapter](games/black-myth-wukong/README.en.md)
+- [RE9 / RE Engine](games/re9/README.md) · [English](games/re9/README.en.md)
+- [Kingdom Come: Deliverance II / KCD2](games/kcd2/README.md) · [English](games/kcd2/README.en.md)
+- [Black Myth: Wukong](games/black-myth-wukong/README.md) · [English](games/black-myth-wukong/README.en.md)
