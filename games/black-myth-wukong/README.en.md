@@ -43,6 +43,12 @@ chmod +x launch_bmw_capture_studio.sh
 
 Use `./launch_bmw_capture_studio.sh --trajectory-file /path/to/file.json` to preselect a trajectory. Linux supports the Tk interface, JSON/CSV point and trajectory file management, offline data handling, opening output folders, and OBS WebSocket when OBS is available on the same Linux desktop. The live Black Myth camera path is not Linux-supported: UUU 5.8.21 injection, the Windows Native Bridge, Connector pose shared memory, and in-game camera control still require Windows. On Linux the status panel explicitly shows compatibility mode, and global F8 is disabled; use the visible UI controls for file operations.
 
+## Feishu alerts and opt-in repair
+
+The adapter reuses RE9's config search order and fields: `configs/linux.local.yaml` → `configs/linux.yaml` → `configs/default.yaml`. Configure `notifications.feishu.webhook_url`, `secret`, and `mention_open_id` for asynchronous error alerts, or override them with `RE9_FEISHU_WEBHOOK_URL`, `RE9_FEISHU_SECRET`, and `RE9_FEISHU_MENTION_OPEN_ID`. Alerts are disabled by default, and failure logs contain only exception types, never webhook URLs or signing secrets.
+
+`automation.codex_recovery.enabled` is `false` by default. Only when explicitly enabled with `codex_bin` (or `RE9_CODEX_BIN`) will an error queue a detached repair worker. It reuses RE9's `RE9_CODEX_*` fields, cooldown lock, and private state pattern; repair logs stay under `capture_data/logs/`. The default prompt performs offline checks first and does not start the game or capture automatically. Never commit `*.local.yaml`, webhooks, secrets, logs, or datasets.
+
 ## Native Bridge
 
 Only the Bridge source is included:

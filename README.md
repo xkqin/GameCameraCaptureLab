@@ -101,6 +101,8 @@ chmod +x launch_bmw_capture_studio.sh
 
 Linux 版本支持启动界面、JSON/CSV 点位和轨迹管理、离线数据处理、打开输出目录，以及在 Linux 本机运行 OBS 时使用 OBS WebSocket。黑神话的实时 Pose 读取、UUU 注入、Native Bridge 和游戏内相机控制仍需要 Windows，因为 UUU 5.8.21 与当前 Bridge 依赖 Windows 进程注入和命名共享内存。Linux 界面会明确显示兼容模式，不会把界面启动误报为游戏相机已连接；Windows 版本仍使用 `launch_bmw_capture_studio.ps1`。
 
+飞书报警和自动修复复用 RE9 的配置字段：程序按 `configs/linux.local.yaml` → `configs/linux.yaml` → `configs/default.yaml` 读取 `notifications.feishu` 和 `automation.codex_recovery`。真实 Webhook、签名密钥和 Codex 高权限修复默认关闭，建议只写入未提交的 `linux.local.yaml` 或使用 `RE9_FEISHU_*`、`RE9_CODEX_*` 环境变量。
+
 ## 仓库结构
 
 ```text

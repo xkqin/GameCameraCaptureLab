@@ -41,6 +41,12 @@ chmod +x launch_bmw_capture_studio.sh
 
 使用 `./launch_bmw_capture_studio.sh --trajectory-file /path/to/file.json` 可以预选轨迹。Linux 支持 Tk 界面、JSON/CSV 点位和轨迹文件管理、离线数据处理、打开输出目录，以及 OBS WebSocket 连接；但黑神话实时相机链路仍不支持 Linux：UUU 5.8.21 注入、Windows Native Bridge、Connector Pose 共享内存和游戏内相机控制都需要 Windows。Linux 下全局 F8 不启用，请使用界面按钮；状态栏会明确显示兼容模式。
 
+## 飞书报警与自动修复
+
+程序复用 RE9 的配置查找顺序和字段：`configs/linux.local.yaml` → `configs/linux.yaml` → `configs/default.yaml`。在 `notifications.feishu` 中配置 `webhook_url`、`secret`、`mention_open_id` 后，界面错误会异步发送飞书文本报警；也可以设置 `RE9_FEISHU_WEBHOOK_URL`、`RE9_FEISHU_SECRET` 和 `RE9_FEISHU_MENTION_OPEN_ID` 覆盖配置。报警默认关闭，失败日志只记录异常类型，不记录 Webhook 或签名密钥。
+
+`automation.codex_recovery.enabled` 默认是 `false`。只有明确启用并配置 `codex_bin`（或 `RE9_CODEX_BIN`）后，错误才会排队启动独立修复 worker；它使用 RE9 的 `RE9_CODEX_*` 字段、冷却锁和私有状态文件，修复日志位于 `capture_data/logs/`。修复提示默认先做离线检查，不会自动启动游戏或采集；不要把 `*.local.yaml`、Webhook、密钥、日志或数据集提交到 GitHub。
+
 ## Native Bridge
 
 仓库只提交 Bridge 源码：

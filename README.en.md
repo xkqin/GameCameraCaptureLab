@@ -101,6 +101,8 @@ An initial trajectory can be selected from the command line:
 
 On Linux the UI, JSON/CSV point and trajectory management, offline planning, output-folder opening, and OBS WebSocket connection are available. Black Myth real-time pose reading, UUU injection, the Native Bridge, and in-game camera control remain Windows-only because UUU 5.8.21 and the current Bridge use Windows process injection and named shared memory. The Linux build therefore reports a compatibility mode instead of pretending that the game camera is connected. The Windows launcher remains `launch_bmw_capture_studio.ps1`.
 
+Feishu alerts and opt-in repair reuse the RE9 configuration fields. The adapter searches `configs/linux.local.yaml` → `configs/linux.yaml` → `configs/default.yaml` for `notifications.feishu` and `automation.codex_recovery`. Real webhook URLs, signing secrets, and high-trust Codex repair are disabled by default; keep them in an untracked `linux.local.yaml` or provide `RE9_FEISHU_*` / `RE9_CODEX_*` environment variables.
+
 ## Repository layout
 
 ```text

@@ -13,7 +13,9 @@ from typing import Callable
 
 from .bridge import PoseUnavailableError, UuuPoseBridge
 from .capture_runner import CaptureRunResult, CaptureRunner
+from .config import load_shared_config
 from .connection import ConnectionReport, probe_connection
+from .feishu_notify import FeishuNotifier
 from .files import load_points, load_trajectories, save_points
 from .global_hotkey import F8_VK, GlobalHotkey
 from .input_control import ClosedLoopMover
@@ -29,6 +31,7 @@ from .paths import (
     ensure_directories,
 )
 from .platform_support import open_path
+from .repair import CodexRecoveryTrigger
 from .screen_capture import enable_dpi_awareness, focus_game_window, foreground_process_id
 from .settings import load_settings, save_settings
 from .still_scan import (
@@ -78,6 +81,9 @@ class CaptureStudioApp:
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
         self.settings = load_settings()
+        self.shared_config = load_shared_config()
+        self.feishu_notifier = FeishuNotifier.from_config(self.shared_config)
+        self.codex_recovery = CodexRecoveryTrigger.from_config(self.shared_config)
         self.always_on_top_var = tk.BooleanVar(
             value=bool(self.settings.get("always_on_top", True))
         )
@@ -136,6 +142,13 @@ class CaptureStudioApp:
         self.task_progress_text_var = tk.StringVar(value="任务进度：空闲")
         self.frame_progress_text_var = tk.StringVar(value="当前轨迹：空闲")
         self.output_var = tk.StringVar(value="输出根目录：trajectory_captures")
+        self.feishu_status_var = tk.StringVar(
+            value=self.feishu_notifier.status_text
+        )
+        self.repair_status_var = tk.StringVar(value=self.codex_recovery.status_text)
+        self.alert_config_var = tk.StringVar(
+            value=f"共享配置：{self.shared_config.source_text}"
+        )
 
         self._configure_style()
         self._build_ui()
@@ -293,6 +306,38 @@ class CaptureStudioApp:
         ttk.Label(pose_card, textvariable=self.pose_var, style="Pose.Card.TLabel").pack(side="left")
         ttk.Label(pose_card, textvariable=self.angle_var, style="Pose.Card.TLabel").pack(side="left", padx=(26, 0))
         ttk.Label(pose_card, textvariable=self.camera_state_var, style="State.Card.TLabel").pack(side="right")
+
+        alert_card = ttk.Frame(shell, style="Card.TFrame", padding=(15, 9))
+        alert_card.pack(fill="x", pady=(0, 10))
+        alert_card.columnconfigure(1, weight=1)
+        ttk.Label(
+            alert_card,
+            text="报警与修复",
+            style="Section.Card.TLabel",
+        ).grid(row=0, column=0, rowspan=2, sticky="nw", padx=(0, 16))
+        ttk.Label(
+            alert_card,
+            textvariable=self.feishu_status_var,
+            style="Muted.Card.TLabel",
+        ).grid(row=0, column=1, sticky="w")
+        ttk.Label(
+            alert_card,
+            textvariable=self.repair_status_var,
+            style="Muted.Card.TLabel",
+        ).grid(row=1, column=1, sticky="w", pady=(3, 0))
+        ttk.Label(
+            alert_card,
+            textvariable=self.alert_config_var,
+            style="Muted.Card.TLabel",
+        ).grid(row=0, column=2, rowspan=2, sticky="e", padx=(12, 12))
+        self.feishu_test_button = ttk.Button(
+            alert_card,
+            text="发送测试报警",
+            command=self._send_feishu_test,
+            style="Compact.TButton",
+            state="normal" if self.feishu_notifier.enabled else "disabled",
+        )
+        self.feishu_test_button.grid(row=0, column=3, rowspan=2, sticky="e")
 
         body = ttk.Frame(shell)
         body.pack(fill="both", expand=True)
@@ -1765,7 +1810,69 @@ class CaptureStudioApp:
 
     def _show_error(self, title: str, exc: Exception) -> None:
         self.log(f"{title}：{exc}")
+        self._notify_failure(title, exc)
         messagebox.showerror(title, str(exc))
+
+    def _notify_failure(self, title: str, exc: Exception) -> None:
+        fields = {
+            "Adapter": "black-myth-wukong",
+            "Scene": self.scene_id_var.get(),
+            "Capture kind": self.active_capture_kind or "idle",
+            "Config": (
+                Path(self.shared_config.source_text).name
+                if self.shared_config.path is not None
+                else "defaults"
+            ),
+        }
+        try:
+            if self.feishu_notifier.notify_error(title, str(exc), fields=fields):
+                self.log("已排队发送飞书错误报警。")
+        except Exception as notify_error:
+            self.log(f"飞书报警排队失败：{type(notify_error).__name__}")
+        try:
+            if self.codex_recovery.trigger(title, str(exc), fields=fields):
+                self.log("已启动后台自动修复任务；详情写入 capture_data/logs。")
+        except Exception as repair_error:
+            self.log(f"自动修复任务启动失败：{type(repair_error).__name__}")
+
+    def _send_feishu_test(self) -> None:
+        if not self.feishu_notifier.enabled:
+            self._show_guidance(
+                "飞书报警未启用；请在 RE9 配置的 notifications.feishu 中填写 webhook_url，"
+                "或设置 RE9_FEISHU_WEBHOOK_URL 后重启界面。"
+            )
+            return
+        self.feishu_test_button.configure(state="disabled")
+        self.feishu_status_var.set("飞书报警：正在发送测试消息…")
+
+        def worker() -> None:
+            sent = self.feishu_notifier.send_error(
+                "Black Myth capture studio test alert",
+                "黑神话采集器飞书报警配置测试成功。",
+                fields={
+                    "Adapter": "black-myth-wukong",
+                    "Config": (
+                        self.shared_config.path.name
+                        if self.shared_config.path is not None
+                        else "defaults"
+                    ),
+                },
+            )
+            self.root.after(0, lambda: self._set_feishu_test_result(sent))
+
+        threading.Thread(target=worker, name="bmw-feishu-test", daemon=True).start()
+
+    def _set_feishu_test_result(self, sent: bool) -> None:
+        self.feishu_test_button.configure(state="normal")
+        if sent:
+            self.feishu_status_var.set(f"{self.feishu_notifier.status_text}；测试已送达")
+            messagebox.showinfo("飞书报警已发送", "测试报警已发送到飞书机器人。")
+            return
+        self.feishu_status_var.set(f"{self.feishu_notifier.status_text}；测试失败")
+        messagebox.showerror(
+            "飞书报警失败",
+            f"测试消息发送失败，请查看 {self.feishu_notifier.log_path}。",
+        )
 
     def _show_guidance(self, message: str) -> None:
         self.log(f"操作提示：{message}")

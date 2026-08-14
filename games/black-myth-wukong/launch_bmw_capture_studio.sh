@@ -35,7 +35,7 @@ if ! "$python_exe" -c 'import tkinter' >/dev/null 2>&1; then
     exit 1
 fi
 
-if ! "$python_exe" -c 'import PIL, obsws_python' >/dev/null 2>&1; then
+if ! "$python_exe" -c 'import PIL, obsws_python, yaml, requests' >/dev/null 2>&1; then
     echo "Installing capture-studio dependencies..."
     "$python_exe" -m pip install --disable-pip-version-check -e "$project_dir"
 fi

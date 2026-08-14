@@ -25,7 +25,7 @@ if (-not (Test-Path -LiteralPath $pythonwExe)) {
     throw "Python GUI executable was not found: $pythonwExe"
 }
 
-& $pythonExe -c "import obsws_python; import PIL" 2>$null
+& $pythonExe -c "import obsws_python; import PIL; import yaml; import requests" 2>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Updating capture-studio dependencies..."
     & $pythonExe -m pip install --disable-pip-version-check -e $projectDir

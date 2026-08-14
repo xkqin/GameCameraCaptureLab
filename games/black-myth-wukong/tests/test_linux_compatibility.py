@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from bmw_capture_studio import bridge, global_hotkey, platform_support, screen_capture, uuu
+from bmw_capture_studio import bridge, config, global_hotkey, platform_support, screen_capture, uuu
 from bmw_capture_studio.connection import classify_connection
 from bmw_capture_studio.global_hotkey import F8_VK, GlobalHotkey
 
@@ -62,6 +62,17 @@ class LinuxCompatibilityTests(unittest.TestCase):
             platform_support.shutil, "which", return_value=None
         ), self.assertRaisesRegex(RuntimeError, "xdg-open"):
             platform_support.open_path(Path("/tmp/outputs"))
+
+    def test_linux_reuses_re9_config_precedence_and_detaches_workers(self) -> None:
+        with patch.object(sys, "platform", "linux"):
+            shared = config.load_shared_config()
+            process_options = platform_support.detached_process_kwargs()
+
+        self.assertTrue(
+            shared.path is None
+            or shared.path.name in {"linux.local.yaml", "linux.yaml", "default.yaml"}
+        )
+        self.assertEqual(process_options, {"start_new_session": True})
 
 
 if __name__ == "__main__":
