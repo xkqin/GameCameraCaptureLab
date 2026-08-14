@@ -1,0 +1,209 @@
+{
+  "scene_id": "scene_1.3",
+  "purpose": "high_score_start_terminal_gain_to_single_global_max",
+  "generation_status": "candidate_set_requires_smoke_capture",
+  "source_scored_pose_count": 1564,
+  "anchor_selection_diagnostics": {
+    "eligible_start_anchor_count": 6,
+    "selection_policy": "all unique XYZ starts inside configured terminal-gain and distance bounds; highest-scoring eligible measured pose retained at each XYZ",
+    "rejected": {
+      "yaw_difference": 3,
+      "terminal_gain": 1529,
+      "start_distance": 22,
+      "duplicate_start_xyz": 3
+    },
+    "eligible_start_anchors": [
+      {
+        "node_id": "scene_1_extra|scene_1.3_hig_refine_y03_12p73|666|8",
+        "score": 6.587166,
+        "distance_to_global_max_m": 0.6529
+      },
+      {
+        "node_id": "scene_1_extra|scene_1.3_med_probe_y03_13p53|705|47",
+        "score": 6.578375,
+        "distance_to_global_max_m": 0.798
+      },
+      {
+        "node_id": "scene_1_extra|scene_1.3_hig_refine_y03_12p73|669|11",
+        "score": 6.54802,
+        "distance_to_global_max_m": 2.611599
+      },
+      {
+        "node_id": "scene_1_extra|scene_1.3_hig_refine_y03_13p66|662|4",
+        "score": 6.496161,
+        "distance_to_global_max_m": 2.772582
+      },
+      {
+        "node_id": "scene_1_extra|scene_1.3_hig_bridge_y03_13p79|700|42",
+        "score": 6.613628,
+        "distance_to_global_max_m": 2.820025
+      },
+      {
+        "node_id": "scene_1_extra|scene_1.3_med_probe_y03_12p73|697|39",
+        "score": 6.622795,
+        "distance_to_global_max_m": 3.2916
+      }
+    ]
+  },
+  "start_anchors": [
+    {
+      "family_id": "family_01",
+      "node_id": "scene_1_extra|scene_1.3_hig_refine_y03_12p73|666|8",
+      "score": 6.587166,
+      "x": 74.063,
+      "y": 12.73,
+      "z": -1.62,
+      "yaw": 270.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.115709
+    },
+    {
+      "family_id": "family_02",
+      "node_id": "scene_1_extra|scene_1.3_med_probe_y03_13p53|705|47",
+      "score": 6.578375,
+      "x": 73.5144,
+      "y": 13.528,
+      "z": -1.974,
+      "yaw": 256.5,
+      "pitch": 0.0,
+      "terminal_gain": 0.1245
+    },
+    {
+      "family_id": "family_03",
+      "node_id": "scene_1_extra|scene_1.3_hig_refine_y03_12p73|669|11",
+      "score": 6.54802,
+      "x": 71.32,
+      "y": 12.73,
+      "z": -3.39,
+      "yaw": 260.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.154855
+    },
+    {
+      "family_id": "family_04",
+      "node_id": "scene_1_extra|scene_1.3_hig_refine_y03_13p66|662|4",
+      "score": 6.496161,
+      "x": 71.32,
+      "y": 13.661,
+      "z": -3.39,
+      "yaw": 270.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.206715
+    },
+    {
+      "family_id": "family_05",
+      "node_id": "scene_1_extra|scene_1.3_hig_bridge_y03_13p79|700|42",
+      "score": 6.613628,
+      "x": 71.32,
+      "y": 13.794,
+      "z": -3.39,
+      "yaw": 252.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.089247
+    },
+    {
+      "family_id": "family_06",
+      "node_id": "scene_1_extra|scene_1.3_med_probe_y03_12p73|697|39",
+      "score": 6.622795,
+      "x": 70.2228,
+      "y": 12.73,
+      "z": -1.974,
+      "yaw": 256.5,
+      "pitch": 0.0,
+      "terminal_gain": 0.08008
+    }
+  ],
+  "global_max": {
+    "node_id": "scene_1_extra|scene_1.3_med_probe_y03_12p73|679|21",
+    "score": 6.702875,
+    "x": 73.5144,
+    "y": 12.73,
+    "z": -1.974,
+    "yaw": 247.5,
+    "pitch": 0.0
+  },
+  "generation_parameters": {
+    "scene_id": "scene_1.3",
+    "scored_jsonl": "datasets/scene_1.3/aesthetic_scored/all_scores_with_annotations.jsonl",
+    "extra_scored_jsonl": "../scene_1_extra/aesthetic_scored/all_scores_with_annotations.jsonl",
+    "output_dir": "datasets/scene_1.3/trajectories_shortgain0p05to0p25_distance3p5_globalmax_interpolated_1000",
+    "num_trajectories": 1000,
+    "keyframe_count": 30,
+    "time_step_sec": 0.1,
+    "maximum_lateral_offset_m": 0.18,
+    "maximum_lateral_ratio": 0.12,
+    "maximum_yaw_bulge_deg": 3.0,
+    "maximum_pitch_bulge_deg": 1.5,
+    "signature_quantization_m": 0.01,
+    "minimum_terminal_gain": 0.05,
+    "maximum_terminal_gain": 0.25,
+    "minimum_start_distance_m": 0.4,
+    "maximum_start_distance_m": 3.5,
+    "maximum_start_yaw_difference_deg": 45.0,
+    "maximum_start_pitch_difference_deg": 45.0,
+    "seed": 20260814
+  },
+  "candidate_attempts": {
+    "family_01": 167,
+    "family_02": 167,
+    "family_03": 167,
+    "family_04": 167,
+    "family_05": 166,
+    "family_06": 166
+  },
+  "statistics": {
+    "terminal_gain": {
+      "min": 0.08008,
+      "mean": 0.128605,
+      "median": 0.1245,
+      "max": 0.206715
+    },
+    "path_xyz_length": {
+      "min": 0.6529,
+      "mean": 2.176922,
+      "median": 2.671883,
+      "max": 3.342489
+    },
+    "net_xyz_distance": {
+      "min": 0.6529,
+      "mean": 2.155988,
+      "median": 2.611599,
+      "max": 3.2916
+    },
+    "path_to_net_ratio": {
+      "min": 1.0,
+      "mean": 1.013981,
+      "median": 1.009497,
+      "max": 1.07168
+    },
+    "max_xyz_step": {
+      "min": 0.042179,
+      "mean": 0.139285,
+      "median": 0.16872,
+      "max": 0.21265
+    },
+    "max_speed_mps": {
+      "min": 0.421789,
+      "mean": 1.392853,
+      "median": 1.687201,
+      "max": 2.1265
+    },
+    "max_yaw_step_deg": {
+      "min": 0.290717,
+      "mean": 0.930625,
+      "median": 0.807549,
+      "max": 1.565619
+    },
+    "max_pitch_step_deg": {
+      "min": 0.0,
+      "mean": 0.087523,
+      "median": 0.088164,
+      "max": 0.175816
+    }
+  },
+  "score_semantics": {
+    "measured_frames_per_trajectory": 2,
+    "unscored_interpolated_frames_per_trajectory": 28,
+    "intermediate_monotonicity_required": false
+  }
+}

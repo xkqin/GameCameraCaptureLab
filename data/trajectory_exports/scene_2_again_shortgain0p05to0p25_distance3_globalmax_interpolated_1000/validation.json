@@ -1,0 +1,53 @@
+{
+  "validation_passed": true,
+  "checks": {
+    "trajectory_count_is_requested": true,
+    "all_eligible_start_families_used": true,
+    "families_balanced": true,
+    "trajectory_ids_unique": true,
+    "pose_curves_exactly_unique": true,
+    "physical_curves_unique_at_1cm_quantization": true,
+    "all_end_at_single_global_max": true,
+    "only_real_endpoints_have_measured_scores": true,
+    "all_paths_have_no_sampled_target_distance_backtrack": true,
+    "all_path_to_net_ratios_at_most_1p08": true,
+    "all_structural_checks_pass": true
+  },
+  "failure_counts": {},
+  "trajectory_count": 1000,
+  "family_distribution": {
+    "family_01": 84,
+    "family_02": 84,
+    "family_03": 84,
+    "family_04": 84,
+    "family_05": 83,
+    "family_06": 83,
+    "family_07": 83,
+    "family_08": 83,
+    "family_09": 83,
+    "family_10": 83,
+    "family_11": 83,
+    "family_12": 83
+  },
+  "unique_exact_pose_curve_count": 1000,
+  "unique_1cm_physical_curve_count": 1000,
+  "global_max": {
+    "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|5369|93",
+    "score": 6.53858,
+    "x": 2.095714285714285,
+    "y": 7.82,
+    "z": 36.54642857142858,
+    "yaw": 0.0,
+    "pitch": 0.0
+  },
+  "score_semantics": {
+    "measured_frames_per_trajectory": 2,
+    "unscored_interpolated_frames_per_trajectory": 28,
+    "intermediate_monotonicity_required": false
+  },
+  "remaining_external_validation": [
+    "Current capture UI runtime was not available in this workspace for an end-to-end load test.",
+    "Collision clearance is unproven without a scene collision mesh or smoke capture.",
+    "Interpolated video frames are unscored until replay capture and optional rescoring."
+  ]
+}

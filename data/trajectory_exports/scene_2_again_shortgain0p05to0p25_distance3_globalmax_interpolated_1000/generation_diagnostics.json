@@ -1,0 +1,309 @@
+{
+  "scene_id": "scene_2",
+  "purpose": "high_score_start_terminal_gain_to_single_global_max",
+  "generation_status": "candidate_set_requires_smoke_capture",
+  "source_scored_pose_count": 12474,
+  "anchor_selection_diagnostics": {
+    "eligible_start_anchor_count": 12,
+    "selection_policy": "all unique XYZ starts inside configured terminal-gain and distance bounds; highest-scoring eligible measured pose retained at each XYZ",
+    "rejected": {
+      "terminal_gain": 12443,
+      "start_distance": 18
+    },
+    "eligible_start_anchors": [
+      {
+        "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|5347|92",
+        "score": 6.363828,
+        "distance_to_global_max_m": 0.571429
+      },
+      {
+        "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|5655|106",
+        "score": 6.342553,
+        "distance_to_global_max_m": 0.630714
+      },
+      {
+        "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|5105|81",
+        "score": 6.293233,
+        "distance_to_global_max_m": 0.630714
+      },
+      {
+        "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|5633|105",
+        "score": 6.460361,
+        "distance_to_global_max_m": 0.851076
+      },
+      {
+        "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|5083|80",
+        "score": 6.360729,
+        "distance_to_global_max_m": 0.851076
+      },
+      {
+        "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|5325|91",
+        "score": 6.432253,
+        "distance_to_global_max_m": 1.142857
+      },
+      {
+        "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|5941|119",
+        "score": 6.444949,
+        "distance_to_global_max_m": 1.261429
+      },
+      {
+        "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|5611|104",
+        "score": 6.424108,
+        "distance_to_global_max_m": 1.305344
+      },
+      {
+        "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|6227|132",
+        "score": 6.306777,
+        "distance_to_global_max_m": 1.892143
+      },
+      {
+        "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|6205|131",
+        "score": 6.310161,
+        "distance_to_global_max_m": 1.976546
+      },
+      {
+        "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|6183|130",
+        "score": 6.334687,
+        "distance_to_global_max_m": 2.210504
+      },
+      {
+        "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|6447|142",
+        "score": 6.480174,
+        "distance_to_global_max_m": 2.769644
+      }
+    ]
+  },
+  "start_anchors": [
+    {
+      "family_id": "family_01",
+      "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|5347|92",
+      "score": 6.363828,
+      "x": 1.5242857142857131,
+      "y": 7.82,
+      "z": 36.54642857142858,
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.174752
+    },
+    {
+      "family_id": "family_02",
+      "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|5655|106",
+      "score": 6.342553,
+      "x": 2.095714285714285,
+      "y": 7.82,
+      "z": 37.17714285714286,
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.196027
+    },
+    {
+      "family_id": "family_03",
+      "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|5105|81",
+      "score": 6.293233,
+      "x": 2.095714285714285,
+      "y": 7.82,
+      "z": 35.91571428571429,
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.245347
+    },
+    {
+      "family_id": "family_04",
+      "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|5633|105",
+      "score": 6.460361,
+      "x": 1.5242857142857131,
+      "y": 7.82,
+      "z": 37.17714285714286,
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.078218
+    },
+    {
+      "family_id": "family_05",
+      "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|5083|80",
+      "score": 6.360729,
+      "x": 1.5242857142857131,
+      "y": 7.82,
+      "z": 35.91571428571429,
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.177851
+    },
+    {
+      "family_id": "family_06",
+      "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|5325|91",
+      "score": 6.432253,
+      "x": 0.952857142857142,
+      "y": 7.82,
+      "z": 36.54642857142858,
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.106327
+    },
+    {
+      "family_id": "family_07",
+      "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|5941|119",
+      "score": 6.444949,
+      "x": 2.095714285714285,
+      "y": 7.82,
+      "z": 37.807857142857145,
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.093631
+    },
+    {
+      "family_id": "family_08",
+      "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|5611|104",
+      "score": 6.424108,
+      "x": 0.952857142857142,
+      "y": 7.82,
+      "z": 37.17714285714286,
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.114472
+    },
+    {
+      "family_id": "family_09",
+      "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|6227|132",
+      "score": 6.306777,
+      "x": 2.095714285714285,
+      "y": 7.82,
+      "z": 38.438571428571436,
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.231802
+    },
+    {
+      "family_id": "family_10",
+      "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|6205|131",
+      "score": 6.310161,
+      "x": 1.5242857142857131,
+      "y": 7.82,
+      "z": 38.438571428571436,
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.228419
+    },
+    {
+      "family_id": "family_11",
+      "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|6183|130",
+      "score": 6.334687,
+      "x": 0.952857142857142,
+      "y": 7.82,
+      "z": 38.438571428571436,
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.203893
+    },
+    {
+      "family_id": "family_12",
+      "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|6447|142",
+      "score": 6.480174,
+      "x": 0.952857142857142,
+      "y": 7.82,
+      "z": 39.06928571428572,
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.058406
+    }
+  ],
+  "global_max": {
+    "node_id": "scene_2_no_lamp|scene_2_y03_room_dense_y03_7p82|5369|93",
+    "score": 6.53858,
+    "x": 2.095714285714285,
+    "y": 7.82,
+    "z": 36.54642857142858,
+    "yaw": 0.0,
+    "pitch": 0.0
+  },
+  "generation_parameters": {
+    "scene_id": "scene_2",
+    "scored_jsonl": "datasets/scene_2_again/scene_2_no_lamp/datasets/scene_2/aesthetic_scored/all_scores_with_annotations.jsonl",
+    "extra_scored_jsonl": null,
+    "output_dir": "datasets/scene_2_again/scene_2_no_lamp/datasets/scene_2/trajectories_shortgain0p05to0p25_distance3_globalmax_interpolated_1000",
+    "num_trajectories": 1000,
+    "keyframe_count": 30,
+    "time_step_sec": 0.1,
+    "maximum_lateral_offset_m": 0.18,
+    "maximum_lateral_ratio": 0.12,
+    "maximum_yaw_bulge_deg": 3.0,
+    "maximum_pitch_bulge_deg": 1.5,
+    "signature_quantization_m": 0.01,
+    "minimum_terminal_gain": 0.05,
+    "maximum_terminal_gain": 0.25,
+    "minimum_start_distance_m": 0.4,
+    "maximum_start_distance_m": 3.0,
+    "maximum_start_yaw_difference_deg": 45.0,
+    "maximum_start_pitch_difference_deg": 45.0,
+    "seed": 20260814
+  },
+  "candidate_attempts": {
+    "family_01": 84,
+    "family_02": 85,
+    "family_03": 84,
+    "family_04": 84,
+    "family_05": 83,
+    "family_06": 83,
+    "family_07": 83,
+    "family_08": 83,
+    "family_09": 83,
+    "family_10": 83,
+    "family_11": 83,
+    "family_12": 83
+  },
+  "statistics": {
+    "terminal_gain": {
+      "min": 0.058406,
+      "mean": 0.159153,
+      "median": 0.176301,
+      "max": 0.245347
+    },
+    "path_xyz_length": {
+      "min": 0.571429,
+      "mean": 1.363912,
+      "median": 1.21667,
+      "max": 2.830184
+    },
+    "net_xyz_distance": {
+      "min": 0.571429,
+      "mean": 1.338442,
+      "median": 1.142857,
+      "max": 2.769644
+    },
+    "path_to_net_ratio": {
+      "min": 1.0,
+      "mean": 1.022212,
+      "median": 1.018714,
+      "max": 1.073613
+    },
+    "max_xyz_step": {
+      "min": 0.036916,
+      "mean": 0.086469,
+      "median": 0.073833,
+      "max": 0.178931
+    },
+    "max_speed_mps": {
+      "min": 0.36916,
+      "mean": 0.864686,
+      "median": 0.73833,
+      "max": 1.789308
+    },
+    "max_yaw_step_deg": {
+      "min": 0.0,
+      "mean": 0.173679,
+      "median": 0.172295,
+      "max": 0.350727
+    },
+    "max_pitch_step_deg": {
+      "min": 0.0,
+      "mean": 0.086878,
+      "median": 0.087334,
+      "max": 0.175816
+    }
+  },
+  "score_semantics": {
+    "measured_frames_per_trajectory": 2,
+    "unscored_interpolated_frames_per_trajectory": 28,
+    "intermediate_monotonicity_required": false
+  }
+}
