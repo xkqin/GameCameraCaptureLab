@@ -1,9 +1,14 @@
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <windows.h>
 #include <cstdint>
 #include <cstring>
 #include <cmath>
 #include <algorithm>
+#include <cstdlib>
 #include <vector>
+
+#pragma comment(lib, "Ws2_32.lib")
 
 namespace
 {
@@ -231,7 +236,311 @@ BridgeMetadata* g_metadata = nullptr;
 NativeControl* g_control = nullptr;
 NativeTrajectory* g_trajectory = nullptr;
 HANDLE g_workerThread = nullptr;
+HANDLE g_relayThread = nullptr;
+SOCKET g_relayListenSocket = INVALID_SOCKET;
 volatile LONG g_stopRequested = 0;
+
+// Linux/Proton relay.  The game and this DLL remain Windows binaries, but a
+// native Linux capture UI cannot open Wine's named CreateFileMapping object.
+// When BMW_BRIDGE_PORT is set, expose the same pose/control/trajectory blocks
+// on loopback.  The relay never binds a non-loopback address.
+constexpr char kRelayMagic[] = "BMWP";
+constexpr std::uint8_t kRelayVersion = 1;
+constexpr std::uint8_t kRelayReadState = 1;
+constexpr std::uint8_t kRelayApplyControl = 2;
+constexpr std::uint8_t kRelayStartTrajectory = 3;
+constexpr std::uint8_t kRelayStopTrajectory = 4;
+constexpr std::uint16_t kRelayStatusOk = 0;
+constexpr std::uint16_t kRelayStatusError = 1;
+constexpr std::size_t kRelayMaxPayload = 8 * 1024 * 1024;
+
+#pragma pack(push, 1)
+struct RelayHeader
+{
+    char magic[4];
+    std::uint8_t version;
+    std::uint8_t operation;
+    std::uint16_t status;
+    std::uint32_t payloadSize;
+};
+#pragma pack(pop)
+
+static_assert(sizeof(RelayHeader) == 12, "RelayHeader layout changed");
+
+unsigned short relayPort()
+{
+    char value[16]{};
+    const DWORD length = GetEnvironmentVariableA(
+        "BMW_BRIDGE_PORT", value, static_cast<DWORD>(sizeof(value)));
+    if (length == 0 || length >= sizeof(value))
+    {
+        return 0;
+    }
+    char* end = nullptr;
+    const long parsed = std::strtol(value, &end, 10);
+    if (end == value || *end != '\0' || parsed < 1 || parsed > 65535)
+    {
+        return 0;
+    }
+    return static_cast<unsigned short>(parsed);
+}
+
+bool relaySendAll(SOCKET client, const void* data, const std::size_t size)
+{
+    const auto* bytes = static_cast<const char*>(data);
+    std::size_t sent = 0;
+    while (sent < size)
+    {
+        const int result = send(
+            client,
+            bytes + sent,
+            static_cast<int>(std::min<std::size_t>(size - sent, 1 << 20)),
+            0);
+        if (result <= 0)
+        {
+            return false;
+        }
+        sent += static_cast<std::size_t>(result);
+    }
+    return true;
+}
+
+bool relayReceiveAll(SOCKET client, void* data, const std::size_t size)
+{
+    auto* bytes = static_cast<char*>(data);
+    std::size_t received = 0;
+    while (received < size)
+    {
+        const int result = recv(
+            client,
+            bytes + received,
+            static_cast<int>(std::min<std::size_t>(size - received, 1 << 20)),
+            0);
+        if (result <= 0)
+        {
+            return false;
+        }
+        received += static_cast<std::size_t>(result);
+    }
+    return true;
+}
+
+bool relaySend(
+    SOCKET client,
+    const std::uint8_t operation,
+    const std::uint16_t status,
+    const void* payload,
+    const std::size_t payloadSize)
+{
+    if (payloadSize > kRelayMaxPayload)
+    {
+        return false;
+    }
+    RelayHeader response{};
+    std::memcpy(response.magic, kRelayMagic, sizeof(response.magic));
+    response.version = kRelayVersion;
+    response.operation = operation;
+    response.status = status;
+    response.payloadSize = static_cast<std::uint32_t>(payloadSize);
+    if (!relaySendAll(client, &response, sizeof(response)))
+    {
+        return false;
+    }
+    return payloadSize == 0 || relaySendAll(client, payload, payloadSize);
+}
+
+bool relaySendError(SOCKET client, const std::uint8_t operation, const char* message)
+{
+    const char* value = message != nullptr ? message : "unknown relay error";
+    return relaySend(
+        client,
+        operation,
+        kRelayStatusError,
+        value,
+        std::strlen(value));
+}
+
+bool relaySendState(SOCKET client, const std::uint8_t operation)
+{
+    if (g_cameraData == nullptr || g_metadata == nullptr ||
+        g_control == nullptr || g_trajectory == nullptr)
+    {
+        return relaySendError(client, operation, "bridge state is not initialized");
+    }
+    std::vector<std::uint8_t> state(
+        sizeof(BridgeMetadata) + sizeof(CameraSnapshot) +
+        sizeof(NativeControl) + sizeof(NativeTrajectory));
+    std::size_t offset = 0;
+    std::memcpy(state.data() + offset, g_metadata, sizeof(BridgeMetadata));
+    offset += sizeof(BridgeMetadata);
+    std::memcpy(state.data() + offset, g_cameraData, sizeof(CameraSnapshot));
+    offset += sizeof(CameraSnapshot);
+    std::memcpy(state.data() + offset, g_control, sizeof(NativeControl));
+    offset += sizeof(NativeControl);
+    std::memcpy(state.data() + offset, g_trajectory, sizeof(NativeTrajectory));
+    return relaySend(client, operation, kRelayStatusOk, state.data(), state.size());
+}
+
+bool relayApplyControl(SOCKET client, const std::vector<std::uint8_t>& payload)
+{
+    if (g_control == nullptr || payload.size() != sizeof(std::uint32_t) + sizeof(NativeControl) - sizeof(std::uint32_t) * 8)
+    {
+        return relaySendError(client, kRelayApplyControl, "invalid native-control payload");
+    }
+    std::uint32_t sequence = 0;
+    std::memcpy(&sequence, payload.data(), sizeof(sequence));
+    std::memcpy(
+        reinterpret_cast<std::uint8_t*>(g_control) + sizeof(std::uint32_t) * 8,
+        payload.data() + sizeof(sequence),
+        sizeof(NativeControl) - sizeof(std::uint32_t) * 8);
+    MemoryBarrier();
+    InterlockedExchange(&g_control->requestSequence, static_cast<LONG>(sequence));
+    return relaySend(client, kRelayApplyControl, kRelayStatusOk, nullptr, 0);
+}
+
+bool relayStartTrajectory(SOCKET client, const std::vector<std::uint8_t>& payload)
+{
+    if (g_cameraData == nullptr || g_trajectory == nullptr ||
+        payload.size() < sizeof(NativeTrajectory))
+    {
+        return relaySendError(client, kRelayStartTrajectory, "invalid trajectory payload");
+    }
+    NativeTrajectory command{};
+    std::memcpy(&command, payload.data(), sizeof(command));
+    const std::size_t expected = sizeof(NativeTrajectory) +
+        static_cast<std::size_t>(command.pointCount) * sizeof(TrajectoryKeyframe);
+    if (command.requestSequence == 0 || command.pointCount < 2 ||
+        command.pointCount > kMaxTrajectoryKeyframes ||
+        command.command != kTrajectoryCommandStart ||
+        expected != payload.size())
+    {
+        return relaySendError(client, kRelayStartTrajectory, "invalid trajectory command");
+    }
+    std::memcpy(
+        g_cameraData + kTrajectoryOffset + sizeof(NativeTrajectory),
+        payload.data() + sizeof(NativeTrajectory),
+        payload.size() - sizeof(NativeTrajectory));
+    const LONG sequence = command.requestSequence;
+    command.requestSequence = 0;
+    std::memcpy(g_trajectory, &command, sizeof(command));
+    MemoryBarrier();
+    InterlockedExchange(&g_trajectory->requestSequence, sequence);
+    return relaySend(client, kRelayStartTrajectory, kRelayStatusOk, nullptr, 0);
+}
+
+bool relayStopTrajectory(SOCKET client, const std::vector<std::uint8_t>& payload)
+{
+    if (g_trajectory == nullptr || payload.size() != sizeof(std::uint32_t))
+    {
+        return relaySendError(client, kRelayStopTrajectory, "invalid trajectory-stop payload");
+    }
+    std::uint32_t sequence = 0;
+    std::memcpy(&sequence, payload.data(), sizeof(sequence));
+    NativeTrajectory command{};
+    std::memcpy(&command, g_trajectory, sizeof(command));
+    command.command = kTrajectoryCommandStop;
+    command.requestSequence = 0;
+    std::memcpy(g_trajectory, &command, sizeof(command));
+    MemoryBarrier();
+    InterlockedExchange(&g_trajectory->requestSequence, static_cast<LONG>(sequence));
+    return relaySend(client, kRelayStopTrajectory, kRelayStatusOk, nullptr, 0);
+}
+
+bool relayHandleRequest(SOCKET client)
+{
+    RelayHeader request{};
+    if (!relayReceiveAll(client, &request, sizeof(request)))
+    {
+        return false;
+    }
+    if (std::memcmp(request.magic, kRelayMagic, sizeof(request.magic)) != 0 ||
+        request.version != kRelayVersion ||
+        request.payloadSize > kRelayMaxPayload)
+    {
+        return relaySendError(client, request.operation, "invalid relay header");
+    }
+    std::vector<std::uint8_t> payload(request.payloadSize);
+    if (!payload.empty() && !relayReceiveAll(client, payload.data(), payload.size()))
+    {
+        return false;
+    }
+    switch (request.operation)
+    {
+    case kRelayReadState:
+        if (!payload.empty())
+        {
+            return relaySendError(client, request.operation, "read-state payload must be empty");
+        }
+        return relaySendState(client, request.operation);
+    case kRelayApplyControl:
+        return relayApplyControl(client, payload);
+    case kRelayStartTrajectory:
+        return relayStartTrajectory(client, payload);
+    case kRelayStopTrajectory:
+        return relayStopTrajectory(client, payload);
+    default:
+        return relaySendError(client, request.operation, "unknown relay operation");
+    }
+}
+
+DWORD WINAPI relayWorker(LPVOID)
+{
+    const unsigned short port = relayPort();
+    WSADATA wsaData{};
+    if (port == 0 || WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+    {
+        return 0;
+    }
+    SOCKET server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (server == INVALID_SOCKET)
+    {
+        WSACleanup();
+        return 0;
+    }
+    sockaddr_in address{};
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    address.sin_port = htons(port);
+    BOOL reuse = TRUE;
+    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&reuse), sizeof(reuse));
+    if (bind(server, reinterpret_cast<const sockaddr*>(&address), sizeof(address)) == SOCKET_ERROR ||
+        listen(server, 1) == SOCKET_ERROR)
+    {
+        closesocket(server);
+        WSACleanup();
+        return 0;
+    }
+    g_relayListenSocket = server;
+    while (InterlockedCompareExchange(&g_stopRequested, 0, 0) == 0)
+    {
+        fd_set readable;
+        FD_ZERO(&readable);
+        FD_SET(server, &readable);
+        timeval timeout{0, 500000};
+        const int selected = select(0, &readable, nullptr, nullptr, &timeout);
+        if (selected <= 0)
+        {
+            continue;
+        }
+        SOCKET client = accept(server, nullptr, nullptr);
+        if (client == INVALID_SOCKET)
+        {
+            continue;
+        }
+        while (InterlockedCompareExchange(&g_stopRequested, 0, 0) == 0 &&
+            relayHandleRequest(client))
+        {
+        }
+        closesocket(client);
+    }
+    if (g_relayListenSocket != INVALID_SOCKET)
+    {
+        closesocket(g_relayListenSocket);
+        g_relayListenSocket = INVALID_SOCKET;
+    }
+    WSACleanup();
+    return 0;
+}
 
 bool finiteCommand(const NativeControl& command)
 {
@@ -1072,15 +1381,29 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID)
         {
             InterlockedExchange(&g_stopRequested, 0);
             g_workerThread = CreateThread(nullptr, 0, controlWorker, nullptr, 0, nullptr);
+            if (relayPort() != 0)
+            {
+                g_relayThread = CreateThread(nullptr, 0, relayWorker, nullptr, 0, nullptr);
+            }
         }
     }
     else if (reason == DLL_PROCESS_DETACH)
     {
         InterlockedExchange(&g_stopRequested, 1);
+        if (g_relayListenSocket != INVALID_SOCKET)
+        {
+            closesocket(g_relayListenSocket);
+            g_relayListenSocket = INVALID_SOCKET;
+        }
         if (g_workerThread != nullptr)
         {
             CloseHandle(g_workerThread);
             g_workerThread = nullptr;
+        }
+        if (g_relayThread != nullptr)
+        {
+            CloseHandle(g_relayThread);
+            g_relayThread = nullptr;
         }
         releaseBuffer();
     }

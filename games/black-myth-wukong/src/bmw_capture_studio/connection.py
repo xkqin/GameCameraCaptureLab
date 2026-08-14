@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from .bridge import BridgeMetadata, UuuPoseBridge
+from .bridge import BridgeMetadata, PoseUnavailableError, UuuPoseBridge
 from .models import CameraPose
 from .uuu import integration_status
 
@@ -208,6 +208,50 @@ def classify_connection(
 
 def probe_connection(bridge: UuuPoseBridge) -> ConnectionReport:
     integration = integration_status()
+    if getattr(bridge, "is_linux_relay", False):
+        integration = dict(integration)
+        integration.update(
+            {
+                "platform_unsupported": False,
+                "linux_relay": True,
+                "message": f"Linux/Proton Bridge Relay {getattr(bridge, 'relay_endpoint', '')}",
+            }
+        )
+    if integration.get("linux_relay"):
+        try:
+            metadata = bridge.read_metadata()
+            if metadata is None:
+                return ConnectionReport(
+                    code="linux_bridge_waiting",
+                    level="warning",
+                    title="Linux/Proton Relay 已连接，等待 Bridge",
+                    detail=(
+                        "Relay 已配置，但游戏内 Bridge 尚未发布有效元数据；"
+                        "请在 Proton 环境设置 BMW_BRIDGE_PORT，并重新注入 Bridge DLL。"
+                    ),
+                )
+            pose_status = bridge.status()
+        except (PoseUnavailableError, OSError, TimeoutError, ConnectionError) as exc:
+            return ConnectionReport(
+                code="linux_bridge_waiting",
+                level="warning",
+                title="等待 Linux/Proton Bridge Relay",
+                detail=(
+                    f"无法连接 {integration.get('message', 'Bridge Relay')} "
+                    f"({exc})"
+                ),
+            )
+        relay_integration = dict(integration)
+        relay_integration.update(
+            {
+                "game_running": True,
+                "module_scan_ok": True,
+                "bridge_loaded": True,
+                "uuu_loaded": metadata.native_control_ready,
+                "pid": metadata.process_id,
+            }
+        )
+        return classify_connection(relay_integration, metadata, pose_status)
     if integration.get("platform_unsupported"):
         return classify_connection(integration, None, {"connected": False})
     metadata = bridge.read_metadata()

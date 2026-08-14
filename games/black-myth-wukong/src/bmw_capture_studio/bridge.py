@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import math
 import mmap
+import os
+import socket
 import struct
 import sys
 import threading
@@ -610,3 +612,519 @@ class UuuPoseBridge:
             and 1.0 <= pose.fov_degrees <= 179.0
             and 0.5 <= quaternion_norm <= 1.5
         )
+
+
+# Linux/Proton transport -------------------------------------------------
+#
+# The injected bridge is still a Windows PE DLL because UUU and the game run
+# inside Proton.  A Linux Python process cannot open Wine's named
+# CreateFileMapping object directly, so the DLL exposes the same data/control
+# ABI over a loopback-only relay when BMW_BRIDGE_PORT is set in the Proton
+# environment.  Requests are short-lived and stateless: reconnecting after an
+# OBS restart or a UI crash cannot leave a stale control socket in the game.
+RELAY_MAGIC = b"BMWP"
+RELAY_VERSION = 1
+RELAY_DEFAULT_PORT = 28791
+RELAY_READ_STATE = 1
+RELAY_APPLY_CONTROL = 2
+RELAY_START_TRAJECTORY = 3
+RELAY_STOP_TRAJECTORY = 4
+RELAY_HEADER = struct.Struct("<4sBBHI")
+RELAY_STATUS_OK = 0
+RELAY_STATUS_ERROR = 1
+RELAY_MAX_PAYLOAD = 8 * 1024 * 1024
+
+
+def parse_bridge_endpoint(value: str | None) -> tuple[str, int]:
+    """Parse a loopback-only ``host:port`` for the Linux/Proton relay.
+
+    The relay carries camera-control commands, so accepting an arbitrary DNS
+    name here would accidentally turn a local capture tool into a remote
+    control client.  Numeric loopback addresses and ``localhost`` are the
+    only supported hosts.
+    """
+
+    raw = (value or "").strip()
+    if not raw:
+        raw = f"127.0.0.1:{RELAY_DEFAULT_PORT}"
+    if raw.startswith("["):
+        closing = raw.find("]")
+        if closing <= 1 or closing + 1 >= len(raw) or raw[closing + 1] != ":":
+            raise ValueError("BMW_BRIDGE_ENDPOINT must be host:port or [ipv6]:port")
+        host = raw[1:closing]
+        port_text = raw[closing + 2 :]
+    elif ":" in raw:
+        host, port_text = raw.rsplit(":", 1)
+    else:
+        host, port_text = raw, str(RELAY_DEFAULT_PORT)
+    host = host.strip()
+    normalized_host = host.rstrip(".").lower()
+    is_loopback = normalized_host in {"localhost", "127.0.0.1", "::1"}
+    if not is_loopback:
+        raise ValueError(
+            "BMW_BRIDGE_ENDPOINT must use localhost or a numeric loopback address"
+        )
+    try:
+        port = int(port_text)
+    except ValueError as exc:
+        raise ValueError("BMW_BRIDGE_ENDPOINT port must be an integer") from exc
+    if not 1 <= port <= 65535:
+        raise ValueError("BMW_BRIDGE_ENDPOINT port must be between 1 and 65535")
+    return host, port
+
+
+def _recv_exact(connection: socket.socket, size: int) -> bytes:
+    chunks: list[bytes] = []
+    remaining = size
+    while remaining:
+        chunk = connection.recv(remaining)
+        if not chunk:
+            raise ConnectionError("Linux Bridge Relay closed the connection")
+        chunks.append(chunk)
+        remaining -= len(chunk)
+    return b"".join(chunks)
+
+
+def _decode_metadata(raw: bytes) -> BridgeMetadata | None:
+    if len(raw) != BRIDGE_METADATA.size:
+        raise PoseUnavailableError("Linux Bridge Relay returned an invalid metadata block")
+    (
+        magic,
+        version,
+        size,
+        process_id,
+        connect_call_count,
+        buffer_request_count,
+        flags,
+        _reserved,
+        load_tick_milliseconds,
+    ) = BRIDGE_METADATA.unpack(raw)
+    if magic != METADATA_MAGIC or version < METADATA_VERSION:
+        return None
+    return BridgeMetadata(
+        version=version,
+        size=size,
+        process_id=process_id,
+        connect_call_count=connect_call_count,
+        buffer_request_count=buffer_request_count,
+        flags=flags,
+        load_tick_milliseconds=load_tick_milliseconds,
+    )
+
+
+def _decode_pose(raw: bytes) -> CameraPose:
+    if len(raw) != CAMERA_DATA.size:
+        raise PoseUnavailableError("Linux Bridge Relay returned an invalid pose block")
+    values = CAMERA_DATA.unpack(raw)
+    (
+        camera_enabled,
+        movement_locked,
+        _reserved1,
+        _reserved2,
+        fov,
+        x,
+        y,
+        z,
+        qx,
+        qy,
+        qz,
+        qw,
+        up_x,
+        up_y,
+        up_z,
+        right_x,
+        right_y,
+        right_z,
+        forward_x,
+        forward_y,
+        forward_z,
+        pitch,
+        yaw,
+        roll,
+    ) = values
+    return CameraPose(
+        x=x,
+        y=y,
+        z=z,
+        yaw_degrees=math.degrees(yaw),
+        pitch_degrees=math.degrees(pitch),
+        roll_degrees=math.degrees(roll),
+        fov_degrees=fov,
+        qx=qx,
+        qy=qy,
+        qz=qz,
+        qw=qw,
+        right_x=right_x,
+        right_y=right_y,
+        right_z=right_z,
+        up_x=up_x,
+        up_y=up_y,
+        up_z=up_z,
+        forward_x=forward_x,
+        forward_y=forward_y,
+        forward_z=forward_z,
+        camera_enabled=bool(camera_enabled),
+        movement_locked=bool(movement_locked),
+    )
+
+
+def _decode_control(raw: bytes) -> NativeControlStatus | None:
+    if len(raw) != CONTROL_HEADER.size:
+        raise PoseUnavailableError("Linux Bridge Relay returned an invalid control block")
+    (
+        magic,
+        version,
+        size,
+        request_sequence,
+        acknowledge_sequence,
+        state,
+        error_code,
+        capabilities,
+    ) = CONTROL_HEADER.unpack(raw)
+    if (
+        magic != CONTROL_MAGIC
+        or version != CONTROL_VERSION
+        or size != CONTROL_HEADER.size + CONTROL_COMMAND.size
+    ):
+        return None
+    return NativeControlStatus(
+        request_sequence=request_sequence,
+        acknowledge_sequence=acknowledge_sequence,
+        state=state,
+        error_code=error_code,
+        capabilities=capabilities,
+    )
+
+
+def _decode_trajectory(raw: bytes) -> NativeTrajectoryStatus | None:
+    if len(raw) != TRAJECTORY_HEADER.size:
+        raise PoseUnavailableError("Linux Bridge Relay returned an invalid trajectory block")
+    (
+        magic,
+        version,
+        size,
+        request_sequence,
+        acknowledge_sequence,
+        state,
+        error_code,
+        point_count,
+        duration_seconds,
+        playback_hz,
+        current_segment,
+        elapsed_seconds,
+        _command,
+        _reserved1,
+        _reserved2,
+        _reserved3,
+    ) = TRAJECTORY_HEADER.unpack(raw)
+    if (
+        magic != TRAJECTORY_MAGIC
+        or version != TRAJECTORY_VERSION
+        or size != TRAJECTORY_HEADER.size
+    ):
+        return None
+    return NativeTrajectoryStatus(
+        request_sequence=request_sequence,
+        acknowledge_sequence=acknowledge_sequence,
+        state=state,
+        error_code=error_code,
+        point_count=point_count,
+        duration_seconds=duration_seconds,
+        playback_hz=playback_hz,
+        current_segment=current_segment,
+        elapsed_seconds=elapsed_seconds,
+    )
+
+
+class LinuxRelayUuuPoseBridge:
+    """Linux-side client for the Windows bridge relay running under Proton."""
+
+    is_linux_relay = True
+
+    def __init__(
+        self,
+        endpoint: str | None = None,
+        *,
+        timeout_seconds: float = 1.0,
+    ) -> None:
+        self.relay_endpoint = (
+            endpoint or os.environ.get("BMW_BRIDGE_ENDPOINT") or
+            f"127.0.0.1:{RELAY_DEFAULT_PORT}"
+        ).strip()
+        self.timeout_seconds = max(0.1, float(timeout_seconds))
+        self._lock = threading.RLock()
+
+    def _address(self) -> tuple[str, int]:
+        try:
+            return parse_bridge_endpoint(self.relay_endpoint)
+        except ValueError as exc:
+            raise PoseUnavailableError(str(exc)) from exc
+
+    def _request(self, operation: int, payload: bytes = b"") -> bytes:
+        if len(payload) > RELAY_MAX_PAYLOAD:
+            raise ValueError("Linux Bridge Relay request is too large")
+        host, port = self._address()
+        try:
+            with socket.create_connection(
+                (host, port), timeout=self.timeout_seconds
+            ) as connection:
+                connection.settimeout(self.timeout_seconds)
+                connection.sendall(
+                    RELAY_HEADER.pack(
+                        RELAY_MAGIC,
+                        RELAY_VERSION,
+                        operation,
+                        0,
+                        len(payload),
+                    )
+                    + payload
+                )
+                header = _recv_exact(connection, RELAY_HEADER.size)
+                magic, version, response_operation, status, size = RELAY_HEADER.unpack(header)
+                if magic != RELAY_MAGIC or version != RELAY_VERSION:
+                    raise ConnectionError("Linux Bridge Relay returned an invalid header")
+                if response_operation != operation:
+                    raise ConnectionError("Linux Bridge Relay returned an unexpected operation")
+                if size > RELAY_MAX_PAYLOAD:
+                    raise ConnectionError("Linux Bridge Relay response is too large")
+                response = _recv_exact(connection, size) if size else b""
+                if status != RELAY_STATUS_OK:
+                    message = response.decode("utf-8", errors="replace") or "unknown relay error"
+                    raise PoseUnavailableError(message)
+                return response
+        except (OSError, TimeoutError) as exc:
+            raise PoseUnavailableError(
+                f"Linux Bridge Relay {self.relay_endpoint} is unavailable: {exc}"
+            ) from exc
+
+    def _read_state(self) -> tuple[bytes, bytes, bytes, bytes]:
+        payload = self._request(RELAY_READ_STATE)
+        expected = (
+            BRIDGE_METADATA.size
+            + CAMERA_DATA.size
+            + CONTROL_HEADER.size
+            + TRAJECTORY_HEADER.size
+        )
+        if len(payload) != expected:
+            raise PoseUnavailableError("Linux Bridge Relay returned an incomplete state block")
+        cursor = 0
+        metadata = payload[cursor : cursor + BRIDGE_METADATA.size]
+        cursor += BRIDGE_METADATA.size
+        camera = payload[cursor : cursor + CAMERA_DATA.size]
+        cursor += CAMERA_DATA.size
+        control = payload[cursor : cursor + CONTROL_HEADER.size]
+        cursor += CONTROL_HEADER.size
+        trajectory = payload[cursor : cursor + TRAJECTORY_HEADER.size]
+        return metadata, camera, control, trajectory
+
+    def connect(self) -> None:
+        self._read_state()
+
+    def close(self) -> None:
+        return None
+
+    def read_metadata(self) -> BridgeMetadata | None:
+        metadata, _camera, _control, _trajectory = self._read_state()
+        return _decode_metadata(metadata)
+
+    def read_pose(self) -> CameraPose:
+        _metadata, camera, _control, _trajectory = self._read_state()
+        pose = _decode_pose(camera)
+        if not UuuPoseBridge._looks_valid(pose):
+            raise PoseUnavailableError(
+                "Linux Bridge Relay is connected, but the injected bridge has not published a valid Pose"
+            )
+        return pose
+
+    def read_control_status(self) -> NativeControlStatus | None:
+        _metadata, _camera, control, _trajectory = self._read_state()
+        return _decode_control(control)
+
+    def read_trajectory_status(self) -> NativeTrajectoryStatus | None:
+        _metadata, _camera, _control, trajectory = self._read_state()
+        return _decode_trajectory(trajectory)
+
+    def start_native_trajectory(
+        self,
+        points: Any,
+        *,
+        playback_hz: float = 60.0,
+        timeout_seconds: float = 1.0,
+    ) -> NativeTrajectoryStatus:
+        values = list(points)
+        if len(values) < 2:
+            raise ValueError("smooth trajectory needs at least two keyframes")
+        if len(values) > MAX_TRAJECTORY_KEYFRAMES:
+            raise ValueError(f"trajectory has more than {MAX_TRAJECTORY_KEYFRAMES} keyframes")
+        first_time = float(values[0].time_sec)
+        rows: list[tuple[float, ...]] = []
+        previous_time = -math.inf
+        for point in values:
+            relative_time = float(point.time_sec) - first_time
+            row = (
+                relative_time,
+                float(point.pose.x),
+                float(point.pose.y),
+                float(point.pose.z),
+                float(point.pose.yaw_degrees),
+                float(point.pose.pitch_degrees),
+                float(point.pose.roll_degrees),
+                float(point.pose.fov_degrees),
+            )
+            if not all(math.isfinite(value) for value in row):
+                raise ValueError("trajectory keyframes must be finite")
+            if relative_time <= previous_time:
+                raise ValueError("trajectory time_sec must be strictly increasing")
+            previous_time = relative_time
+            rows.append(row)
+        duration = rows[-1][0]
+        if duration <= 0.0:
+            raise ValueError("trajectory duration must be greater than zero")
+        rate = min(240.0, max(30.0, float(playback_hz)))
+        status = self.read_trajectory_status()
+        if status is None:
+            raise PoseUnavailableError("Linux Bridge Relay does not expose native trajectory state")
+        if status.playing:
+            raise RuntimeError("native smooth trajectory is already playing")
+        sequence = max(status.request_sequence, status.acknowledge_sequence) + 1
+        if sequence > 0x7FFFFFFF:
+            sequence = 1
+        header = TRAJECTORY_HEADER.pack(
+            TRAJECTORY_MAGIC,
+            TRAJECTORY_VERSION,
+            TRAJECTORY_HEADER.size,
+            sequence,
+            status.acknowledge_sequence,
+            TRAJECTORY_STATE_IDLE,
+            0,
+            len(rows),
+            duration,
+            rate,
+            0,
+            0.0,
+            TRAJECTORY_COMMAND_START,
+            0,
+            0,
+            0,
+        )
+        payload = header + b"".join(TRAJECTORY_KEYFRAME.pack(*row) for row in rows)
+        self._request(RELAY_START_TRAJECTORY, payload)
+        deadline = time.monotonic() + max(0.1, timeout_seconds)
+        while time.monotonic() < deadline:
+            result = self.read_trajectory_status()
+            if result is not None and result.acknowledge_sequence == sequence:
+                if result.failed:
+                    raise PoseUnavailableError(f"native trajectory start failed: {result.error_message}")
+                return result
+            time.sleep(0.001)
+        raise TimeoutError("timed out waiting for Linux Bridge Relay trajectory acknowledgement")
+
+    def stop_native_trajectory(
+        self,
+        *,
+        timeout_seconds: float = 1.0,
+    ) -> NativeTrajectoryStatus:
+        status = self.read_trajectory_status()
+        if status is None:
+            raise PoseUnavailableError("native smooth trajectory control is unavailable")
+        if status.state in (
+            TRAJECTORY_STATE_IDLE,
+            TRAJECTORY_STATE_COMPLETED,
+            TRAJECTORY_STATE_STOPPED,
+            TRAJECTORY_STATE_ERROR,
+        ):
+            return status
+        sequence = max(status.request_sequence, status.acknowledge_sequence) + 1
+        if sequence > 0x7FFFFFFF:
+            sequence = 1
+        self._request(RELAY_STOP_TRAJECTORY, struct.pack("<I", sequence))
+        deadline = time.monotonic() + max(0.1, timeout_seconds)
+        while time.monotonic() < deadline:
+            result = self.read_trajectory_status()
+            if result is not None and result.acknowledge_sequence == sequence:
+                return result
+            time.sleep(0.001)
+        raise TimeoutError("timed out waiting for Linux Bridge Relay trajectory stop acknowledgement")
+
+    def apply_native_step(
+        self,
+        *,
+        move_forward: float = 0.0,
+        move_right: float = 0.0,
+        move_up: float = 0.0,
+        yaw_radians: float = 0.0,
+        pitch_radians: float = 0.0,
+        roll_radians: float = 0.0,
+        fov_degrees: float = 0.0,
+        set_fov: bool = False,
+        timeout_seconds: float = 0.75,
+    ) -> NativeControlStatus:
+        values = (
+            move_forward,
+            move_right,
+            move_up,
+            yaw_radians,
+            pitch_radians,
+            roll_radians,
+            fov_degrees,
+        )
+        if not all(math.isfinite(value) for value in values):
+            raise ValueError("native UUU control values must be finite")
+        status = self.read_control_status()
+        if status is None or not status.ready:
+            raise PoseUnavailableError("native UUU control is not ready through Linux Bridge Relay")
+        sequence = max(status.request_sequence, status.acknowledge_sequence) + 1
+        if sequence > 0x7FFFFFFF:
+            sequence = 1
+        payload = struct.pack("<I", sequence) + CONTROL_COMMAND.pack(
+            *values,
+            int(set_fov),
+        )
+        self._request(RELAY_APPLY_CONTROL, payload)
+        deadline = time.monotonic() + max(0.05, timeout_seconds)
+        while time.monotonic() < deadline:
+            result = self.read_control_status()
+            if result is not None and result.acknowledge_sequence == sequence:
+                if result.state != CONTROL_STATE_APPLIED:
+                    raise PoseUnavailableError(f"native UUU command failed: {result.error_message}")
+                return result
+            time.sleep(0.001)
+        raise TimeoutError("timed out waiting for Linux Bridge Relay camera acknowledgement")
+
+    def status(self) -> dict[str, Any]:
+        metadata_raw, camera_raw, control_raw, trajectory_raw = self._read_state()
+        metadata = _decode_metadata(metadata_raw)
+        control = _decode_control(control_raw)
+        trajectory = _decode_trajectory(trajectory_raw)
+        try:
+            pose = _decode_pose(camera_raw)
+            if not UuuPoseBridge._looks_valid(pose):
+                raise PoseUnavailableError("relay pose is invalid")
+        except PoseUnavailableError as exc:
+            return {
+                "connected": False,
+                "message": str(exc),
+                "metadata": metadata,
+                "control": control,
+                "trajectory": trajectory,
+            }
+        return {
+            "connected": True,
+            "camera_enabled": pose.camera_enabled,
+            "movement_locked": pose.movement_locked,
+            "pose": pose,
+            "metadata": metadata,
+            "control": control,
+            "trajectory": trajectory,
+        }
+
+
+def create_pose_bridge(
+    endpoint: str | None = None,
+) -> UuuPoseBridge | LinuxRelayUuuPoseBridge:
+    """Select the native Windows map or Linux/Proton relay transport."""
+
+    selected = endpoint or os.environ.get("BMW_BRIDGE_ENDPOINT")
+    if sys.platform.startswith("linux") and selected:
+        return LinuxRelayUuuPoseBridge(selected)
+    return UuuPoseBridge()

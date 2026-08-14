@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import ctypes
 from ctypes import wintypes
+import os
 from pathlib import Path
+import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -296,12 +299,35 @@ def inject_bridge(pid: int, bridge_path: Path = BRIDGE_PATH) -> dict[str, object
 
 
 def launch_uuu_client(uuu_dir: str | Path) -> dict[str, object]:
-    _require_windows()
     directory = Path(uuu_dir)
     client = directory / "IGCSClient.exe"
     dll = directory / "UniversalUE5Unlocker.dll"
     if not client.exists() or not dll.exists():
         raise UuuIntegrationError(f"UUU 文件夹不完整：{directory}")
+    if sys.platform != "win32":
+        wine = shutil.which("wine")
+        configured = os.environ.get("BMW_UUU_COMMAND", "").strip()
+        if configured:
+            launch_command = [*shlex.split(configured), str(client)]
+            launcher = "BMW_UUU_COMMAND"
+        elif wine:
+            launch_command = [wine, str(client)]
+            launcher = "wine"
+        else:
+            raise UuuIntegrationError(
+                "Linux/Proton 未找到 wine；请设置 BMW_UUU_COMMAND，或安装 Wine 后再打开 UUU。"
+            )
+        process = subprocess.Popen(
+            launch_command,
+            cwd=str(directory),
+            start_new_session=True,
+        )
+        return {
+            "pid": process.pid,
+            "already_running": False,
+            "client": str(client),
+            "launcher": launcher,
+        }
     existing_pid = find_process_pid("IGCSClient.exe")
     if existing_pid is not None:
         return {"pid": existing_pid, "already_running": True, "client": str(client)}
@@ -315,6 +341,21 @@ def launch_uuu_client(uuu_dir: str | Path) -> dict[str, object]:
 
 def integration_status() -> dict[str, object]:
     if sys.platform != "win32":
+        endpoint = os.environ.get("BMW_BRIDGE_ENDPOINT", "").strip()
+        if endpoint:
+            return {
+                "platform_unsupported": False,
+                "platform": sys.platform,
+                "linux_relay": True,
+                "game_running": False,
+                "module_scan_ok": False,
+                "bridge_loaded": False,
+                "uuu_loaded": False,
+                "message": (
+                    f"Linux/Proton Bridge Relay 已配置 ({endpoint})；"
+                    "等待游戏内 Bridge DLL 启动并监听 Relay。"
+                ),
+            }
         return {
             "platform_unsupported": True,
             "platform": sys.platform,
