@@ -129,12 +129,12 @@ p(u) = h00(u)p0 + h10(u)Δt·m0 + h01(u)p1 + h11(u)Δt·m1,  u ∈ [0, 1]
 ```powershell
 git clone https://github.com/xkqin/GameCameraCaptureLab.git
 cd GameCameraCaptureLab
-python launcher\game_capture_hub.py
+python launchers\game_capture_hub.py
 ```
 
-Windows 可以直接双击 `启动多游戏采集中心.bat` 选择任意适配器；UE 游戏也可以双击 `启动统一游戏相机采集器.bat`，它会自动识别唯一正在运行的已支持游戏。未检测到游戏时，采集器进入统一自动识别等待模式；同时检测到多个游戏时，才要求用户明确选择。命令行可使用 `launch_unified_capture_studio.ps1 -GameId <profile-id>`。各游戏的准备条件、快捷键和验证状态见文末适配器指南。
+Windows 可以直接双击 `launchers\启动多游戏采集中心.bat` 选择任意适配器；UE 游戏也可以双击 `launchers\启动统一游戏相机采集器.bat`，它会自动识别唯一正在运行的已支持游戏。未检测到游戏时，采集器进入统一自动识别等待模式；同时检测到多个游戏时，才要求用户明确选择。命令行可使用 `launchers\launch_unified_capture_studio.ps1 -GameId <profile-id>`。各游戏的准备条件、快捷键和验证状态见文末适配器指南。
 
-Linux/Proton 可用 `bash launch_unified_capture_studio.sh <profile-id>` 启动同一套采集 UI，并支持点位/轨迹文件、OBS WebSocket 和回环 Relay；注入器与 Runtime 仍需在游戏所属 Proton 前缀中运行。未配置实时链路时，界面只进入离线/等待状态，不会伪造已连接。
+Linux/Proton 可用 `bash launchers/launch_unified_capture_studio.sh <profile-id>` 启动同一套采集 UI，并支持点位/轨迹文件、OBS WebSocket 和回环 Relay；注入器与 Runtime 仍需在游戏所属 Proton 前缀中运行。未配置实时链路时，界面只进入离线/等待状态，不会伪造已连接。
 
 ## 采集界面控制
 
@@ -174,6 +174,7 @@ notifications:
 
 ```text
 GameCameraCaptureLab/
+├─ launchers/                   # 统一入口、自动识别和多游戏中心
 ├─ games/                       # RE9、KCD2、Black Myth 与未来适配器
 ├─ runtime/ue-camera-runtime/   # 自研 UE profile、扫描器和通用注入器
 ├─ src/                         # 启动中心、注册表与成熟 RE9 采集实现
@@ -181,6 +182,8 @@ GameCameraCaptureLab/
 ├─ data/                        # 点位、扫描计划和代表性轨迹
 ├─ configs/                     # 平台、OBS、报警与自动恢复配置
 ├─ docs/                        # 架构、格式、图片和历史指南
+├─ scripts/                     # 采集、分析和维护脚本
+│  └─ media/                    # 历史视频转码与数据上传工具
 └─ tests/                       # 根项目及各适配器离线测试
 ```
 

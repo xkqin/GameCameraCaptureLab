@@ -28,7 +28,7 @@ The source build and offline protocol tests pass. Our runtime has also completed
 
 1. Fully exit the game, other camera tools, and IGCSClient.
 2. Start only Black Myth: Wukong and enter a rendered scene; borderless mode is recommended.
-3. Run `启动统一游戏相机采集器.bat` from the repository root, or use `launch_unified_capture_studio.ps1 -GameId black-myth-wukong`. Legacy launchers remain compatible.
+3. Run `launchers/启动统一游戏相机采集器.bat`, or use `launchers/launch_unified_capture_studio.ps1 -GameId black-myth-wukong`. The adapter-specific launcher remains compatible.
 4. Click **Inject Camera Bridge**. The UI uses `UeCameraInjector.exe` by default and refuses to stack over another camera runtime or an old Connector.
 5. Start capture after Pose, absolute `setPose`, and trajectory capabilities are ready.
 

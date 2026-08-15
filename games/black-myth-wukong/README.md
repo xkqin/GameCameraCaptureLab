@@ -28,7 +28,7 @@
 
 1. 完全退出游戏、其他相机工具和 IGCSClient，确认旧游戏进程已经消失。
 2. 只启动《黑神话：悟空》，进入正在渲染的场景；建议使用无边框窗口。
-3. 在仓库根目录运行 `启动统一游戏相机采集器.bat`；也可执行 `launch_unified_capture_studio.ps1 -GameId black-myth-wukong`。旧启动脚本继续兼容。
+3. 在仓库的 `launchers/` 目录运行 `启动统一游戏相机采集器.bat`；也可执行 `launchers\\launch_unified_capture_studio.ps1 -GameId black-myth-wukong`。旧适配器启动脚本继续兼容。
 4. 点击“注入 Camera Bridge”。界面默认调用通用 `UeCameraInjector.exe`，并拒绝与其他相机运行时/旧 Connector 叠加 Hook。
 5. 状态显示 Pose、绝对 `setPose` 和轨迹能力就绪后开始采集。
 

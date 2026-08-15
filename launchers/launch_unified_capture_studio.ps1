@@ -5,7 +5,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$repositoryRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repositoryRoot = Split-Path -Parent $PSScriptRoot
 $profileDir = Join-Path $repositoryRoot "runtime\ue-camera-runtime\profiles"
 $gamesDir = Join-Path $repositoryRoot "games"
 $sharedStudioDir = Join-Path $gamesDir "black-myth-wukong"

@@ -15,6 +15,11 @@ vkd3d-proton.cache
 rclone_upload_*.log
 rclone_upload_*.status
 .rclone_upload_*.lock
+transcode.log
+transcode.pid
+transcode_progress.tsv
+transcode_failures.tsv
+batch_console.log
 
 third_party/aesthetic-predictor/
 third_party/huggingface_cache/

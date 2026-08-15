@@ -544,15 +544,15 @@ bash -n scripts/*.sh
 
 ## 14. 批量转码与上传脚本
 
-仓库根目录包含已用于现有数据集的批处理脚本：
+`scripts/media/` 包含已用于现有数据集的批处理脚本：
 
 ```text
-transcode_3000_hevc_nvenc.sh
-transcode_4000_hevc_nvenc.sh
-transcode_10000_hevc_nvenc.sh
-upload_4000_to_h_ceph.sh
-upload_scene_1_2_10000_half_to_h_ceph.sh
-upload_scene_1_3_3000_to_h_ceph.sh
+scripts/media/transcode_3000_hevc_nvenc.sh
+scripts/media/transcode_4000_hevc_nvenc.sh
+scripts/media/transcode_10000_hevc_nvenc.sh
+scripts/media/upload_4000_to_h_ceph.sh
+scripts/media/upload_scene_1_2_10000_half_to_h_ceph.sh
+scripts/media/upload_scene_1_3_3000_to_h_ceph.sh
 ```
 
 这些脚本不包含本机路径、内网地址或 rclone 凭据。通过环境变量提供运行参数。
@@ -564,7 +564,7 @@ SOURCE_ROOT=/path/to/source \
 OUTPUT_ROOT=/path/to/output \
 FFMPEG=/path/to/ffmpeg \
 FFPROBE=/path/to/ffprobe \
-bash transcode_10000_hevc_nvenc.sh
+bash scripts/media/transcode_10000_hevc_nvenc.sh
 ```
 
 上传示例：
@@ -573,7 +573,7 @@ bash transcode_10000_hevc_nvenc.sh
 SOURCE=/path/to/dataset \
 DESTINATION=my-rclone-remote:path/to/dataset \
 ENDPOINT_HOST=optional.internal.endpoint \
-bash upload_scene_1_2_10000_half_to_h_ceph.sh
+bash scripts/media/upload_scene_1_2_10000_half_to_h_ceph.sh
 ```
 
 `EXPECTED_VIDEOS`、`EXPECTED_FILES`、码率、日志路径和锁文件路径也可以通过同名

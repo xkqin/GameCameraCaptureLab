@@ -129,12 +129,12 @@ The original RE9 trajectory animation and detailed documentation remain in [RE9_
 ```powershell
 git clone https://github.com/xkqin/GameCameraCaptureLab.git
 cd GameCameraCaptureLab
-python launcher\game_capture_hub.py
+python launchers\game_capture_hub.py
 ```
 
-On Windows, double-click `启动多游戏采集中心.bat` to choose any adapter. For UE titles, `启动统一游戏相机采集器.bat` auto-detects the one supported game that is running. When no game is detected, the studio enters a unified auto-detection waiting mode; it asks for an explicit choice only when several supported games are running. The command-line equivalent is `launch_unified_capture_studio.ps1 -GameId <profile-id>`. Preparation, controls, and acceptance status are documented in the adapter guides below.
+On Windows, double-click `launchers\启动多游戏采集中心.bat` to choose any adapter. For UE titles, `launchers\启动统一游戏相机采集器.bat` auto-detects the one supported game that is running. When no game is detected, the studio enters a unified auto-detection waiting mode; it asks for an explicit choice only when several supported games are running. The command-line equivalent is `launchers\launch_unified_capture_studio.ps1 -GameId <profile-id>`. Preparation, controls, and acceptance status are documented in the adapter guides below.
 
-Linux/Proton can run the same UI with `bash launch_unified_capture_studio.sh <profile-id>` and supports point/trajectory files, OBS WebSocket, and the loopback relay. The injector and runtime still run inside the game's Proton prefix. Without a live relay, the UI reports an offline/waiting state rather than a false connection.
+Linux/Proton can run the same UI with `bash launchers/launch_unified_capture_studio.sh <profile-id>` and supports point/trajectory files, OBS WebSocket, and the loopback relay. The injector and runtime still run inside the game's Proton prefix. Without a live relay, the UI reports an offline/waiting state rather than a false connection.
 
 ## Capture-studio controls
 
@@ -174,6 +174,7 @@ Shared formats live under [`schemas/`](schemas/):
 
 ```text
 GameCameraCaptureLab/
+├─ launchers/                   # Unified entry points and game discovery
 ├─ games/                       # RE9, KCD2, Black Myth, and future adapters
 ├─ runtime/ue-camera-runtime/   # UE profiles, scanner, and generic injector
 ├─ src/                         # Hub, registry, and mature RE9 capture stack
@@ -181,6 +182,8 @@ GameCameraCaptureLab/
 ├─ data/                        # Point maps, scan plans, representative paths
 ├─ configs/                     # Platform, OBS, alert, and recovery settings
 ├─ docs/                        # Architecture, formats, visuals, legacy guide
+├─ scripts/                     # Capture, analysis, and maintenance scripts
+│  └─ media/                    # Legacy video transcode and transfer tools
 └─ tests/                       # Root and adapter-level offline tests
 ```
 
