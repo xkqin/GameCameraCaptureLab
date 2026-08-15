@@ -88,7 +88,7 @@ def _send_key(vk: int, *, up: bool) -> None:
     )
     sent = user32.SendInput(1, ctypes.byref(event), ctypes.sizeof(INPUT))
     if sent != 1:
-        raise RuntimeError(f"发送旧版兼容按键失败：VK 0x{vk:02X}")
+        raise RuntimeError(f"发送兼容按键失败 / Compatibility key send failed: VK 0x{vk:02X}")
 
 
 def hold_keys(keys: list[int], duration: float) -> None:
@@ -117,7 +117,7 @@ def _dot(error: tuple[float, float, float], axis: tuple[float, float, float]) ->
 class ClosedLoopMover:
     """Reach an absolute pose through the best available in-process bridge.
 
-    The standalone Black Myth bridge exposes an atomic absolute ``set_pose``;
+    The unified camera runtime exposes an atomic absolute ``set_pose``;
     that path is always preferred. The older relative feedback loop is retained
     only for compatibility with older non-absolute test doubles.
     """
@@ -169,7 +169,7 @@ class ClosedLoopMover:
     ) -> CameraPose:
         if self.prefer_native and self._absolute_ready():
             if stop_requested():
-                raise InterruptedError("采集已停止")
+                raise InterruptedError("采集已停止 / Capture stopped")
             if on_update is not None:
                 on_update("absolute setPose")
             setter = getattr(self.bridge, "set_pose")
@@ -180,19 +180,19 @@ class ClosedLoopMover:
         if not native and not self.allow_hotkey_fallback:
             raise RuntimeError(
                 "Standalone camera control is unavailable. Restart the game, "
-                "inject BmwCameraBridge.dll, then wait for a rendered pose."
+                "inject UeCameraRuntime.dll, then wait for a rendered pose."
             )
         if not native:
             self.focus_game()
 
         def read_checked_pose() -> CameraPose:
             if stop_requested():
-                raise InterruptedError("采集已停止")
+                raise InterruptedError("采集已停止 / Capture stopped")
             current = self.bridge.read_pose()
             if not current.camera_enabled:
-                raise RuntimeError("自研相机未启用，请回到游戏按 Insert")
+                raise RuntimeError("相机未启用，请按 Insert / Camera is disabled; press Insert")
             if current.movement_locked:
-                raise RuntimeError("自研相机移动被锁定，请按 Home 解除 Movement Lock")
+                raise RuntimeError("相机移动被锁定，请按 Home / Movement is locked; press Home")
             return current
 
         def errors(current: CameraPose) -> tuple[float, float, float, float, float]:
@@ -215,7 +215,7 @@ class ClosedLoopMover:
                 return
             distance, yaw_error, pitch_error, _roll_error, fov_error = errors(current)
             on_update(
-                f"{phase} | 位置误差 {distance:.2f} | yaw {yaw_error:.2f}° | "
+                f"{phase} | 位置误差 / position {distance:.2f} | yaw {yaw_error:.2f}° | "
                 f"pitch {pitch_error:.2f}° | FOV {fov_error:.2f}°"
             )
             last_update_at = now
@@ -228,7 +228,7 @@ class ClosedLoopMover:
             deadline = time.monotonic() + self.feedback_timeout_sec
             while time.monotonic() < deadline:
                 if stop_requested():
-                    raise InterruptedError("采集已停止")
+                    raise InterruptedError("采集已停止 / Capture stopped")
                 updated = self.bridge.read_pose()
                 if position:
                     changed = any(
@@ -282,17 +282,17 @@ class ClosedLoopMover:
             now = time.monotonic()
             if now - position_started > position_timeout:
                 raise TimeoutError(
-                    f"相机 XYZ 在 {position_timeout:.0f} 秒内未收敛；"
-                    f"位置误差 {distance:.2f}"
+                    f"相机 XYZ 在 {position_timeout:.0f}s 内未收敛 / position did not converge；"
+                    f"误差 / error {distance:.2f}"
                 )
             if distance < best_distance - progress_epsilon:
                 best_distance = distance
                 stagnant_since = now
             elif now - stagnant_since > 4.0:
-                method = "自研原生控制桥" if native else "旧版按键兼容控制"
+                method = "原生控制 / native" if native else "兼容按键 / compatibility keys"
                 raise RuntimeError(
-                    f"相机 XYZ 通过{method}没有继续收敛；"
-                    f"当前误差 {distance:.2f}，历史最佳 {best_distance:.2f}。"
+                    f"相机 XYZ 通过 {method} 未继续收敛 / stopped converging；"
+                    f"当前 / current {distance:.2f}，最佳 / best {best_distance:.2f}."
                 )
 
             error = (
@@ -380,7 +380,7 @@ class ClosedLoopMover:
             now = time.monotonic()
             if now - orientation_started > self.max_seconds:
                 raise TimeoutError(
-                    f"相机朝向/FOV 在 {self.max_seconds:.0f} 秒内未收敛；"
+                    f"相机朝向/FOV 在 {self.max_seconds:.0f}s 内未收敛 / did not converge；"
                     f"yaw {yaw_error:.2f}°，pitch {pitch_error:.2f}°，"
                     f"roll {roll_error:.2f}°，FOV {fov_error:.2f}°"
                 )
@@ -388,9 +388,9 @@ class ClosedLoopMover:
                 best_orientation_error = orientation_error
                 stagnant_since = now
             elif now - stagnant_since > 4.0:
-                method = "自研原生控制桥" if native else "旧版按键兼容控制"
+                method = "原生控制 / native" if native else "兼容按键 / compatibility keys"
                 raise RuntimeError(
-                    f"相机朝向/FOV 通过{method}没有继续收敛；"
+                    f"相机朝向/FOV 通过 {method} 未继续收敛 / stopped converging；"
                     f"yaw {yaw_error:.2f}°，pitch {pitch_error:.2f}°，"
                     f"roll {roll_error:.2f}°，FOV {fov_error:.2f}°。"
                 )
@@ -413,7 +413,7 @@ class ClosedLoopMover:
                     fov_degrees=target.fov_degrees,
                     set_fov=abs(fov_error) > self.fov_tolerance,
                 )
-                report("朝向/FOV", current)
+                report("朝向/FOV / Orientation/FOV", current)
                 wait_for_native_feedback(current, position=False)
                 continue
 
@@ -426,6 +426,6 @@ class ClosedLoopMover:
                 keys.append(VK_NUMPAD3 if roll_error > 0 else VK_NUMPAD1)
             if abs(fov_error) > self.fov_tolerance:
                 keys.append(VK_ADD if fov_error > 0 else VK_SUBTRACT)
-            report("朝向/FOV", current)
+            report("朝向/FOV / Orientation/FOV", current)
             hold_keys(keys, min(self.rotate_pulse_sec, 0.05))
             time.sleep(0.012)

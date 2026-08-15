@@ -66,7 +66,7 @@ notifications:
   discord:
     webhook_url: ""
     mention: ""
-    username: "RE9 Capture Monitor"
+    username: "Unified Camera Capture"
     timeout_sec: 5
   feishu:
     webhook_url: ""

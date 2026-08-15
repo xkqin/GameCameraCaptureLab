@@ -30,6 +30,7 @@ dependencies = [
 [project.scripts]
 game-camera-capture = "game_camera_capture_lab.hub:main"
 game-camera-registry-check = "game_camera_capture_lab.validate:main"
+game-camera-support = "game_camera_capture_lab.support_catalog:main"
 re9-pose-recorder = "re9_pose_recorder.cli:app"
 
 [tool.setuptools.packages.find]

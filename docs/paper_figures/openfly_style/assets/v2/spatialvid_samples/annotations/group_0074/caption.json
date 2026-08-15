@@ -1,0 +1,21 @@
+{
+    "SceneSummary": "A lively New York City intersection teems with activity, framed by towering buildings and bustling sidewalks under an overcast sky.",
+    "SceneDescription": "The scene depicts a bustling urban intersection in New York City. Pedestrians cross the street, while a silver minivan makes a turn. Buildings line the streets, some covered in scaffolding. The sky is overcast, casting a soft light over the scene. A mix of people walk along the sidewalk, some carrying bags or wearing casual attire. The overall tone is that of a typical busy day in the city, with a sense of constant movement and activity.",
+    "CameraMotion": "The camera glides smoothly to the left, then shifts sharply right as it tracks a silver minivan through the intersection. It continues forward along the sidewalk, gradually accelerating as it moves past pedestrians and storefronts, maintaining a steady trajectory through the urban environment.",
+    "ShotImmersion": "The camera weaves left and right as it follows a silver minivan through the intersection, then surges forward along the sidewalk, capturing the rhythm of city life\u2014pedestrians, storefronts, and the ever-moving flow of urban energy under a muted sky.",
+    "CategoryTags": {
+        "sceneType": {
+            "first": "Urban",
+            "second": "Street Scene"
+        },
+        "brightness": "Bright",
+        "timeOfDay": "Daytime (Midday/Noon/Afternoon)",
+        "weather": "Cloudy",
+        "crowdDensity": "Crowded"
+    },
+    "MotionTrends": [
+        "left translate",
+        "right translate",
+        "forward translate"
+    ]
+}

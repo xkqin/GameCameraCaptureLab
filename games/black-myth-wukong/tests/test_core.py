@@ -34,6 +34,7 @@ from bmw_capture_studio.bridge import (
     NativeControlStatus,
     CameraPoseBridge,
 )
+from bmw_capture_studio.app import CaptureStudioApp
 from bmw_capture_studio.capture_runner import CaptureRunner
 from bmw_capture_studio.connection import classify_connection
 from bmw_capture_studio.files import load_points, save_points
@@ -181,6 +182,19 @@ class FrozenFeedbackBridge(FakeNativeBridge):
 
 
 class CoreTests(unittest.TestCase):
+    def test_language_selector_localizes_one_display_language(self) -> None:
+        app = CaptureStudioApp.__new__(CaptureStudioApp)
+        app.language = "zh"
+        self.assertEqual(
+            app._localize_text("静态采集：12 张图片 / Still capture: 12 images"),
+            "静态采集：12 张图片",
+        )
+        app.language = "en"
+        self.assertEqual(
+            app._localize_text("静态采集：12 张图片 / Still capture: 12 images"),
+            "Still capture: 12 images",
+        )
+
     def test_static_resume_uses_global_plan_total_and_next_sample(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -269,10 +283,10 @@ class CoreTests(unittest.TestCase):
             )
             self.assertEqual(result["next_sample"], 22)
 
-    def test_capture_window_is_pinned_by_default(self) -> None:
+    def test_capture_window_is_not_pinned_by_default(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             missing_settings = Path(temp_dir) / "settings.json"
-            self.assertTrue(load_settings(missing_settings)["always_on_top"])
+            self.assertFalse(load_settings(missing_settings)["always_on_top"])
 
     def test_trajectory_catalog_discovers_supported_files_and_deduplicates(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -346,6 +360,8 @@ class CoreTests(unittest.TestCase):
         self.assertIn("BMW_CAMERA_FAST_MULTIPLIER", bridge)
         self.assertIn("kDefaultFastMultiplier = 5.0f", bridge)
         self.assertIn("BmwHudHook", hooks)
+        self.assertIn("BmwCameraHook3", hooks)
+        self.assertIn("g_bmwHook3Return", bridge)
         self.assertIn("xorps xmm0, xmm0", hooks)
         self.assertIn("publishOverride(viewFromAbsolute(command))", bridge)
         self.assertIn("Deliberately hold the final pose", bridge)
@@ -454,6 +470,22 @@ class CoreTests(unittest.TestCase):
         )
         self.assertEqual(report.code, "camera_tool_conflict")
 
+    def test_connection_offers_repair_when_native_artifacts_are_missing(self) -> None:
+        report = classify_connection(
+            {
+                "game_running": True,
+                "module_scan_ok": True,
+                "pid": 42,
+                "bridge_loaded": False,
+                "native_artifacts_ready": False,
+                "conflicting_camera_tool": False,
+            },
+            None,
+            {"connected": False},
+        )
+        self.assertEqual(report.code, "integration_repair_needed")
+        self.assertIn("自动修复并注入", report.detail)
+
     def test_connection_requires_installed_camera_hooks(self) -> None:
         metadata = BridgeMetadata(
             version=METADATA_VERSION,
@@ -514,6 +546,44 @@ class CoreTests(unittest.TestCase):
         )
         self.assertEqual(report.code, "ready")
         self.assertIs(report.pose, current)
+
+    def test_connection_can_make_hud_optional_for_shared_ue_adapter(self) -> None:
+        metadata = BridgeMetadata(
+            version=METADATA_VERSION,
+            size=BRIDGE_METADATA.size,
+            process_id=42,
+            connect_call_count=1,
+            buffer_request_count=1,
+            flags=(
+                FLAG_BRIDGE_LOADED
+                | FLAG_CONNECT_CALLED
+                | FLAG_BUFFER_REQUESTED
+                | FLAG_INPUT_CAPTURE_READY
+            ),
+            load_tick_milliseconds=1,
+        )
+        current = pose()
+        with patch("bmw_capture_studio.connection.HUD_REQUIRED", False):
+            report = classify_connection(
+                {
+                    "game_running": True,
+                    "module_scan_ok": True,
+                    "pid": 42,
+                    "bridge_loaded": True,
+                    "conflicting_camera_tool": False,
+                },
+                metadata,
+                {
+                    "connected": True,
+                    "pose": current,
+                    "control": FakeControl(True),
+                    "absolute_pose": FakeControl(True),
+                    "hud": FakeControl(False),
+                    "trajectory": FakeTrajectory(),
+                },
+            )
+        self.assertEqual(report.code, "ready")
+        self.assertNotIn("Delete", report.detail)
 
     def test_connection_rejects_old_read_only_bridge(self) -> None:
         metadata = BridgeMetadata(

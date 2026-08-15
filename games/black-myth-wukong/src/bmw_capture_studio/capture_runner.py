@@ -52,7 +52,7 @@ def _sleep_interruptible(seconds: float, stop_requested: Callable[[], bool]) -> 
     deadline = time.monotonic() + max(0.0, seconds)
     while time.monotonic() < deadline:
         if stop_requested():
-            raise InterruptedError("采集已停止")
+            raise InterruptedError("采集已停止 / Capture stopped")
         time.sleep(min(0.05, max(0.0, deadline - time.monotonic())))
 
 
@@ -102,10 +102,11 @@ class CaptureRunner:
         values = list(points)
         if self.screenshotter is None:
             raise RuntimeError(
-                "黑神话静态采集必须注入 OBS WebSocket 截图器，已禁止窗口截屏回退"
+                "统一静态采集必须连接 OBS WebSocket；窗口截屏回退已禁用 / "
+                "Unified still capture requires OBS WebSocket; window-capture fallback is disabled"
             )
         if not values:
-            raise ValueError("没有可采集的点位")
+            raise ValueError("没有可采集的点位 / No capture points")
 
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
         session_dir = Path(output_root) / f"{mode}_{stamp}"
@@ -128,13 +129,13 @@ class CaptureRunner:
             start_pose = self.bridge.read_pose()
             for ordinal, point in enumerate(values, start=1):
                 if stop_requested():
-                    raise InterruptedError("采集已停止")
+                    raise InterruptedError("采集已停止 / Capture stopped")
                 if respect_timestamps and point.time_sec > 0:
                     scheduled = run_started + point.time_sec
                     _sleep_interruptible(scheduled - time.monotonic(), stop_requested)
 
                 if on_progress is not None:
-                    on_progress(ordinal - 1, len(values), f"前往 {point.label}")
+                    on_progress(ordinal - 1, len(values), f"前往 / Moving to {point.label}")
                 actual = self.mover.move_to(
                     point.pose,
                     stop_requested=stop_requested,
@@ -160,7 +161,7 @@ class CaptureRunner:
                 }
                 rows.append(row)
                 if on_progress is not None:
-                    on_progress(ordinal, len(values), f"已保存 {filename}")
+                    on_progress(ordinal, len(values), f"已保存 / Saved {filename}")
         except InterruptedError:
             stopped = True
         except Exception as exc:
@@ -174,7 +175,7 @@ class CaptureRunner:
                         start_pose,
                         stop_requested=lambda: False,
                         on_update=(
-                            (lambda message: on_log(f"回位：{message}"))
+                            (lambda message: on_log(f"回位 / Restore：{message}"))
                             if on_log is not None
                             else None
                         ),
@@ -184,7 +185,7 @@ class CaptureRunner:
                     restore_succeeded = False
                     restore_error = f"{type(exc).__name__}: {exc}"
                     if on_log is not None:
-                        on_log(f"相机自动回位失败：{restore_error}")
+                        on_log(f"相机自动回位失败 / Camera restore failed: {restore_error}")
             payload = {
                 "format": "bmw-standalone-capture-manifest-v2",
                 "mode": mode,

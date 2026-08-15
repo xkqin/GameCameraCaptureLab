@@ -1,0 +1,23 @@
+{
+  "openfly_07_multisource_teaser_v2.pdf": {
+    "embedded_raster_objects": 18,
+    "render_size": [
+      1750,
+      954
+    ]
+  },
+  "openfly_08_heterogeneous_framework_v2.pdf": {
+    "embedded_raster_objects": 12,
+    "render_size": [
+      1750,
+      954
+    ]
+  },
+  "openfly_09_spatialvid_camera_supervision.pdf": {
+    "embedded_raster_objects": 3,
+    "render_size": [
+      1750,
+      954
+    ]
+  }
+}

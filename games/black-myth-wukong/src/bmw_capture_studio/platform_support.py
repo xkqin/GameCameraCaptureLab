@@ -41,7 +41,7 @@ def open_path(path: str | Path) -> None:
     else:
         command = shutil.which("xdg-open")
         if not command:
-            raise RuntimeError("Linux 未找到 xdg-open，无法打开文件管理器")
+            raise RuntimeError("Linux 未找到 xdg-open / xdg-open is required to open the file manager")
     subprocess.Popen([command, target])
 
 

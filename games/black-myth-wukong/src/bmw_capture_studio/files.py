@@ -30,7 +30,7 @@ def _items_from_json(payload: Any) -> list[dict[str, Any]]:
     if isinstance(payload, list):
         return payload
     if not isinstance(payload, dict):
-        raise ValueError("JSON 根节点必须是对象或数组")
+        raise ValueError("JSON 根节点必须是对象或数组 / JSON root must be an object or array")
     for key in ("points", "keyframes", "frames", "samples"):
         items = payload.get(key)
         if isinstance(items, list):
@@ -40,7 +40,7 @@ def _items_from_json(payload: Any) -> list[dict[str, Any]]:
         first = trajectories[0]
         if isinstance(first, dict):
             return _items_from_json(first)
-    raise ValueError("文件中没有 points、keyframes、frames 或 samples")
+    raise ValueError("文件中没有 points、keyframes、frames 或 samples / No supported data array found")
 
 
 def load_points(
@@ -57,10 +57,10 @@ def load_points(
         with source.open("r", encoding="utf-8-sig", newline="") as handle:
             rows = list(csv.DictReader(handle))
     else:
-        raise ValueError("只支持 JSON 或 CSV 文件")
+        raise ValueError("只支持 JSON 或 CSV 文件 / Only JSON and CSV are supported")
     points = [CapturePoint.from_mapping(row, index + 1) for index, row in enumerate(rows)]
     if not points and not allow_empty:
-        raise ValueError("点位文件为空")
+        raise ValueError("点位文件为空 / Point file is empty")
     return points
 
 
@@ -71,7 +71,7 @@ def load_trajectories(path: str | Path) -> list[ImportedTrajectory]:
         points = tuple(load_points(source))
         return [ImportedTrajectory(0, source.stem, points)]
     if source.suffix.lower() != ".json":
-        raise ValueError("轨迹文件只支持 JSON 或 CSV")
+        raise ValueError("轨迹文件只支持 JSON 或 CSV / Trajectories must be JSON or CSV")
 
     payload = json.loads(source.read_text(encoding="utf-8-sig"))
     raw_trajectories = payload.get("trajectories") if isinstance(payload, dict) else None
@@ -81,7 +81,7 @@ def load_trajectories(path: str | Path) -> list[ImportedTrajectory]:
             for index, row in enumerate(_items_from_json(payload))
         )
         if not points:
-            raise ValueError("轨迹文件为空")
+            raise ValueError("轨迹文件为空 / Trajectory file is empty")
         trajectory_id = (
             str(payload.get("trajectory_id") or source.stem)
             if isinstance(payload, dict)
@@ -110,7 +110,7 @@ def load_trajectories(path: str | Path) -> list[ImportedTrajectory]:
             )
         )
     if not result:
-        raise ValueError("轨迹集中没有可用轨迹")
+        raise ValueError("轨迹集中没有可用轨迹 / No usable trajectory found")
     return result
 
 

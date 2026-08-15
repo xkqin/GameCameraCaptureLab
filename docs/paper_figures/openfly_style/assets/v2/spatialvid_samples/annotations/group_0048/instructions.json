@@ -1,0 +1,24 @@
+{
+  "0->12": [
+    "Stay"
+  ],
+  "12->27": [
+    "Pan Right"
+  ],
+  "27->28": [
+    "Pan Right",
+    "Truck Left"
+  ],
+  "28->29": [
+    "Pan Right"
+  ],
+  "29->73": [
+    "Pan Right",
+    "Truck Left"
+  ],
+  "73->74": [
+    "Truck Left",
+    "Pan Right",
+    "Roll CW"
+  ]
+}

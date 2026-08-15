@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pjlabpr.local/schemas/game_support_catalog_v1.schema.json",
+  "title": "Game camera support evidence catalog",
+  "type": "object",
+  "required": ["schema_version", "snapshot_date", "methodology", "sources", "games"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "snapshot_date": { "type": "string", "format": "date" },
+    "methodology": { "type": "string", "minLength": 1 },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/source" }
+    },
+    "games": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/game" }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "required": ["id", "kind", "title", "uri", "checked_on"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "kind": { "type": "string", "enum": ["online", "project"] },
+        "title": { "type": "string", "minLength": 1 },
+        "uri": { "type": "string", "minLength": 1 },
+        "checked_on": { "type": "string", "format": "date" }
+      }
+    },
+    "game": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "engine",
+        "evidence_level",
+        "native_profile_status",
+        "public_camera_features",
+        "risk",
+        "notes",
+        "sources"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "name": { "type": "string", "minLength": 1 },
+        "engine": { "type": "string", "minLength": 1 },
+        "evidence_level": {
+          "type": "string",
+          "enum": ["project_runtime_verified", "public_free_camera_verified", "excluded"]
+        },
+        "native_profile_status": {
+          "type": "string",
+          "enum": ["runtime_verified", "profile_required", "not_supported"]
+        },
+        "public_camera_features": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "risk": { "type": "string", "minLength": 1 },
+        "notes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

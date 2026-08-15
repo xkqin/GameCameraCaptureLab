@@ -8,6 +8,7 @@ from .registry import REPO_ROOT, RegistryError, load_registry
 
 SCHEMA_NAMES = (
     "camera_pose_v1.schema.json",
+    "game_support_catalog_v1.schema.json",
     "point_set_v1.schema.json",
     "trajectory_v1.schema.json",
     "ue_camera_profile_v1.schema.json",

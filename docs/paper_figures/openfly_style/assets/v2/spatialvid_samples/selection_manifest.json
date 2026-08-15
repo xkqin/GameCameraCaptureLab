@@ -1,0 +1,308 @@
+{
+  "archive": "/data/EZCAM2/dataset.zip",
+  "videos": {
+    "group_0001": {
+      "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/videos/group_0001/019505db-8be0-5ca8-ba41-e19e33e8ca46.mp4",
+      "local_name": "videos/group_0001.mp4",
+      "bytes": 3848841
+    },
+    "group_0012": {
+      "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/videos/group_0012/72db5a3d-f6bb-5460-ab3f-af90e5e01c74.mp4",
+      "local_name": "videos/group_0012.mp4",
+      "bytes": 1514001
+    },
+    "group_0024": {
+      "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/videos/group_0024/1d204cc8-0db1-5e88-93ff-f85f45ac9bc9.mp4",
+      "local_name": "videos/group_0024.mp4",
+      "bytes": 2132193
+    },
+    "group_0036": {
+      "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/videos/group_0036/61007c07-d4e8-5f09-972c-8224cb0b0e50.mp4",
+      "local_name": "videos/group_0036.mp4",
+      "bytes": 3775967
+    },
+    "group_0048": {
+      "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/videos/group_0048/2a685cac-7758-531f-9870-6dcd832ae84e.mp4",
+      "local_name": "videos/group_0048.mp4",
+      "bytes": 3976095
+    },
+    "group_0060": {
+      "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/videos/group_0060/5ae1065b-38d2-562b-a52b-fbc3dd851fa5.mp4",
+      "local_name": "videos/group_0060.mp4",
+      "bytes": 2373256
+    },
+    "group_0074": {
+      "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/videos/group_0074/9d4999c6-09b2-5a00-9362-514bff3a33eb.mp4",
+      "local_name": "videos/group_0074.mp4",
+      "bytes": 4107464
+    }
+  },
+  "annotations": {
+    "group_0001": {
+      "aesthetic_scores_0p01s.jsonl": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0001/019505db-8be0-5ca8-ba41-e19e33e8ca46/aesthetic_scores_0p01s.jsonl",
+        "local_name": "annotations/group_0001/aesthetic_scores_0p01s.jsonl",
+        "bytes": 58347
+      },
+      "aesthetic_scores_0p01s.meta.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0001/019505db-8be0-5ca8-ba41-e19e33e8ca46/aesthetic_scores_0p01s.meta.json",
+        "local_name": "annotations/group_0001/aesthetic_scores_0p01s.meta.json",
+        "bytes": 630
+      },
+      "caption.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0001/019505db-8be0-5ca8-ba41-e19e33e8ca46/caption.json",
+        "local_name": "annotations/group_0001/caption.json",
+        "bytes": 1545
+      },
+      "indexes.txt": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0001/019505db-8be0-5ca8-ba41-e19e33e8ca46/indexes.txt",
+        "local_name": "annotations/group_0001/indexes.txt",
+        "bytes": 512
+      },
+      "instructions.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0001/019505db-8be0-5ca8-ba41-e19e33e8ca46/instructions.json",
+        "local_name": "annotations/group_0001/instructions.json",
+        "bytes": 63
+      },
+      "intrinsics.npy": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0001/019505db-8be0-5ca8-ba41-e19e33e8ca46/intrinsics.npy",
+        "local_name": "annotations/group_0001/intrinsics.npy",
+        "bytes": 1328
+      },
+      "poses.npy": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0001/019505db-8be0-5ca8-ba41-e19e33e8ca46/poses.npy",
+        "local_name": "annotations/group_0001/poses.npy",
+        "bytes": 2228
+      }
+    },
+    "group_0012": {
+      "aesthetic_scores_0p01s.jsonl": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0012/72db5a3d-f6bb-5460-ab3f-af90e5e01c74/aesthetic_scores_0p01s.jsonl",
+        "local_name": "annotations/group_0012/aesthetic_scores_0p01s.jsonl",
+        "bytes": 52287
+      },
+      "aesthetic_scores_0p01s.meta.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0012/72db5a3d-f6bb-5460-ab3f-af90e5e01c74/aesthetic_scores_0p01s.meta.json",
+        "local_name": "annotations/group_0012/aesthetic_scores_0p01s.meta.json",
+        "bytes": 643
+      },
+      "caption.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0012/72db5a3d-f6bb-5460-ab3f-af90e5e01c74/caption.json",
+        "local_name": "annotations/group_0012/caption.json",
+        "bytes": 1516
+      },
+      "indexes.txt": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0012/72db5a3d-f6bb-5460-ab3f-af90e5e01c74/indexes.txt",
+        "local_name": "annotations/group_0012/indexes.txt",
+        "bytes": 201
+      },
+      "instructions.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0012/72db5a3d-f6bb-5460-ab3f-af90e5e01c74/instructions.json",
+        "local_name": "annotations/group_0012/instructions.json",
+        "bytes": 233
+      },
+      "intrinsics.npy": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0012/72db5a3d-f6bb-5460-ab3f-af90e5e01c74/intrinsics.npy",
+        "local_name": "annotations/group_0012/intrinsics.npy",
+        "bytes": 592
+      },
+      "poses.npy": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0012/72db5a3d-f6bb-5460-ab3f-af90e5e01c74/poses.npy",
+        "local_name": "annotations/group_0012/poses.npy",
+        "bytes": 940
+      }
+    },
+    "group_0024": {
+      "aesthetic_scores_0p01s.jsonl": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0024/1d204cc8-0db1-5e88-93ff-f85f45ac9bc9/aesthetic_scores_0p01s.jsonl",
+        "local_name": "annotations/group_0024/aesthetic_scores_0p01s.jsonl",
+        "bytes": 39143
+      },
+      "aesthetic_scores_0p01s.meta.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0024/1d204cc8-0db1-5e88-93ff-f85f45ac9bc9/aesthetic_scores_0p01s.meta.json",
+        "local_name": "annotations/group_0024/aesthetic_scores_0p01s.meta.json",
+        "bytes": 661
+      },
+      "caption.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0024/1d204cc8-0db1-5e88-93ff-f85f45ac9bc9/caption.json",
+        "local_name": "annotations/group_0024/caption.json",
+        "bytes": 1608
+      },
+      "indexes.txt": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0024/1d204cc8-0db1-5e88-93ff-f85f45ac9bc9/indexes.txt",
+        "local_name": "annotations/group_0024/indexes.txt",
+        "bytes": 316
+      },
+      "instructions.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0024/1d204cc8-0db1-5e88-93ff-f85f45ac9bc9/instructions.json",
+        "local_name": "annotations/group_0024/instructions.json",
+        "bytes": 96
+      },
+      "intrinsics.npy": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0024/1d204cc8-0db1-5e88-93ff-f85f45ac9bc9/intrinsics.npy",
+        "local_name": "annotations/group_0024/intrinsics.npy",
+        "bytes": 880
+      },
+      "poses.npy": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0024/1d204cc8-0db1-5e88-93ff-f85f45ac9bc9/poses.npy",
+        "local_name": "annotations/group_0024/poses.npy",
+        "bytes": 1444
+      }
+    },
+    "group_0036": {
+      "aesthetic_scores_0p01s.jsonl": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0036/61007c07-d4e8-5f09-972c-8224cb0b0e50/aesthetic_scores_0p01s.jsonl",
+        "local_name": "annotations/group_0036/aesthetic_scores_0p01s.jsonl",
+        "bytes": 148438
+      },
+      "aesthetic_scores_0p01s.meta.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0036/61007c07-d4e8-5f09-972c-8224cb0b0e50/aesthetic_scores_0p01s.meta.json",
+        "local_name": "annotations/group_0036/aesthetic_scores_0p01s.meta.json",
+        "bytes": 648
+      },
+      "caption.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0036/61007c07-d4e8-5f09-972c-8224cb0b0e50/caption.json",
+        "local_name": "annotations/group_0036/caption.json",
+        "bytes": 1416
+      },
+      "indexes.txt": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0036/61007c07-d4e8-5f09-972c-8224cb0b0e50/indexes.txt",
+        "local_name": "annotations/group_0036/indexes.txt",
+        "bytes": 524
+      },
+      "instructions.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0036/61007c07-d4e8-5f09-972c-8224cb0b0e50/instructions.json",
+        "local_name": "annotations/group_0036/instructions.json",
+        "bytes": 1497
+      },
+      "intrinsics.npy": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0036/61007c07-d4e8-5f09-972c-8224cb0b0e50/intrinsics.npy",
+        "local_name": "annotations/group_0036/intrinsics.npy",
+        "bytes": 1328
+      },
+      "poses.npy": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0036/61007c07-d4e8-5f09-972c-8224cb0b0e50/poses.npy",
+        "local_name": "annotations/group_0036/poses.npy",
+        "bytes": 2228
+      }
+    },
+    "group_0048": {
+      "aesthetic_scores_0p01s.jsonl": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0048/2a685cac-7758-531f-9870-6dcd832ae84e/aesthetic_scores_0p01s.jsonl",
+        "local_name": "annotations/group_0048/aesthetic_scores_0p01s.jsonl",
+        "bytes": 148439
+      },
+      "aesthetic_scores_0p01s.meta.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0048/2a685cac-7758-531f-9870-6dcd832ae84e/aesthetic_scores_0p01s.meta.json",
+        "local_name": "annotations/group_0048/aesthetic_scores_0p01s.meta.json",
+        "bytes": 648
+      },
+      "caption.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0048/2a685cac-7758-531f-9870-6dcd832ae84e/caption.json",
+        "local_name": "annotations/group_0048/caption.json",
+        "bytes": 1537
+      },
+      "indexes.txt": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0048/2a685cac-7758-531f-9870-6dcd832ae84e/indexes.txt",
+        "local_name": "annotations/group_0048/indexes.txt",
+        "bytes": 524
+      },
+      "instructions.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0048/2a685cac-7758-531f-9870-6dcd832ae84e/instructions.json",
+        "local_name": "annotations/group_0048/instructions.json",
+        "bytes": 275
+      },
+      "intrinsics.npy": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0048/2a685cac-7758-531f-9870-6dcd832ae84e/intrinsics.npy",
+        "local_name": "annotations/group_0048/intrinsics.npy",
+        "bytes": 1328
+      },
+      "poses.npy": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0048/2a685cac-7758-531f-9870-6dcd832ae84e/poses.npy",
+        "local_name": "annotations/group_0048/poses.npy",
+        "bytes": 2228
+      }
+    },
+    "group_0060": {
+      "aesthetic_scores_0p01s.jsonl": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0060/5ae1065b-38d2-562b-a52b-fbc3dd851fa5/aesthetic_scores_0p01s.jsonl",
+        "local_name": "annotations/group_0060/aesthetic_scores_0p01s.jsonl",
+        "bytes": 84451
+      },
+      "aesthetic_scores_0p01s.meta.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0060/5ae1065b-38d2-562b-a52b-fbc3dd851fa5/aesthetic_scores_0p01s.meta.json",
+        "local_name": "annotations/group_0060/aesthetic_scores_0p01s.meta.json",
+        "bytes": 648
+      },
+      "caption.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0060/5ae1065b-38d2-562b-a52b-fbc3dd851fa5/caption.json",
+        "local_name": "annotations/group_0060/caption.json",
+        "bytes": 1564
+      },
+      "indexes.txt": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0060/5ae1065b-38d2-562b-a52b-fbc3dd851fa5/indexes.txt",
+        "local_name": "annotations/group_0060/indexes.txt",
+        "bytes": 300
+      },
+      "instructions.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0060/5ae1065b-38d2-562b-a52b-fbc3dd851fa5/instructions.json",
+        "local_name": "annotations/group_0060/instructions.json",
+        "bytes": 761
+      },
+      "intrinsics.npy": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0060/5ae1065b-38d2-562b-a52b-fbc3dd851fa5/intrinsics.npy",
+        "local_name": "annotations/group_0060/intrinsics.npy",
+        "bytes": 816
+      },
+      "poses.npy": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0060/5ae1065b-38d2-562b-a52b-fbc3dd851fa5/poses.npy",
+        "local_name": "annotations/group_0060/poses.npy",
+        "bytes": 1332
+      }
+    },
+    "group_0074": {
+      "aesthetic_scores_0p01s.jsonl": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0074/9d4999c6-09b2-5a00-9362-514bff3a33eb/aesthetic_scores_0p01s.jsonl",
+        "local_name": "annotations/group_0074/aesthetic_scores_0p01s.jsonl",
+        "bytes": 148438
+      },
+      "aesthetic_scores_0p01s.meta.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0074/9d4999c6-09b2-5a00-9362-514bff3a33eb/aesthetic_scores_0p01s.meta.json",
+        "local_name": "annotations/group_0074/aesthetic_scores_0p01s.meta.json",
+        "bytes": 648
+      },
+      "caption.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0074/9d4999c6-09b2-5a00-9362-514bff3a33eb/caption.json",
+        "local_name": "annotations/group_0074/caption.json",
+        "bytes": 1614
+      },
+      "indexes.txt": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0074/9d4999c6-09b2-5a00-9362-514bff3a33eb/indexes.txt",
+        "local_name": "annotations/group_0074/indexes.txt",
+        "bytes": 524
+      },
+      "instructions.json": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0074/9d4999c6-09b2-5a00-9362-514bff3a33eb/instructions.json",
+        "local_name": "annotations/group_0074/instructions.json",
+        "bytes": 429
+      },
+      "intrinsics.npy": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0074/9d4999c6-09b2-5a00-9362-514bff3a33eb/intrinsics.npy",
+        "local_name": "annotations/group_0074/intrinsics.npy",
+        "bytes": 1328
+      },
+      "poses.npy": {
+        "archive_path": "dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0074/9d4999c6-09b2-5a00-9362-514bff3a33eb/poses.npy",
+        "local_name": "annotations/group_0074/poses.npy",
+        "bytes": 2228
+      }
+    }
+  },
+  "3dgs_previews": [
+    {
+      "archive_path": "dataset/3DGS/videos/RukawaY__gs_scenes__train__interior_0007_840137_frame.png",
+      "local_name": "3dgs/preview_01.png",
+      "bytes": 370223
+    }
+  ]
+}

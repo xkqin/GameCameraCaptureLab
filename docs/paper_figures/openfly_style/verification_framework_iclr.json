@@ -1,0 +1,16 @@
+{
+  "svg_parse": "ok",
+  "pdf_pages": 1,
+  "embedded_raster_objects": 14,
+  "svg_font_range": [
+    8.8,
+    30.0
+  ],
+  "pdf_render_size": [
+    2592,
+    1413
+  ],
+  "full_render": "D:\\pjlabpr\\RE9_Still_Scan\\docs\\paper_figures\\openfly_style\\qa_pdf\\openfly_10_multigame_capture_framework_iclr_from_pdf.png",
+  "iclr_review_render": "D:\\pjlabpr\\RE9_Still_Scan\\docs\\paper_figures\\openfly_style\\qa_pdf\\openfly_10_multigame_capture_framework_iclr_iclr_width.png",
+  "hybrid_vector_raster": true
+}

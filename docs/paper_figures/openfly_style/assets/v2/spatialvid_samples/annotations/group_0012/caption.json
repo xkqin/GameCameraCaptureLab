@@ -1,0 +1,19 @@
+{
+    "SceneSummary": "A golden-hour desert scene features a winding dirt path leading toward rugged, snow-capped mountains, framed by sparse vegetation and a peaceful, sunlit atmosphere.",
+    "SceneDescription": "The scene depicts a desert landscape with mountains in the background under a golden sky. A dirt path leads into the scene, surrounded by desert vegetation including bushes, small trees, and cacti. The mountains are rugged and partially covered with snow. The lighting suggests either sunrise or sunset, casting a warm glow over the environment. The overall tone is peaceful and serene, evoking a sense of natural beauty and tranquility.",
+    "CameraMotion": "The camera steadily moves forward along a dirt path, gradually revealing the distant mountains. It maintains a smooth trajectory with minimal lateral or vertical shifts, capturing the serene desert landscape in a continuous, steady motion.",
+    "ShotImmersion": "The camera glides forward along a dusty trail, the golden light casting long shadows across the arid terrain. Distant snow-capped peaks rise in the background, while cacti and shrubs line the path, all bathed in the warm, tranquil glow of sunset.",
+    "CategoryTags": {
+        "sceneType": {
+            "first": "Natural Landscape",
+            "second": "Desert Landscape"
+        },
+        "brightness": "Bright",
+        "timeOfDay": "Dawn",
+        "weather": "Sunny",
+        "crowdDensity": "Deserted"
+    },
+    "MotionTrends": [
+        "forward translate"
+    ]
+}

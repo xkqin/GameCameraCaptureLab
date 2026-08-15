@@ -1,0 +1,19 @@
+{
+    "SceneSummary": "A serene, luxurious master bedroom features soft pink walls, white furniture, a large window, and turquoise-accented bedding, exuding sophistication and calm.",
+    "SceneDescription": "The scene depicts a luxurious and well-lit master bedroom. The walls are painted a soft pink, complementing the white furniture. A large window provides natural light, illuminating the bed dressed in white linens with turquoise accents. Decorative mirrors adorn the walls, adding to the room's elegance. A chaise lounge sits near the window, inviting relaxation. The overall atmosphere is serene and sophisticated, suggesting a comfortable and stylish living space.",
+    "CameraMotion": "The camera smoothly translates forward, gradually revealing the entire bedroom from the doorway. It maintains a steady movement, capturing the elegant interior with consistent motion, emphasizing the space's layout and design.",
+    "ShotImmersion": "The camera glides forward through the doorway, unveiling a tranquil, opulent bedroom bathed in soft light. The white linens and turquoise accents gleam as the camera moves past mirrors and a chaise lounge, capturing the room\u2019s refined beauty in seamless motion.",
+    "CategoryTags": {
+        "sceneType": {
+            "first": "Interior",
+            "second": "Master Bedroom"
+        },
+        "brightness": "Bright",
+        "timeOfDay": "Daytime",
+        "weather": "Sunny",
+        "crowdDensity": "Deserted"
+    },
+    "MotionTrends": [
+        "forward translate"
+    ]
+}

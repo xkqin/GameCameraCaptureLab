@@ -9,12 +9,60 @@ import unittest
 from unittest.mock import Mock, patch
 
 from bmw_capture_studio.config import SharedConfig
-from bmw_capture_studio import feishu_notify, repair
+from bmw_capture_studio import discord_notify, feishu_notify, repair
+from bmw_capture_studio.discord_notify import DiscordNotifier
 from bmw_capture_studio.feishu_notify import FeishuNotifier
 from bmw_capture_studio.repair import CodexRecoveryTrigger
 
 
 class AlertingTests(unittest.TestCase):
+    def test_unified_environment_has_priority_over_legacy_notification_values(self) -> None:
+        config = SharedConfig(
+            raw={"notifications": {"discord": {}, "feishu": {}}},
+            path=Path("configs/windows.local.yaml"),
+        )
+        with patch.dict(
+            "os.environ",
+            {
+                "UNIFIED_DISCORD_WEBHOOK_URL": "https://unified.invalid/discord",
+                "RE9_DISCORD_WEBHOOK_URL": "https://legacy.invalid/discord",
+                "UNIFIED_FEISHU_WEBHOOK_URL": "https://unified.invalid/feishu",
+                "RE9_FEISHU_WEBHOOK_URL": "https://legacy.invalid/feishu",
+            },
+            clear=False,
+        ):
+            discord = DiscordNotifier.from_config(config)
+            feishu = FeishuNotifier.from_config(config)
+
+        self.assertEqual(discord.webhook_url, "https://unified.invalid/discord")
+        self.assertEqual(feishu.webhook_url, "https://unified.invalid/feishu")
+
+    def test_discord_payload_and_failure_log_do_not_expose_webhook(self) -> None:
+        response = Mock()
+        response.raise_for_status.side_effect = RuntimeError(
+            "failed https://discord.invalid/webhook-secret"
+        )
+        fake_requests = Mock()
+        fake_requests.post.return_value = response
+        notifier = DiscordNotifier(
+            webhook_url="https://discord.invalid/webhook-secret",
+            mention="@here",
+        )
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            discord_notify, "requests", fake_requests
+        ), patch.object(
+            discord_notify, "_REQUEST_EXCEPTION", RuntimeError
+        ), patch.object(discord_notify.time, "sleep"):
+            notifier.log_path = Path(directory) / "discord.log"
+            self.assertFalse(notifier.send_error("Failure", "Broken", fields={"Adapter": "x"}))
+            log_text = notifier.log_path.read_text(encoding="utf-8")
+
+        self.assertNotIn("webhook-secret", log_text)
+        self.assertIn("RuntimeError", log_text)
+        payload = notifier._payload("Test", "Message", fields={"Adapter": "x"})
+        self.assertEqual(payload["content"], "@here")
+        self.assertEqual(payload["embeds"][0]["fields"][0]["name"], "Adapter")
+
     def test_feishu_uses_re9_config_shape_and_environment_override(self) -> None:
         config = SharedConfig(
             raw={
@@ -97,6 +145,24 @@ class AlertingTests(unittest.TestCase):
         self.assertFalse(trigger.configured_enabled)
         self.assertFalse(trigger.enabled)
         self.assertIn("RE9_CODEX_RECOVERY_ENABLED", trigger.status_text)
+
+    def test_unified_recovery_environment_has_priority_over_legacy_values(self) -> None:
+        config = SharedConfig(raw={}, path=None)
+        with patch.dict(
+            "os.environ",
+            {
+                "UNIFIED_CODEX_RECOVERY_ENABLED": "1",
+                "RE9_CODEX_RECOVERY_ENABLED": "0",
+                "UNIFIED_CODEX_BIN": "unified-codex",
+                "RE9_CODEX_BIN": "legacy-codex",
+            },
+            clear=False,
+        ):
+            trigger = CodexRecoveryTrigger.from_config(config)
+
+        self.assertTrue(trigger.configured_enabled)
+        self.assertEqual(trigger.codex_bin, "unified-codex")
+        self.assertEqual(trigger.source, "environment")
 
     def test_repair_trigger_writes_private_request_without_blocking(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

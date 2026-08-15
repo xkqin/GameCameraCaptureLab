@@ -8,6 +8,7 @@ from .paths import SETTINGS_PATH
 
 
 DEFAULTS: dict[str, Any] = {
+    "language": "zh",
     "bridge_endpoint": "",
     "capture_interval_sec": 0.12,
     "position_tolerance": 4.0,
@@ -27,7 +28,7 @@ DEFAULTS: dict[str, Any] = {
     "obs_restart_wait_sec": 20.0,
     "scene_id": "scene_1",
     "autoload_trajectory": "",
-    "always_on_top": True,
+    "always_on_top": False,
 }
 
 

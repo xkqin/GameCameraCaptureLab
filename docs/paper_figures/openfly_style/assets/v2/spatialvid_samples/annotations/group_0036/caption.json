@@ -1,0 +1,19 @@
+{
+    "SceneSummary": "A serene Japanese residential street with two-story homes, a parked car, and clear blue skies creates a calm and peaceful ambiance.",
+    "SceneDescription": "The scene depicts a quiet residential street in Japan. Two-story houses line the narrow road, with a red car parked in front of one. The sky is a clear blue, casting a natural light on the surroundings. The atmosphere is calm and still, with no visible people or activity other than the camera's movement. Power lines crisscross overhead, adding to the urban landscape. The overall tone is serene and peaceful.",
+    "CameraMotion": "The camera steadily moves forward along the residential street, maintaining a consistent height and direction. It glides smoothly through the scene, revealing houses and the quiet, peaceful atmosphere as it progresses.",
+    "ShotImmersion": "The camera glides forward down a narrow Japanese street, passing quiet houses and a parked red car beneath a clear, blue sky. The stillness of the scene contrasts with the smooth, deliberate motion, evoking a sense of calm and subtle peace.",
+    "CategoryTags": {
+        "sceneType": {
+            "first": "Urban",
+            "second": "Street Scene"
+        },
+        "brightness": "Bright",
+        "timeOfDay": "Daytime",
+        "weather": "Sunny",
+        "crowdDensity": "Deserted"
+    },
+    "MotionTrends": [
+        "forward translate"
+    ]
+}

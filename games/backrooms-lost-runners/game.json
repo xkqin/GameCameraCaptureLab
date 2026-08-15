@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "id": "backrooms-lost-runners",
+  "name": "Backrooms Lost Runners",
+  "short_name": "Backrooms",
+  "engine": "Unreal Engine 5.6",
+  "maturity": "beta",
+  "summary": "复用自研 UE Camera Runtime 的 LWC 相机 ABI；三处 Hook、Pose、相对控制、绝对 setPose 与进程内轨迹均已实机验证。",
+  "documentation": "README.md",
+  "examples": "examples",
+  "capabilities": {
+    "free_camera": "runtime_control_verified_input_hook_ready",
+    "pose_read": "live_runtime_verified",
+    "absolute_pose_control": "live_runtime_verified",
+    "relative_pose_control": "live_runtime_verified",
+    "point_capture": "shared_capture_studio",
+    "still_capture": "shared_obs_1080p_jpg",
+    "trajectory_capture": "shared_capture_studio",
+    "trajectory_replay": "live_runtime_verified_in_process_hermite",
+    "hud_visibility": "not_yet_supported"
+  },
+  "actions": [
+    {
+      "id": "capture",
+      "label": "打开 Backrooms 采集界面",
+      "description": "启动共享 UE Camera Runtime 点位和轨迹采集界面。",
+      "platforms": ["windows"],
+      "working_directory": ".",
+      "command": [
+        "powershell.exe",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "{game}/launch_capture_studio.ps1"
+      ]
+    }
+  ]
+}

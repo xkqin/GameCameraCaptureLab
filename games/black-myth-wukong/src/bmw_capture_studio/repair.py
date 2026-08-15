@@ -17,6 +17,12 @@ from .paths import LOGS_DIR, PROJECT_ROOT
 from .platform_support import detached_process_kwargs
 
 
+UNIFIED_RECOVERY_ENABLED_ENV = "UNIFIED_CODEX_RECOVERY_ENABLED"
+UNIFIED_RECOVERY_BIN_ENV = "UNIFIED_CODEX_BIN"
+UNIFIED_RECOVERY_PROXY_ENV = "UNIFIED_CODEX_PROXY_URL"
+UNIFIED_RECOVERY_PROMPT_ENV = "UNIFIED_CODEX_RECOVERY_PROMPT"
+UNIFIED_RECOVERY_COOLDOWN_ENV = "UNIFIED_CODEX_RECOVERY_COOLDOWN_SEC"
+UNIFIED_RECOVERY_TIMEOUT_ENV = "UNIFIED_CODEX_RECOVERY_TIMEOUT_SEC"
 RECOVERY_ENABLED_ENV = "RE9_CODEX_RECOVERY_ENABLED"
 RECOVERY_BIN_ENV = "RE9_CODEX_BIN"
 RECOVERY_PROXY_ENV = "RE9_CODEX_PROXY_URL"
@@ -34,6 +40,11 @@ def _repair_config(raw: dict[str, object]) -> dict[str, object]:
         return {}
     recovery = automation.get("codex_recovery")
     return dict(recovery) if isinstance(recovery, dict) else {}
+
+
+def _environment_value(primary: str, legacy: str) -> str | None:
+    value = os.environ.get(primary)
+    return value if value is not None else os.environ.get(legacy)
 
 
 def _bool_setting(value: object, default: bool = False) -> bool:
@@ -110,7 +121,9 @@ class CodexRecoveryTrigger:
     @classmethod
     def from_config(cls, config: SharedConfig) -> CodexRecoveryTrigger:
         settings = _repair_config(config.raw)
-        enabled_from_env = os.environ.get(RECOVERY_ENABLED_ENV)
+        enabled_from_env = _environment_value(
+            UNIFIED_RECOVERY_ENABLED_ENV, RECOVERY_ENABLED_ENV
+        )
         if enabled_from_env is None:
             configured_enabled = _bool_setting(settings.get("enabled"), False)
             source = "config" if configured_enabled else "disabled"
@@ -118,20 +131,24 @@ class CodexRecoveryTrigger:
             configured_enabled = _bool_setting(enabled_from_env, False)
             source = "environment" if configured_enabled else "disabled"
 
-        codex_bin = os.environ.get(RECOVERY_BIN_ENV)
+        codex_bin = _environment_value(UNIFIED_RECOVERY_BIN_ENV, RECOVERY_BIN_ENV)
         if codex_bin is None:
             codex_bin = str(settings.get("codex_bin") or "")
         codex_bin = codex_bin.strip() or str(shutil.which("codex") or "")
-        proxy_url = os.environ.get(RECOVERY_PROXY_ENV)
+        proxy_url = _environment_value(UNIFIED_RECOVERY_PROXY_ENV, RECOVERY_PROXY_ENV)
         if proxy_url is None:
             proxy_url = str(settings.get("proxy_url") or "")
-        base_prompt = os.environ.get(RECOVERY_PROMPT_ENV)
+        base_prompt = _environment_value(UNIFIED_RECOVERY_PROMPT_ENV, RECOVERY_PROMPT_ENV)
         if base_prompt is None:
             base_prompt = str(settings.get("prompt") or DEFAULT_RECOVERY_PROMPT)
-        cooldown_value: object = os.environ.get(RECOVERY_COOLDOWN_ENV)
+        cooldown_value: object = _environment_value(
+            UNIFIED_RECOVERY_COOLDOWN_ENV, RECOVERY_COOLDOWN_ENV
+        )
         if cooldown_value is None:
             cooldown_value = settings.get("cooldown_sec", 900.0)
-        timeout_value: object = os.environ.get(RECOVERY_TIMEOUT_ENV)
+        timeout_value: object = _environment_value(
+            UNIFIED_RECOVERY_TIMEOUT_ENV, RECOVERY_TIMEOUT_ENV
+        )
         if timeout_value is None:
             timeout_value = settings.get("timeout_sec", 3_600.0)
 
@@ -160,11 +177,15 @@ class CodexRecoveryTrigger:
     @property
     def status_text(self) -> str:
         if not self.configured_enabled:
-            return f"自动修复：未启用（设置 {RECOVERY_ENABLED_ENV}=1）"
+            return (
+                f"自动修复 / Recovery：未启用（设置 {UNIFIED_RECOVERY_ENABLED_ENV}=1；"
+                f"兼容 {RECOVERY_ENABLED_ENV}）"
+            )
         if not self.codex_bin:
-            return "自动修复：不可用（未找到 codex CLI）"
+            return "自动修复 / Recovery：不可用 / unavailable（Codex CLI not found）"
         return (
-            f"自动修复：已启用（{self.source}，冷却 {int(round(self.cooldown_sec / 60))} 分钟）"
+            f"自动修复 / Recovery：已启用 / enabled（{self.source}，"
+            f"冷却 / cooldown {int(round(self.cooldown_sec / 60))} min）"
         )
 
     def trigger(
@@ -259,12 +280,12 @@ def _build_recovery_prompt(request: Mapping[str, object]) -> str:
     context = "\n".join(field_lines) or "- no additional fields"
     return (
         f"{request.get('base_prompt') or DEFAULT_RECOVERY_PROMPT}\n\n"
-        "这是黑神话采集器自动发出的错误恢复任务。\n"
-        f"错误标题：{request.get('title') or 'Black Myth capture failure'}\n"
+        "这是统一游戏相机采集器自动发出的错误恢复任务。\n"
+        f"错误标题：{request.get('title') or 'Unified camera capture failure'}\n"
         f"错误内容：{request.get('message') or '-'}\n"
         f"上下文：\n{context}\n\n"
         "请持续处理直到满足以下条件：\n"
-        "1. 先检查黑神话采集器源码、最新错误日志、轨迹/静态采集清单和 OBS 状态，定位根因。\n"
+        "1. 先检查当前游戏适配器、统一采集器源码、最新错误日志、轨迹/静态采集清单和 OBS 状态，定位根因。\n"
         "2. 先做离线检查和最小可靠修复；不要启动游戏或自动采集，除非用户明确授权。\n"
         "3. 保留所有已完成数据，从第一个缺失索引安全恢复；不要覆盖有效视频或图片。\n"
         "4. 运行相关编译和单元测试，并在日志中记录修复结果。\n"
@@ -362,7 +383,7 @@ def _worker(request_path: Path) -> int:
                 pass
             log_handle.write(
                 f"\n{datetime.now().astimezone().isoformat(timespec='seconds')} "
-                f"Black Myth repair started: {request.get('title') or '-'}\n"
+                f"Unified camera recovery started: {request.get('title') or '-'}\n"
             )
             log_handle.flush()
             process = subprocess.Popen(

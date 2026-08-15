@@ -90,9 +90,12 @@ So for UE5 titles sharing an existing ABI, the change really can be only a littl
 |---|---|---|---|---|---|
 | RE Engine / RE9 | RE Engine | Verified | Verified Lua `setPose` | Verified | Stable |
 | Kingdom Come: Deliverance II | CryEngine | Verified | Full rendered result pending | OBS and batch capture implemented | Beta |
-| Black Myth: Wukong | Unreal Engine 5 | Live pose read through our Runtime | Atomic `setPose` implemented; final visual acceptance pending | 22-view stills and in-process trajectories integrated | Experimental |
+| Black Myth: Wukong | Unreal Engine 5 | Live Runtime Pose verified | Atomic `setPose` verified in game | 22-view stills and in-process trajectories integrated | Beta |
+| Backrooms Lost Runners | Unreal Engine 5.6 | Three hooks and live Pose verified | Relative control and atomic `setPose` verified | Native trajectory verified; OBS acceptance pending | Beta |
 
 Reading a pose, having the runtime accept a command, and seeing the rendered camera reach the target are three separate acceptance layers. Results are never copied from one game to another.
+
+Public evidence confirms free cameras, camera paths, and Location/Orientation/FOV path-node state for 14 additional popular offline UE4/UE5 games. They are tracked as candidates, never displayed as shipped adapters before target-build signature scans and project runtime acceptance. See the [game camera support matrix](docs/GAME_SUPPORT_MATRIX.en.md) for evidence levels, risks, and next-target priority.
 
 ## Interface, planning, and outputs
 
@@ -129,9 +132,35 @@ cd GameCameraCaptureLab
 python launcher\game_capture_hub.py
 ```
 
-On Windows, you can also double-click `启动多游戏采集中心.bat` and select an adapter. Preparation, controls, and acceptance status are documented in the adapter guides below.
+On Windows, double-click `启动多游戏采集中心.bat` to choose any adapter. For UE titles, `启动统一游戏相机采集器.bat` auto-detects the one supported game that is running. When no game is detected, the studio enters a unified auto-detection waiting mode; it asks for an explicit choice only when several supported games are running. The command-line equivalent is `launch_unified_capture_studio.ps1 -GameId <profile-id>`. Preparation, controls, and acceptance status are documented in the adapter guides below.
 
-Linux/Proton supports the capture UI, point/trajectory files, OBS WebSocket, and loopback relay. The injector and runtime still run inside the game's Proton prefix. Without a live relay, the UI reports an offline/waiting state rather than a false connection.
+Linux/Proton can run the same UI with `bash launch_unified_capture_studio.sh <profile-id>` and supports point/trajectory files, OBS WebSocket, and the loopback relay. The injector and runtime still run inside the game's Proton prefix. Without a live relay, the UI reports an offline/waiting state rather than a false connection.
+
+## Capture-studio controls
+
+After the unified studio starts, the runtime-control area provides one language dropdown. Select `中文` or `English` and the studio switches immediately without a restart; the main UI, dynamic status and progress text, and the Notifications & Recovery setup guide follow the selected language.
+
+The same area keeps a **Keep Capture Studio on Top** button, which is off by default and can be enabled when the studio should remain visible over the game. The choice is saved in local settings. `Delete` toggles the in-game HUD; WASD/QE, mouse look, and `Shift` camera controls follow each adapter's key table. When no supported game is detected, the unified launcher waits in auto-detection mode; it asks for a target only when multiple supported games are running.
+
+## Feishu and Discord setup
+
+The unified studio includes a 中文/English setup guide plus separate **Test Feishu** and **Test Discord** buttons. Copy `configs/windows.yaml` to the Git-ignored `configs/windows.local.yaml`, then configure:
+
+```yaml
+notifications:
+  discord:
+    webhook_url: "https://discord.com/api/webhooks/..."
+    mention: ""
+    username: "Unified Camera Capture"
+    timeout_sec: 5
+  feishu:
+    webhook_url: "https://open.feishu.cn/open-apis/bot/v2/hook/..."
+    secret: ""
+    mention_open_id: ""
+    timeout_sec: 5
+```
+
+Environment alternatives are `UNIFIED_DISCORD_WEBHOOK_URL`, `UNIFIED_FEISHU_WEBHOOK_URL`, and `UNIFIED_FEISHU_SECRET`; set `UNIFIED_CAMERA_CONFIG` for a custom YAML path. Legacy RE9/BMW variables remain compatible, but Unified variables take precedence. Never commit real webhooks, secrets, tokens, or local config files.
 
 ## Data and repository structure
 
@@ -141,6 +170,7 @@ Shared formats live under [`schemas/`](schemas/):
 - `camera-point-set/v1`: spatial points, scenes, and capture metadata;
 - `camera-trajectory/v1`: timed trajectory keyframes;
 - `ue_camera_profile_v1`: UE process, signatures, ABI, and capabilities.
+- `game_support_catalog/v1`: public camera evidence, project runtime acceptance, and exclusion risk.
 
 ```text
 GameCameraCaptureLab/
@@ -178,3 +208,4 @@ Project-owned source code is free and open under the [MIT License](LICENSE). The
 - [RE9 / RE Engine](games/re9/README.md) · [English](games/re9/README.en.md)
 - [Kingdom Come: Deliverance II / KCD2](games/kcd2/README.md) · [English](games/kcd2/README.en.md)
 - [Black Myth: Wukong](games/black-myth-wukong/README.md) · [English](games/black-myth-wukong/README.en.md)
+- [Backrooms Lost Runners](games/backrooms-lost-runners/README.md) · [English](games/backrooms-lost-runners/README.en.md)

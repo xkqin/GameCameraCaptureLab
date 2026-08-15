@@ -7,7 +7,7 @@
 - 通用 `UeCameraInjector.exe`：按 PID、进程名或已登记 profile 自动选择目标进程；
 - 通用 `UeCameraRuntime.dll`：加载后根据目标进程选择 profile；
 - 离线 PE/签名扫描器：只读取游戏 EXE，不修改文件、不注入；
-- `black-myth-wukong` 首个 profile，复用现有的 LWC `FMinimalViewInfo` 相机 ABI；
+- `black-myth-wukong` 与 `backrooms-lost-runners` 两个已登记 profile，共用 LWC `FMinimalViewInfo` 相机 ABI；
 - 共享内存 pose、绝对 setPose、键鼠、HUD 和进程内 Hermite 轨迹协议；
 - 上层继续复用项目的点位、22 方向静态扫描、OBS 和数据 manifest 管线。
 

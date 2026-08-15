@@ -11,14 +11,12 @@ try:
 except ImportError:  # pragma: no cover - the packaged runtime installs PyYAML
     yaml = None  # type: ignore[assignment]
 
-from .paths import PROJECT_ROOT
+from .paths import REPOSITORY_ROOT
 
 
+UNIFIED_CONFIG_ENV = "UNIFIED_CAMERA_CONFIG"
 BMW_CONFIG_ENV = "BMW_CONFIG"
 RE9_CONFIG_ENV = "RE9_CONFIG"
-REPOSITORY_ROOT = PROJECT_ROOT.parent.parent
-
-
 def _platform_config_names() -> tuple[str, ...]:
     if sys.platform.startswith("linux"):
         return ("linux.local.yaml", "linux.yaml", "default.yaml")
@@ -37,7 +35,11 @@ def _resolve_config_path(value: str | Path) -> Path:
 
 
 def _candidate_paths() -> list[Path]:
-    selected = os.environ.get(BMW_CONFIG_ENV) or os.environ.get(RE9_CONFIG_ENV)
+    selected = (
+        os.environ.get(UNIFIED_CONFIG_ENV)
+        or os.environ.get(BMW_CONFIG_ENV)
+        or os.environ.get(RE9_CONFIG_ENV)
+    )
     if selected:
         return [_resolve_config_path(selected)]
     return [REPOSITORY_ROOT / "configs" / name for name in _platform_config_names()]

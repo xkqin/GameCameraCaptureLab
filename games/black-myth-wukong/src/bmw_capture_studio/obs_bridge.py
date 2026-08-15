@@ -25,7 +25,7 @@ class OBSBridge:
         try:
             import obsws_python as obs
         except ImportError as exc:
-            raise RuntimeError("缺少 obsws-python，请重新运行启动脚本安装依赖") from exc
+            raise RuntimeError("缺少 obsws-python，请重新运行启动脚本 / obsws-python is missing; rerun the launcher") from exc
         try:
             self.client = obs.ReqClient(
                 host=host,
@@ -34,7 +34,7 @@ class OBSBridge:
                 timeout=5,
             )
         except Exception as exc:
-            raise RuntimeError(f"无法连接 OBS WebSocket {host}:{port}：{exc}") from exc
+            raise RuntimeError(f"无法连接 OBS WebSocket / Connection failed {host}:{port}: {exc}") from exc
         self._audio_snapshot: dict[str, bool] | None = None
 
     def close(self) -> None:
@@ -59,7 +59,7 @@ class OBSBridge:
             "currentProgramSceneName",
         )
         if not name:
-            raise RuntimeError("OBS 未返回当前 Program 场景")
+            raise RuntimeError("OBS 未返回当前 Program 场景 / OBS did not return the current Program scene")
         return str(name)
 
     def video_canvas_size(self) -> tuple[int, int]:
@@ -117,7 +117,7 @@ class OBSBridge:
         if normalized not in {"jpg", "png"}:
             raise ValueError("Image format must be jpg or png")
         if int(width) < 8 or int(height) < 8:
-            raise ValueError("OBS 截图尺寸必须至少为 8×8 像素")
+            raise ValueError("OBS 截图尺寸至少为 8×8 / OBS screenshot size must be at least 8×8")
         source = source_name.strip() or self.current_scene()
 
         # OBS writes asynchronously. Remove a stale file first so a previous
@@ -141,7 +141,7 @@ class OBSBridge:
             except OSError:
                 pass
             time.sleep(0.01)
-        raise TimeoutError(f"OBS 未在限定时间内写入截图：{target}")
+        raise TimeoutError(f"OBS 截图写入超时 / Screenshot write timed out: {target}")
 
     def set_record_directory(self, directory: str | Path) -> Path:
         target = Path(directory).resolve()
@@ -153,7 +153,7 @@ class OBSBridge:
         response = self.client.get_input_list()
         inputs = _value(response, "inputs")
         if not isinstance(inputs, list):
-            raise RuntimeError("OBS 未返回输入源列表，已阻止可能带声音的录像")
+            raise RuntimeError("OBS 未返回输入源，已阻止录像 / OBS returned no inputs; recording was blocked")
         snapshot: dict[str, bool] = {}
         try:
             for item in inputs:
@@ -177,7 +177,7 @@ class OBSBridge:
                     self.client.set_input_mute(source, muted)
                 except Exception:
                     pass
-            raise RuntimeError("OBS 音频源未能全部静音，录像未开始") from exc
+            raise RuntimeError("OBS 音频未完全静音，录像未开始 / OBS audio could not be fully muted") from exc
         self._audio_snapshot = snapshot
         return len(snapshot)
 
@@ -193,7 +193,7 @@ class OBSBridge:
             except Exception as exc:
                 errors.append(f"{source}: {exc}")
         if errors:
-            raise RuntimeError("OBS 音频静音状态恢复失败：" + "; ".join(errors))
+            raise RuntimeError("OBS 音频恢复失败 / Audio restore failed: " + "; ".join(errors))
 
     def recording_status(self) -> dict[str, Any]:
         response = self.client.get_record_status()
@@ -204,14 +204,14 @@ class OBSBridge:
 
     def start_recording(self, timeout_sec: float = 10.0) -> None:
         if self.recording_status()["active"]:
-            raise RuntimeError("OBS 已经在录像，请先停止现有录像")
+            raise RuntimeError("OBS 已在录像，请先停止 / OBS is already recording")
         self.client.start_record()
         deadline = time.monotonic() + timeout_sec
         while time.monotonic() < deadline:
             if self.recording_status()["active"]:
                 return
             time.sleep(0.1)
-        raise TimeoutError("OBS 未在超时前进入录像状态")
+        raise TimeoutError("OBS 启动录像超时 / OBS did not enter recording state in time")
 
     def stop_recording(self, timeout_sec: float = 30.0) -> str | None:
         status = self.recording_status()
@@ -225,4 +225,4 @@ class OBSBridge:
             if not current["active"]:
                 return output_path or current.get("output_path")
             time.sleep(0.15)
-        raise TimeoutError("OBS 停止录像超时，尚未确认文件封装完成")
+        raise TimeoutError("OBS 停止录像超时 / OBS recording stop timed out")

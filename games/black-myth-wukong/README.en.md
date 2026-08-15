@@ -1,8 +1,8 @@
-# Black Myth: Wukong self-developed UE camera capture
+# Unified Game Camera Capture Studio · Black Myth: Wukong adapter
 
 [中文](README.md) · [English](README.en.md)
 
-This adapter defaults to the project's generic `UeCameraRuntime.dll` plus the Black Myth profile. It does not require third-party camera tools, IGCSClient, or Connector. The runtime hooks the UE5 LWC camera-copy path and exposes a free camera, precise pose feedback, atomic absolute `setPose`, 22-view still scans, and in-process smooth trajectories to the complete capture UI. The old `BmwCameraBridge` name remains only as a local compatibility fallback.
+This is the Black Myth: Wukong adapter for the **Unified Game Camera Capture Studio / 统一游戏相机采集器**. The shared UI, OBS pipeline, points, trajectories, notifications, and data formats are reusable across games; this directory retains only the title-specific profile, compatibility launch path, and capture-data root. It uses the project's generic `UeCameraRuntime.dll`, hooks the game's UE5 LWC camera-copy path, and exposes a free camera, precise pose feedback, atomic absolute `setPose`, 22-view still scans, and in-process smooth trajectories. The `bmw_capture_studio` Python package and `BmwCameraBridge` filename remain compatibility interfaces, not the product name.
 
 ## Capabilities
 
@@ -28,11 +28,31 @@ The source build and offline protocol tests pass. Our runtime has also completed
 
 1. Fully exit the game, other camera tools, and IGCSClient.
 2. Start only Black Myth: Wukong and enter a rendered scene; borderless mode is recommended.
-3. Start the capture UI.
+3. Run `启动统一游戏相机采集器.bat` from the repository root, or use `launch_unified_capture_studio.ps1 -GameId black-myth-wukong`. Legacy launchers remain compatible.
 4. Click **Inject Camera Bridge**. The UI uses `UeCameraInjector.exe` by default and refuses to stack over another camera runtime or an old Connector.
 5. Start capture after Pose, absolute `setPose`, and trajectory capabilities are ready.
 
 Controls: `Insert` toggles the camera; `Home` toggles movement lock; `Delete` toggles HUD visibility; `WASD/QE` moves; mouse movement controls yaw/pitch; arrow keys rotate; `Z/C` rolls; numpad `+/-` changes FOV; hold `Shift` for 5x speed; `Ctrl` slows down. Mouse sensitivity can be set with `BMW_CAMERA_MOUSE_SENSITIVITY`. Automated capture enables the camera itself.
+
+## Feishu and Discord notifications
+
+The **Notifications & Recovery / 通知与自动修复** section contains a bilingual setup guide and separate test buttons. Copy `configs/windows.yaml` to the untracked `configs/windows.local.yaml`, then keep real credentials only in that local file:
+
+```yaml
+notifications:
+  discord:
+    webhook_url: "https://discord.com/api/webhooks/..."
+    mention: ""
+    username: "Unified Camera Capture"
+    timeout_sec: 5
+  feishu:
+    webhook_url: "https://open.feishu.cn/open-apis/bot/v2/hook/..."
+    secret: ""
+    mention_open_id: ""
+    timeout_sec: 5
+```
+
+Environment alternatives are `UNIFIED_DISCORD_WEBHOOK_URL`, `UNIFIED_FEISHU_WEBHOOK_URL`, and `UNIFIED_FEISHU_SECRET`. Use `UNIFIED_CAMERA_CONFIG` for a YAML file elsewhere. Legacy variables remain accepted for compatibility. Never commit real webhooks or signing secrets.
 
 ## Build
 

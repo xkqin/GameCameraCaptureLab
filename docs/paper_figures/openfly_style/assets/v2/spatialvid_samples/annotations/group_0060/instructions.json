@@ -1,0 +1,62 @@
+{
+  "0->5": [
+    "Pan Right"
+  ],
+  "5->9": [
+    "Pan Right",
+    "Dolly In"
+  ],
+  "9->10": [
+    "Dolly In",
+    "Pan Right",
+    "Tilt Up"
+  ],
+  "10->14": [
+    "Dolly In",
+    "Pan Right"
+  ],
+  "14->31": [
+    "Pan Right",
+    "Dolly In"
+  ],
+  "31->32": [
+    "Dolly In",
+    "Pan Right"
+  ],
+  "32->33": [
+    "Pan Right",
+    "Dolly In"
+  ],
+  "33->34": [
+    "Dolly In",
+    "Pan Right"
+  ],
+  "34->35": [
+    "Pan Right",
+    "Dolly In"
+  ],
+  "35->36": [
+    "Dolly In",
+    "Pan Right"
+  ],
+  "36->37": [
+    "Pan Right",
+    "Dolly In"
+  ],
+  "37->38": [
+    "Dolly In",
+    "Pan Right"
+  ],
+  "38->39": [
+    "Pan Right",
+    "Dolly In"
+  ],
+  "39->40": [
+    "Dolly In",
+    "Pan Right"
+  ],
+  "40->41": [
+    "Pan Right",
+    "Dolly In"
+  ]
+}

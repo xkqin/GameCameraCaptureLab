@@ -23,7 +23,7 @@ class GameRegistryTests(unittest.TestCase):
         adapters = load_registry()
         self.assertEqual(
             {adapter.id for adapter in adapters},
-            {"re9", "kcd2", "black-myth-wukong"},
+            {"re9", "kcd2", "black-myth-wukong", "backrooms-lost-runners"},
         )
         for adapter in adapters:
             self.assertTrue(adapter.documentation.is_file())
@@ -87,7 +87,7 @@ class GameRegistryTests(unittest.TestCase):
     def test_ue_runtime_profile_is_loaded_and_process_selectable(self) -> None:
         profile_dir = REPO_ROOT / "runtime" / "ue-camera-runtime" / "profiles"
         profiles = load_profiles(profile_dir)
-        self.assertEqual(len(profiles), 1)
+        self.assertEqual(len(profiles), 2)
         profile = load_profile(profile_dir / "black-myth-wukong.json")
         self.assertEqual(profile.id, "black-myth-wukong")
         self.assertEqual(profile.camera_hook.hook_offset, 9)
@@ -96,6 +96,15 @@ class GameRegistryTests(unittest.TestCase):
         self.assertIsNotNone(selected)
         self.assertEqual(selected.id, profile.id)
         self.assertIsNone(profile_for_process("other-game.exe", profiles))
+        backrooms = profile_for_process(
+            "BACKROOMSLOSTRUNNERS-WIN64-SHIPPING.EXE",
+            profiles,
+        )
+        self.assertIsNotNone(backrooms)
+        assert backrooms is not None
+        self.assertEqual(backrooms.id, "backrooms-lost-runners")
+        self.assertEqual(backrooms.camera_hook.min_matches, 3)
+        self.assertEqual(backrooms.camera_hook.max_matches, 3)
 
     def test_ue_runtime_pattern_scanner_handles_wildcards(self) -> None:
         pattern = BytePattern.parse("AA ?? CC")
@@ -109,6 +118,22 @@ class GameRegistryTests(unittest.TestCase):
         if not executable.is_file():
             self.skipTest("Black Myth executable is not installed on this machine")
         matches = scan_executable(executable, profile.camera_hook)
+        self.assertTrue(validate_match_count(profile, matches), matches)
+
+    def test_backrooms_profile_matches_installed_ue56_build(self) -> None:
+        profile = load_profile(
+            REPO_ROOT / "runtime" / "ue-camera-runtime" / "profiles" /
+            "backrooms-lost-runners.json"
+        )
+        executable = Path(
+            "D:/steam/steamapps/common/Backrooms Lost Runners/"
+            "BackroomsLostRunners/Binaries/Win64/"
+            "BackroomsLostRunners-Win64-Shipping.exe"
+        )
+        if not executable.is_file():
+            self.skipTest("Backrooms Lost Runners is not installed on this machine")
+        matches = scan_executable(executable, profile.camera_hook)
+        self.assertEqual(len(matches), 3)
         self.assertTrue(validate_match_count(profile, matches), matches)
 
 

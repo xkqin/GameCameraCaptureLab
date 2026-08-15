@@ -29,6 +29,10 @@ FEISHU_WEBHOOK_ENV = "RE9_FEISHU_WEBHOOK_URL"
 FEISHU_SECRET_ENV = "RE9_FEISHU_SECRET"
 FEISHU_MENTION_OPEN_ID_ENV = "RE9_FEISHU_MENTION_OPEN_ID"
 FEISHU_TIMEOUT_ENV = "RE9_FEISHU_TIMEOUT_SEC"
+UNIFIED_FEISHU_WEBHOOK_ENV = "UNIFIED_FEISHU_WEBHOOK_URL"
+UNIFIED_FEISHU_SECRET_ENV = "UNIFIED_FEISHU_SECRET"
+UNIFIED_FEISHU_MENTION_OPEN_ID_ENV = "UNIFIED_FEISHU_MENTION_OPEN_ID"
+UNIFIED_FEISHU_TIMEOUT_ENV = "UNIFIED_FEISHU_TIMEOUT_SEC"
 
 _MAX_PAYLOAD_BYTES = 20_000
 _MAX_TEXT_BYTES = 18_000
@@ -60,6 +64,10 @@ def _float_setting(value: object, default: float) -> float:
         return default
 
 
+def _environment_value(primary: str, legacy: str) -> str | None:
+    return os.environ.get(primary) if primary in os.environ else os.environ.get(legacy)
+
+
 def _truncate_utf8(value: object, max_bytes: int) -> str:
     text = str(value)
     encoded = text.encode("utf-8")
@@ -84,7 +92,9 @@ class FeishuNotifier:
     def from_config(cls, config: SharedConfig) -> FeishuNotifier:
         settings = _feishu_config(config.raw)
 
-        webhook_from_env = os.environ.get(FEISHU_WEBHOOK_ENV)
+        webhook_from_env = _environment_value(
+            UNIFIED_FEISHU_WEBHOOK_ENV, FEISHU_WEBHOOK_ENV
+        )
         if webhook_from_env is None:
             webhook_url = str(settings.get("webhook_url") or "").strip()
             source = "config" if webhook_url else "disabled"
@@ -92,13 +102,17 @@ class FeishuNotifier:
             webhook_url = webhook_from_env.strip()
             source = "environment" if webhook_url else "disabled"
 
-        secret = os.environ.get(FEISHU_SECRET_ENV)
+        secret = _environment_value(UNIFIED_FEISHU_SECRET_ENV, FEISHU_SECRET_ENV)
         if secret is None:
             secret = str(settings.get("secret") or "")
-        mention_open_id = os.environ.get(FEISHU_MENTION_OPEN_ID_ENV)
+        mention_open_id = _environment_value(
+            UNIFIED_FEISHU_MENTION_OPEN_ID_ENV, FEISHU_MENTION_OPEN_ID_ENV
+        )
         if mention_open_id is None:
             mention_open_id = str(settings.get("mention_open_id") or "")
-        timeout_value: object = os.environ.get(FEISHU_TIMEOUT_ENV)
+        timeout_value: object = _environment_value(
+            UNIFIED_FEISHU_TIMEOUT_ENV, FEISHU_TIMEOUT_ENV
+        )
         if timeout_value is None:
             timeout_value = settings.get("timeout_sec", 5.0)
 
@@ -118,11 +132,11 @@ class FeishuNotifier:
     @property
     def status_text(self) -> str:
         if not self.enabled:
-            return f"飞书报警：未启用（设置 {FEISHU_WEBHOOK_ENV}）"
+            return f"飞书 / Feishu：未启用 / Disabled（{UNIFIED_FEISHU_WEBHOOK_ENV}）"
         if requests is None:
-            return "飞书报警：不可用（缺少 requests 依赖）"
-        signature = "，已启用签名" if self.secret else ""
-        return f"飞书报警：已启用（{self.source}{signature}）"
+            return "飞书 / Feishu：不可用 / Unavailable（requests missing）"
+        signature = "，签名已启用 / signed" if self.secret else ""
+        return f"飞书 / Feishu：已启用 / Enabled（{self.source}{signature}）"
 
     def notify_error(
         self,
@@ -139,7 +153,7 @@ class FeishuNotifier:
             target=self.send_error,
             args=(title, message),
             kwargs={"fields": fields},
-            name="bmw-feishu-notifier",
+            name="unified-feishu-notifier",
             daemon=True,
         ).start()
         return True
@@ -186,7 +200,7 @@ class FeishuNotifier:
         *,
         fields: Mapping[str, object] | None,
     ) -> dict[str, object]:
-        lines = [f"[BMW ERROR] {title}", str(message)]
+        lines = [f"[UNIFIED CAMERA ERROR] {title}", str(message)]
         for name, value in list((fields or {}).items())[:_MAX_FIELDS]:
             if value is not None and str(value) != "":
                 lines.append(f"{name}: {value}")

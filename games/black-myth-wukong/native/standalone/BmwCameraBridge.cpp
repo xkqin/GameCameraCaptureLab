@@ -24,6 +24,7 @@ using namespace ue_camera_runtime;
 
 extern "C" void BmwCameraHook1();
 extern "C" void BmwCameraHook2();
+extern "C" void BmwCameraHook3();
 extern "C" void BmwHudHook();
 
 extern "C"
@@ -38,6 +39,7 @@ void* g_bmwLastCameraSource = nullptr;
 void* g_bmwLastCameraDestination = nullptr;
 void* g_bmwHook1Return = nullptr;
 void* g_bmwHook2Return = nullptr;
+void* g_bmwHook3Return = nullptr;
 volatile LONG g_bmwHudHidden = 0;
 void* g_bmwHudHookReturn = nullptr;
 }
@@ -83,7 +85,9 @@ struct HookRecord
     bool installed{};
 };
 
-HookRecord g_hooks[3]{};
+constexpr std::size_t kMaximumCameraHooks = 3;
+constexpr std::size_t kHudHookRecordIndex = kMaximumCameraHooks;
+HookRecord g_hooks[kMaximumCameraHooks + 1]{};
 
 struct SuspendedThreads
 {
@@ -330,13 +334,30 @@ bool installHooks(bool& hudInstalled)
             return false;
         }
     }
+    else if (sites.size() == 3)
+    {
+        g_bmwHook2Return = sites[1] + cameraHook.continuationOffset;
+        if (!writeHook(g_hooks[1], sites[1], reinterpret_cast<void*>(&BmwCameraHook2)))
+        {
+            restoreHookRecords();
+            return false;
+        }
+        g_bmwHook3Return = sites[2] + cameraHook.continuationOffset;
+        if (!writeHook(g_hooks[2], sites[2], reinterpret_cast<void*>(&BmwCameraHook3)))
+        {
+            restoreHookRecords();
+            return false;
+        }
+    }
     if (g_gameProfile->hudHook != nullptr &&
         hudTargets.size() >= g_gameProfile->hudHook->minMatches &&
         hudTargets.size() <= g_gameProfile->hudHook->maxMatches)
     {
         g_bmwHudHookReturn = hudTargets[0] + g_gameProfile->hudHook->continuationOffset;
         hudInstalled = writeHook(
-            g_hooks[2], hudTargets[0], reinterpret_cast<void*>(&BmwHudHook));
+            g_hooks[kHudHookRecordIndex],
+            hudTargets[0],
+            reinterpret_cast<void*>(&BmwHudHook));
     }
     if (g_metadata != nullptr)
     {

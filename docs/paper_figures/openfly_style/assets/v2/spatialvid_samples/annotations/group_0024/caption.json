@@ -1,0 +1,20 @@
+{
+    "SceneSummary": "A busy city intersection features red-brick buildings, flowing traffic, and pedestrians under an overcast sky, capturing the vibrant energy of urban life.",
+    "SceneDescription": "The scene depicts a bustling city intersection with red-brick buildings lining the streets. Cars and a van navigate the intersection, while pedestrians are visible on the sidewalks. The sky is overcast, casting a soft light over the scene. The overall atmosphere is urban and active, with the movement of vehicles and people creating a sense of everyday life in the city. The presence of businesses like a fish market and a halal restaurant adds to the urban environment.",
+    "CameraMotion": "The camera slowly translates right, with a subtle leftward pan to track traffic flow. The movement is smooth and steady, maintaining a consistent direction without abrupt changes. The slight shift in orientation keeps the intersection in frame as the camera glides across the scene.",
+    "ShotImmersion": "The camera glides smoothly to the right, following the rhythm of traffic as cars and pedestrians move through the intersection. The soft light and constant motion evoke the pulse of a lively urban environment, framed by towering buildings and the hum of daily life.",
+    "CategoryTags": {
+        "sceneType": {
+            "first": "Urban",
+            "second": "Street Scene"
+        },
+        "brightness": "Bright",
+        "timeOfDay": "Daytime",
+        "weather": "Cloudy",
+        "crowdDensity": "Moderate"
+    },
+    "MotionTrends": [
+        "right translate",
+        "left pan"
+    ]
+}

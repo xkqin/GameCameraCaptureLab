@@ -1,8 +1,8 @@
-# 《黑神话：悟空》自研 UE 相机采集器
+# 统一游戏相机采集器 ·《黑神话：悟空》适配器
 
 [中文](README.md) · [English](README.en.md)
 
-这个适配器默认使用项目自研的通用 `UeCameraRuntime.dll` 和黑神话 profile，不需要第三方相机工具、IGCSClient 或 Connector。它直接挂接《黑神话：悟空》的 UE5 LWC 相机复制路径，并向完整采集界面提供自由相机、精确位姿、绝对 `setPose`、22 方向静态扫描和进程内平滑轨迹。旧 `BmwCameraBridge` 名称只作为本地兼容回退保留。
+这是 **统一游戏相机采集器 / Unified Game Camera Capture Studio** 的《黑神话：悟空》适配器。统一界面、OBS、点位、轨迹、通知和数据格式可复用于其他游戏；本目录只保留该游戏的 profile、运行时兼容入口和采集数据目录。它默认使用项目自研的通用 `UeCameraRuntime.dll`，直接挂接该游戏的 UE5 LWC 相机复制路径，并提供自由相机、精确位姿、绝对 `setPose`、22 方向静态扫描和进程内平滑轨迹。旧 `bmw_capture_studio` Python 包名与 `BmwCameraBridge` 文件名只作为兼容接口保留，不再代表产品名称。
 
 ## 当前能力
 
@@ -28,7 +28,7 @@
 
 1. 完全退出游戏、其他相机工具和 IGCSClient，确认旧游戏进程已经消失。
 2. 只启动《黑神话：悟空》，进入正在渲染的场景；建议使用无边框窗口。
-3. 运行 `启动黑神话采集工具.bat` 或 `launch_bmw_capture_studio.ps1`。
+3. 在仓库根目录运行 `启动统一游戏相机采集器.bat`；也可执行 `launch_unified_capture_studio.ps1 -GameId black-myth-wukong`。旧启动脚本继续兼容。
 4. 点击“注入 Camera Bridge”。界面默认调用通用 `UeCameraInjector.exe`，并拒绝与其他相机运行时/旧 Connector 叠加 Hook。
 5. 状态显示 Pose、绝对 `setPose` 和轨迹能力就绪后开始采集。
 
@@ -45,6 +45,26 @@
 - `Shift`：5× 加速；`Ctrl`：慢速
 
 自动点位和轨迹采集会主动启用相机，不要求先按 `Insert`。
+
+## 飞书与 Discord 通知
+
+采集界面的“通知与自动修复 / Notifications & Recovery”区域提供中英文设置指南和两种通知的独立测试按钮。推荐复制 `configs/windows.yaml` 为不会提交的 `configs/windows.local.yaml`，只在本机写入真实密钥：
+
+```yaml
+notifications:
+  discord:
+    webhook_url: "https://discord.com/api/webhooks/..."
+    mention: ""
+    username: "Unified Camera Capture"
+    timeout_sec: 5
+  feishu:
+    webhook_url: "https://open.feishu.cn/open-apis/bot/v2/hook/..."
+    secret: ""
+    mention_open_id: ""
+    timeout_sec: 5
+```
+
+也可使用 `UNIFIED_DISCORD_WEBHOOK_URL`、`UNIFIED_FEISHU_WEBHOOK_URL` 和 `UNIFIED_FEISHU_SECRET`。如果配置文件放在其他位置，用 `UNIFIED_CAMERA_CONFIG` 指定。旧变量只作为向后兼容保留，所有真实 Webhook 和 Secret 都不能提交到 GitHub。
 
 ## 构建自研 Bridge
 

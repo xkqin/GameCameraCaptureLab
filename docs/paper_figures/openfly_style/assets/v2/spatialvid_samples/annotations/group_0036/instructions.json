@@ -1,0 +1,117 @@
+{
+  "0->9": [
+    "Pan Left"
+  ],
+  "9->10": [
+    "Pan Left",
+    "Dolly In"
+  ],
+  "10->12": [
+    "Pan Left"
+  ],
+  "12->29": [
+    "Pan Left",
+    "Dolly In"
+  ],
+  "29->31": [
+    "Pan Left",
+    "Dolly In",
+    "Truck Right"
+  ],
+  "31->32": [
+    "Pan Left",
+    "Truck Right",
+    "Dolly In"
+  ],
+  "32->33": [
+    "Pan Left",
+    "Truck Right"
+  ],
+  "33->34": [
+    "Pan Left",
+    "Truck Right",
+    "Dolly In"
+  ],
+  "34->35": [
+    "Pan Left",
+    "Truck Right"
+  ],
+  "35->36": [
+    "Pan Left",
+    "Truck Right",
+    "Dolly In"
+  ],
+  "36->37": [
+    "Pan Left",
+    "Truck Right"
+  ],
+  "37->38": [
+    "Pan Left",
+    "Truck Right",
+    "Dolly In"
+  ],
+  "38->39": [
+    "Pan Left",
+    "Truck Right"
+  ],
+  "39->40": [
+    "Pan Left",
+    "Dolly In",
+    "Truck Right"
+  ],
+  "40->47": [
+    "Pan Left",
+    "Dolly In"
+  ],
+  "47->48": [
+    "Dolly In",
+    "Pan Left"
+  ],
+  "48->49": [
+    "Pan Left",
+    "Dolly In"
+  ],
+  "49->50": [
+    "Dolly In",
+    "Pan Left"
+  ],
+  "50->51": [
+    "Pan Left",
+    "Dolly In"
+  ],
+  "51->52": [
+    "Dolly In",
+    "Pan Left"
+  ],
+  "52->53": [
+    "Pan Left",
+    "Dolly In"
+  ],
+  "53->54": [
+    "Dolly In",
+    "Pan Left"
+  ],
+  "54->55": [
+    "Pan Left",
+    "Dolly In"
+  ],
+  "55->60": [
+    "Dolly In",
+    "Pan Left"
+  ],
+  "60->68": [
+    "Dolly In",
+    "Pan Left",
+    "Truck Left"
+  ],
+  "68->73": [
+    "Dolly In",
+    "Truck Left",
+    "Pan Left"
+  ],
+  "73->74": [
+    "Dolly In",
+    "Pan Left",
+    "Truck Left"
+  ]
+}

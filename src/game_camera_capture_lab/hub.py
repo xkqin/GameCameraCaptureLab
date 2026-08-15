@@ -12,22 +12,22 @@ from .validate import validate_repository
 
 
 MATURITY_LABELS = {
-    "stable": "稳定",
-    "beta": "测试中",
-    "experimental": "实验性",
+    "stable": "稳定 / Stable",
+    "beta": "测试中 / Beta",
+    "experimental": "实验性 / Experimental",
 }
 
 
 class CaptureHub:
     def __init__(self) -> None:
         self.root = tk.Tk()
-        self.root.title("Game Camera Capture Lab · 多游戏采集中心")
+        self.root.title("统一游戏相机采集器 / Unified Game Camera Capture Studio")
         self.root.geometry("1040x690")
         self.root.minsize(900, 600)
         self.adapters = load_registry()
         self.selected: GameAdapter | None = None
         self.action_buttons: list[ttk.Button] = []
-        self.status = tk.StringVar(value="选择一个游戏适配器")
+        self.status = tk.StringVar(value="选择游戏适配器 / Select a game adapter")
         self._configure_style()
         self._build()
         self.game_list.selection_set(0)
@@ -46,10 +46,17 @@ class CaptureHub:
         outer = ttk.Frame(self.root, padding=22)
         outer.pack(fill="both", expand=True)
 
-        ttk.Label(outer, text="Game Camera Capture Lab", style="Title.TLabel").pack(anchor="w")
         ttk.Label(
             outer,
-            text="统一管理不同游戏的相机位姿、点位、静态扫描与轨迹采集",
+            text="统一游戏相机采集器 / Unified Game Camera Capture Studio",
+            style="Title.TLabel",
+        ).pack(anchor="w")
+        ttk.Label(
+            outer,
+            text=(
+                "统一管理相机位姿、点位、静态扫描与轨迹采集 / "
+                "One studio for poses, points, still scans, and trajectories"
+            ),
             style="Subtitle.TLabel",
         ).pack(anchor="w", pady=(2, 18))
 
@@ -61,7 +68,7 @@ class CaptureHub:
         body.add(left, weight=1)
         body.add(right, weight=3)
 
-        ttk.Label(left, text="游戏适配器").pack(anchor="w", pady=(0, 7))
+        ttk.Label(left, text="游戏适配器 / Game adapters").pack(anchor="w", pady=(0, 7))
         self.game_list = tk.Listbox(
             left,
             activestyle="none",
@@ -89,27 +96,39 @@ class CaptureHub:
         self.summary_label = ttk.Label(right, text="", wraplength=680, justify="left")
         self.summary_label.pack(fill="x", anchor="w", pady=(8, 15))
 
-        ttk.Label(right, text="能力状态").pack(anchor="w", pady=(0, 6))
+        ttk.Label(right, text="能力状态 / Capabilities").pack(anchor="w", pady=(0, 6))
         self.capability_table = ttk.Treeview(
             right,
             columns=("capability", "status"),
             show="headings",
             height=9,
         )
-        self.capability_table.heading("capability", text="能力")
-        self.capability_table.heading("status", text="状态")
+        self.capability_table.heading("capability", text="能力 / Capability")
+        self.capability_table.heading("status", text="状态 / Status")
         self.capability_table.column("capability", width=240, anchor="w")
         self.capability_table.column("status", width=330, anchor="w")
         self.capability_table.pack(fill="both", expand=True)
 
-        self.actions_frame = ttk.LabelFrame(right, text="操作", padding=12)
+        self.actions_frame = ttk.LabelFrame(right, text="操作 / Actions", padding=12)
         self.actions_frame.pack(fill="x", pady=(15, 0))
 
         utility = ttk.Frame(right)
         utility.pack(fill="x", pady=(10, 0))
-        ttk.Button(utility, text="打开说明", command=self._open_documentation).pack(side="left")
-        ttk.Button(utility, text="打开示例文件", command=self._open_examples).pack(side="left", padx=8)
-        ttk.Button(utility, text="检查仓库", command=self._validate).pack(side="left")
+        ttk.Button(
+            utility,
+            text="打开说明 / Guide",
+            command=self._open_documentation,
+        ).pack(side="left")
+        ttk.Button(
+            utility,
+            text="打开示例 / Examples",
+            command=self._open_examples,
+        ).pack(side="left", padx=8)
+        ttk.Button(
+            utility,
+            text="检查仓库 / Validate",
+            command=self._validate,
+        ).pack(side="left")
 
         ttk.Separator(outer).pack(fill="x", pady=(15, 0))
         ttk.Label(outer, textvariable=self.status, style="Status.TLabel").pack(fill="x")
@@ -142,7 +161,7 @@ class CaptureHub:
             )
             button.pack(side="left", padx=(0, 9))
             self.action_buttons.append(button)
-        self.status.set(f"已选择 {adapter.short_name} · 当前平台 {current_platform()}")
+        self.status.set(f"已选择 / Selected {adapter.short_name} · 平台 / Platform {current_platform()}")
 
     def _launch(self, action_id: str) -> None:
         if self.selected is None:
@@ -150,13 +169,13 @@ class CaptureHub:
         try:
             action = self.selected.action(action_id)
             if not action.is_supported():
-                raise RegistryError(f"当前平台不支持 {action.label}")
+                raise RegistryError(f"当前平台不支持 / Unsupported on this platform: {action.label}")
             command = self.selected.command_for(action_id)
             subprocess.Popen(command, cwd=action.working_directory)
-            self.status.set(f"已启动：{self.selected.short_name} / {action.label}")
+            self.status.set(f"已启动 / Launched：{self.selected.short_name} / {action.label}")
         except (OSError, RegistryError) as exc:
-            messagebox.showerror("启动失败", str(exc), parent=self.root)
-            self.status.set(f"启动失败：{exc}")
+            messagebox.showerror("启动失败 / Launch Failed", str(exc), parent=self.root)
+            self.status.set(f"启动失败 / Launch failed：{exc}")
 
     def _open_documentation(self) -> None:
         if self.selected is not None:
@@ -174,26 +193,26 @@ class CaptureHub:
                 subprocess.Popen(["open", str(path)])
             else:
                 subprocess.Popen(["xdg-open", str(path)])
-            self.status.set(f"已打开：{path}")
+            self.status.set(f"已打开 / Opened：{path}")
         except OSError as exc:
-            messagebox.showerror("打开失败", str(exc), parent=self.root)
+            messagebox.showerror("打开失败 / Open Failed", str(exc), parent=self.root)
 
     def _validate(self) -> None:
         errors = validate_repository()
         if errors:
             messagebox.showerror(
-                "仓库检查失败",
+                "仓库检查失败 / Validation Failed",
                 "\n".join(f"• {item}" for item in errors),
                 parent=self.root,
             )
-            self.status.set(f"仓库检查失败：{len(errors)} 个问题")
+            self.status.set(f"仓库检查失败 / Validation failed：{len(errors)} issues")
             return
         messagebox.showinfo(
-            "仓库检查完成",
-            f"{len(self.adapters)} 个游戏适配器和 3 个统一格式均有效。",
+            "仓库检查完成 / Validation Complete",
+            f"{len(self.adapters)} 个适配器 / adapters，5 个 Schema 有效 / valid.",
             parent=self.root,
         )
-        self.status.set("仓库检查通过")
+        self.status.set("仓库检查通过 / Repository validation passed")
 
     def run(self) -> None:
         self.root.mainloop()
@@ -205,7 +224,11 @@ def main() -> None:
     except RegistryError as exc:
         root = tk.Tk()
         root.withdraw()
-        messagebox.showerror("Game Camera Capture Lab", str(exc), parent=root)
+        messagebox.showerror(
+            "Unified Game Camera Capture Studio",
+            str(exc),
+            parent=root,
+        )
         root.destroy()
         raise SystemExit(1) from exc
 

@@ -4,6 +4,15 @@ set -euo pipefail
 project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 venv_dir="$project_dir/.venv"
 
+export GAME_CAMERA_GAME_ID="${GAME_CAMERA_GAME_ID:-black-myth-wukong}"
+export GAME_CAMERA_GAME_NAME="${GAME_CAMERA_GAME_NAME:-Black Myth: Wukong}"
+export GAME_CAMERA_GAME_SHORT_NAME="${GAME_CAMERA_GAME_SHORT_NAME:-Black Myth}"
+export GAME_CAMERA_PROCESS_NAMES="${GAME_CAMERA_PROCESS_NAMES:-b1-Win64-Shipping.exe,BlackMythWukong.exe}"
+export GAME_CAMERA_WINDOW_PATTERNS="${GAME_CAMERA_WINDOW_PATTERNS:-Black Myth,Wukong,b1-Win64}"
+export GAME_CAMERA_HUD_REQUIRED="${GAME_CAMERA_HUD_REQUIRED:-1}"
+export GAME_CAMERA_ADAPTER_ROOT="${GAME_CAMERA_ADAPTER_ROOT:-$project_dir}"
+export UE_CAMERA_NATIVE_DIR="${UE_CAMERA_NATIVE_DIR:-$project_dir/native}"
+
 if [[ -x "$venv_dir/bin/python" ]]; then
     python_exe="$venv_dir/bin/python"
 else

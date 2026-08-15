@@ -47,7 +47,7 @@ class GlobalHotkey:
         )
         self._thread.start()
         if not self._ready.wait(timeout=1.5):
-            raise RuntimeError("等待全局快捷键注册超时")
+            raise RuntimeError("全局快捷键注册超时 / Global hotkey registration timed out")
         if self._registration_error is not None:
             raise self._registration_error
 
@@ -126,7 +126,7 @@ class GlobalHotkey:
         if not registered:
             error_code = ctypes.get_last_error()
             self._registration_error = RuntimeError(
-                f"F8 全局快捷键注册失败（Windows 错误 {error_code}），可能已被其他程序占用"
+                f"F8 注册失败 / Global hotkey failed (Windows {error_code}); it may be in use"
             )
             self._ready.set()
             return

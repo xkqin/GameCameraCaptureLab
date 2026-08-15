@@ -90,9 +90,12 @@ p(u) = h00(u)p0 + h10(u)Δt·m0 + h01(u)p1 + h11(u)Δt·m1,  u ∈ [0, 1]
 |---|---|---|---|---|---|
 | RE Engine / RE9 | RE Engine | 已验证 | 已验证 Lua `setPose` | 已验证 | 稳定 |
 | Kingdom Come: Deliverance II | CryEngine | 已验证 | 画面结果待完整确认 | OBS 与批量采集已实现 | Beta |
-| Black Myth: Wukong | Unreal Engine 5 | 自研 Runtime 已实机读取 | 原子 `setPose` 已实现，最终画面验收待完成 | 22 方向静态与进程内轨迹已接入 | 实验性 |
+| Black Myth: Wukong | Unreal Engine 5 | 自研 Runtime 已实机验证 | 原子 `setPose` 已实机验证 | 22 方向静态与进程内轨迹已接入 | Beta |
+| Backrooms Lost Runners | Unreal Engine 5.6 | 三处 Hook 与实时 Pose 已验证 | 相对控制与原子 `setPose` 已验证 | 进程内轨迹已验证；OBS 等待可见验收 | Beta |
 
 “读到 Pose”“命令被运行时接收”和“游戏画面到达目标”是三层不同的验收。表格不会把一个游戏的结果自动套到另一个游戏。
+
+公开资料已确认另外 14 款热门 UE4/UE5 单机游戏具备自由相机、Camera Path，以及路径节点中的位置/朝向/FOV 信息。它们已经进入严格的候选池，但在完成目标版本签名扫描和本项目运行验收前，不会伪装成已支持适配器。完整分级、风险和下一批优先级见 [游戏相机支持矩阵](docs/GAME_SUPPORT_MATRIX.md)。
 
 ## 界面、规划与数据输出
 
@@ -129,9 +132,35 @@ cd GameCameraCaptureLab
 python launcher\game_capture_hub.py
 ```
 
-Windows 也可以直接双击 `启动多游戏采集中心.bat`，然后选择游戏适配器。各游戏的准备条件、快捷键和验证状态见文末适配器指南。
+Windows 可以直接双击 `启动多游戏采集中心.bat` 选择任意适配器；UE 游戏也可以双击 `启动统一游戏相机采集器.bat`，它会自动识别唯一正在运行的已支持游戏。未检测到游戏时，采集器进入统一自动识别等待模式；同时检测到多个游戏时，才要求用户明确选择。命令行可使用 `launch_unified_capture_studio.ps1 -GameId <profile-id>`。各游戏的准备条件、快捷键和验证状态见文末适配器指南。
 
-Linux/Proton 支持采集 UI、点位/轨迹文件、OBS WebSocket 和回环 Relay；注入器与 Runtime 仍需在游戏所属 Proton 前缀中运行。未配置实时链路时，界面只进入离线/等待状态，不会伪造已连接。
+Linux/Proton 可用 `bash launch_unified_capture_studio.sh <profile-id>` 启动同一套采集 UI，并支持点位/轨迹文件、OBS WebSocket 和回环 Relay；注入器与 Runtime 仍需在游戏所属 Proton 前缀中运行。未配置实时链路时，界面只进入离线/等待状态，不会伪造已连接。
+
+## 采集界面控制
+
+统一采集器启动后，运行时控制区提供一个语言下拉框，可在 `中文` 和 `English` 之间直接切换，不需要重启。主界面、动态状态、进度文本以及“通知与自动修复”设置指南会同步切换到所选语言。
+
+同一区域保留“置顶采集窗口”按钮，默认关闭；需要边玩边操作时再手动开启，状态会写入本地设置。`Delete` 可切换游戏 HUD，WASD/QE、鼠标和 `Shift` 等相机控制仍由各适配器按键表定义。没有检测到游戏时，统一入口会停留在自动识别等待模式；检测到多个受支持游戏时才要求选择目标。
+
+## 飞书与 Discord 设置
+
+统一采集界面的通知区内置中文/English 设置指南，以及“测试飞书”和“测试 Discord”按钮。推荐把 `configs/windows.yaml` 复制成 Git 忽略的 `configs/windows.local.yaml`，然后填写：
+
+```yaml
+notifications:
+  discord:
+    webhook_url: "https://discord.com/api/webhooks/..."
+    mention: ""
+    username: "Unified Camera Capture"
+    timeout_sec: 5
+  feishu:
+    webhook_url: "https://open.feishu.cn/open-apis/bot/v2/hook/..."
+    secret: ""
+    mention_open_id: ""
+    timeout_sec: 5
+```
+
+也可用 `UNIFIED_DISCORD_WEBHOOK_URL`、`UNIFIED_FEISHU_WEBHOOK_URL`、`UNIFIED_FEISHU_SECRET`；自定义 YAML 路径用 `UNIFIED_CAMERA_CONFIG`。旧 RE9/BMW 变量继续兼容，但 Unified 变量优先。真实 Webhook、Secret、token 和本地配置禁止提交。
 
 ## 数据与仓库结构
 
@@ -141,6 +170,7 @@ Linux/Proton 支持采集 UI、点位/轨迹文件、OBS WebSocket 和回环 Rel
 - `camera-point-set/v1`：空间点位、场景和采集元数据；
 - `camera-trajectory/v1`：带时间的轨迹关键帧；
 - `ue_camera_profile_v1`：UE 进程、Hook 签名、ABI 和能力声明。
+- `game_support_catalog/v1`：公开相机证据、本项目运行时验收和排除风险分层。
 
 ```text
 GameCameraCaptureLab/
@@ -178,3 +208,4 @@ python -m unittest discover -s games\black-myth-wukong\tests -v
 - [RE9 / RE Engine](games/re9/README.md) · [English](games/re9/README.en.md)
 - [天国拯救 2 / KCD2](games/kcd2/README.md) · [English](games/kcd2/README.en.md)
 - [黑神话：悟空 / Black Myth: Wukong](games/black-myth-wukong/README.md) · [English](games/black-myth-wukong/README.en.md)
+- [Backrooms Lost Runners](games/backrooms-lost-runners/README.md) · [English](games/backrooms-lost-runners/README.en.md)

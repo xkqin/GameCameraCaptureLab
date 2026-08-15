@@ -2,7 +2,7 @@
 
 This is the complete capture project's own UE4/UE5 camera-runtime foundation for offline single-player visual-data capture. It follows a profile, injector, and camera-ABI design inspired by general-purpose tools, while its implementation, protocol, and source are maintained here. It does not copy or redistribute third-party closed-source code, assets, or branding.
 
-The first release includes a generic injector/runtime pair, an offline PE signature scanner, and the Black Myth: Wukong profile. It exposes shared-memory pose, atomic `setPose`, keyboard/mouse, HUD, and in-process Hermite trajectories while reusing the project's point maps, 22-view still scans, OBS pipeline, and dataset manifests.
+The runtime now registers Black Myth: Wukong and Backrooms Lost Runners profiles on the shared LWC `FMinimalViewInfo` ABI. It exposes shared-memory pose, atomic `setPose`, keyboard/mouse, optional HUD control, and in-process Hermite trajectories while reusing the project's point maps, 22-view still scans, OBS pipeline, and dataset manifests.
 
 Build the native targets and inspect the registered profiles:
 

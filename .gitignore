@@ -39,6 +39,10 @@ games/black-myth-wukong/native/build_smooth*/
 games/black-myth-wukong/native/build_standalone*/
 games/black-myth-wukong/qa/
 games/black-myth-wukong/settings.json
+# Per-game runtime captures and point/trajectory outputs stay local. Curated
+# examples under examples/ and data/ are tracked explicitly when needed.
+**/capture_data/
+/capture_data/
 
 # Closed-source injectors, game mods, saves, and build products are never vendored.
 *.dll

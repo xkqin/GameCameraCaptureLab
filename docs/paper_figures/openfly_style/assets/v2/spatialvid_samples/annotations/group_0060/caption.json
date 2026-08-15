@@ -1,0 +1,20 @@
+{
+    "SceneSummary": "A vibrant urban plaza filled with pedestrians, a modern bench, and a glowing MLB store under warm artificial lighting, blending activity with quiet observation.",
+    "SceneDescription": "The scene depicts a bustling urban plaza during the day. Pedestrians stroll across the patterned pavement, some walking alone, others in small groups. Several people are seated on a modern concrete bench, some looking at their phones. A large building with a brightly lit MLB store dominates the background. The lighting is a mix of artificial lights from the buildings and street lamps, creating a warm atmosphere. The overall tone is one of urban activity and a sense of calm amidst the city's energy.",
+    "CameraMotion": "The camera steadily moves forward, gradually shifting slightly to the right as it glides through the plaza. Its path is smooth and consistent, maintaining a low angle that emphasizes the urban space and the people below.",
+    "ShotImmersion": "The camera glides forward through the bustling plaza, its low angle framing the lively crowd and the glowing MLB store in the distance. As it moves, a subtle shift to the right reveals more of the scene, capturing the energy of the urban day.",
+    "CategoryTags": {
+        "sceneType": {
+            "first": "Urban",
+            "second": "Plaza"
+        },
+        "brightness": "Bright",
+        "timeOfDay": "Daytime",
+        "weather": "Unknown",
+        "crowdDensity": "Moderate"
+    },
+    "MotionTrends": [
+        "forward translate",
+        "right translate"
+    ]
+}

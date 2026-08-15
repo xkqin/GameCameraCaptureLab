@@ -1,0 +1,12 @@
+{
+  "pure_vector": {
+    "openfly_02_toolchain_framework.pdf": 0,
+    "openfly_03_kcd2_statistics.pdf": 0,
+    "openfly_04_layered_sampling.pdf": 0,
+    "openfly_06_pose_trajectory.pdf": 0
+  },
+  "hybrid": {
+    "openfly_01_multigame_teaser.pdf": 4,
+    "openfly_05_recorded_frame_sequence.pdf": 6
+  }
+}

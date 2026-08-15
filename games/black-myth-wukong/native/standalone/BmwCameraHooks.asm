@@ -10,6 +10,7 @@ EXTERN g_bmwLastCameraSource:QWORD
 EXTERN g_bmwLastCameraDestination:QWORD
 EXTERN g_bmwHook1Return:QWORD
 EXTERN g_bmwHook2Return:QWORD
+EXTERN g_bmwHook3Return:QWORD
 EXTERN g_bmwHudHidden:DWORD
 EXTERN g_bmwHudHookReturn:QWORD
 
@@ -84,6 +85,11 @@ PUBLIC BmwCameraHook2
 BmwCameraHook2 PROC
     BMW_CAMERA_COPY g_bmwHook2Return
 BmwCameraHook2 ENDP
+
+PUBLIC BmwCameraHook3
+BmwCameraHook3 PROC
+    BMW_CAMERA_COPY g_bmwHook3Return
+BmwCameraHook3 ENDP
 
 ; Black Myth multiplies the HUD draw color/opacity by the vector loaded from
 ; [rbx+270h]. Keep the detour installed and switch visibility atomically, so

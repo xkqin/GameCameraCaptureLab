@@ -283,12 +283,12 @@ class TrajectoryRecorder:
         log_callback: Callable[[str], None] | None = None,
     ) -> TrajectoryCaptureResult:
         if self.active:
-            raise RuntimeError("轨迹采集已经在运行")
+            raise RuntimeError("轨迹采集已经在运行 / Trajectory capture is already running")
         if not trajectory.points:
-            raise ValueError("轨迹没有关键帧")
+            raise ValueError("轨迹没有关键帧 / Trajectory has no keyframes")
         source = Path(source_path).resolve()
         if not source.is_file():
-            raise FileNotFoundError(f"轨迹源文件不存在：{source}")
+            raise FileNotFoundError(f"轨迹源文件不存在 / Source file not found: {source}")
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         raw_dir = self.output_dir / "raw"
@@ -381,7 +381,7 @@ class TrajectoryRecorder:
             nonlocal segment_started_monotonic, started_monotonic
             nonlocal next_obs_restart_monotonic
             if obs is None:
-                raise RuntimeError("OBS 连接为空，无法开始录像分段")
+                raise RuntimeError("OBS 未连接，无法开始录像 / OBS is disconnected; recording cannot start")
             if segment_index == 0:
                 # The recording clock starts only after the first keyframe has
                 # converged.  It is never reset by an OBS restart.
@@ -460,8 +460,8 @@ class TrajectoryRecorder:
             nonlocal obs
             if self.obs_restart_factory is None:
                 raise RuntimeError(
-                    "已启用 OBS 定时重启，但没有配置 obs_restart_factory；"
-                    "请检查采集器启动配置。"
+                    "已启用 OBS 定时重启，但未配置 obs_restart_factory。 / "
+                    "Timed OBS restart is enabled but obs_restart_factory is missing."
                 )
             event: dict[str, Any] = {
                 "event_index": len(obs_restart_events) + 1,
@@ -517,7 +517,7 @@ class TrajectoryRecorder:
                 return
             if self.obs_restart_factory is None:
                 raise RuntimeError(
-                    "OBS 定时重启已启用，但没有可用的 OBS 重启回调。"
+                    "OBS 定时重启已启用，但没有重启回调。 / OBS restart callback is missing."
                 )
             if next_obs_restart_monotonic is None:
                 return
@@ -548,7 +548,7 @@ class TrajectoryRecorder:
                     frame += 1
                 except Exception as exc:
                     if log_callback is not None:
-                        log_callback(f"Pose 采样跳过：{exc}")
+                        log_callback(f"Pose 采样跳过 / Sample skipped: {exc}")
                 deadline += interval
                 pose_stop.wait(max(0.0, deadline - time.monotonic()))
 
@@ -565,7 +565,7 @@ class TrajectoryRecorder:
             first_point = trajectory.points[0]
             total = len(trajectory.points)
             if progress_callback is not None:
-                progress_callback(0, total, f"录像前定位 {first_point.label}")
+                progress_callback(0, total, f"录像前定位 / Pre-positioning {first_point.label}")
             pre_record_started = time.monotonic()
             position_tolerance = max(
                 0.01, float(getattr(self.mover, "position_tolerance", 4.0))
@@ -599,23 +599,22 @@ class TrajectoryRecorder:
                     break
                 if log_callback is not None:
                     log_callback(
-                        "首点定位后仍有残余运动，稳定后重新定位 "
+                        "首点仍有残余运动，重新定位 / Residual motion detected; repositioning "
                         f"({stabilization_attempts}/3)"
                     )
             if not pre_record_stable:
-                raise RuntimeError("首点在三次稳定定位后仍超出容差，OBS 未开始录制")
+                raise RuntimeError("首点稳定定位失败，OBS 未开始 / First point did not settle; OBS was not started")
             pre_record_finished = time.monotonic()
 
             if self.obs_restart_interval_seconds > 0.0 and self.obs_restart_factory is None:
                 raise RuntimeError(
-                    "轨迹采集已启用 OBS 定时重启，但未配置重启回调；"
-                    "请检查 OBS 重启设置。"
+                    "轨迹采集未配置 OBS 重启回调。 / OBS restart callback is not configured."
                 )
             start_obs_segment(0.0)
             logger.start()
             completed = 1
             if progress_callback is not None:
-                progress_callback(1, total, f"已就位 {first_point.label}，开始录像")
+                progress_callback(1, total, f"已就位并开始录像 / Positioned; recording {first_point.label}")
 
             smooth_controller = self.bridge
             smooth_start = getattr(smooth_controller, "start_native_trajectory", None)
@@ -641,10 +640,10 @@ class TrajectoryRecorder:
                         break
                     smooth_status = smooth_read_status()
                     if smooth_status is None:
-                        raise RuntimeError("原生平滑轨迹状态不可读")
+                        raise RuntimeError("平滑轨迹状态不可读 / Smooth trajectory status is unavailable")
                     if getattr(smooth_status, "failed", False):
                         raise RuntimeError(
-                            f"原生平滑轨迹播放失败：{smooth_status.error_message}"
+                            f"平滑轨迹播放失败 / Smooth playback failed: {smooth_status.error_message}"
                         )
                     try:
                         last_camera_elapsed = float(
@@ -662,7 +661,7 @@ class TrajectoryRecorder:
                             progress_callback(
                                 completed,
                                 total,
-                                f"连续播放 · {trajectory.points[completed - 1].label}",
+                                f"连续播放 / Continuous · {trajectory.points[completed - 1].label}",
                             )
                     if getattr(smooth_status, "completed", False):
                         completed = total
@@ -694,7 +693,7 @@ class TrajectoryRecorder:
                         stopped = True
                         break
                     if progress_callback is not None:
-                        progress_callback(sequence - 1, total, f"前往 {point.label}")
+                        progress_callback(sequence - 1, total, f"前往 / Moving to {point.label}")
                     move_started = time.monotonic()
                     actual = self.mover.move_to(
                         point.pose,
@@ -724,11 +723,11 @@ class TrajectoryRecorder:
                         }
                     )
                     if progress_callback is not None:
-                        progress_callback(sequence, total, f"已到达 {point.label}")
+                        progress_callback(sequence, total, f"已到达 / Reached {point.label}")
         except InterruptedError:
             stopped = True
             if not recording_started:
-                error = "PreRecordStoppedError: 录像前首点定位被停止，OBS 未开始录像"
+                error = "PreRecordStoppedError: 录像前首点定位被停止 / Pre-positioning stopped before OBS recording"
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
             raise
@@ -765,14 +764,14 @@ class TrajectoryRecorder:
                         if error is None:
                             error = f"AudioRestoreError: {exc}"
                 elif error is None:
-                    error = "AudioRestoreDeferred: OBS 仍在录像，音频保持静音"
+                    error = "AudioRestoreDeferred: OBS 仍在录像，音频保持静音 / OBS is still recording; audio remains muted"
             close_obs = getattr(obs, "close", None) if obs is not None else None
             if callable(close_obs):
                 try:
                     close_obs()
                 except Exception as exc:
                     if log_callback is not None:
-                        log_callback(f"OBS WebSocket 关闭提示：{exc}")
+                        log_callback(f"OBS WebSocket 关闭提示 / Close warning: {exc}")
 
             # Restore only if positioning failed before OBS began. Once a
             # trajectory has started, keep its terminal pose so a batch can
@@ -788,7 +787,7 @@ class TrajectoryRecorder:
                         start_pose,
                         stop_requested=lambda: False,
                         on_update=(
-                            (lambda message: log_callback(f"回位：{message}"))
+                            (lambda message: log_callback(f"回位 / Restore：{message}"))
                             if log_callback is not None
                             else None
                         ),
@@ -798,13 +797,13 @@ class TrajectoryRecorder:
                     restore_succeeded = False
                     restore_error = f"{type(exc).__name__}: {exc}"
                     if log_callback is not None:
-                        log_callback(f"相机自动回位失败：{restore_error}")
+                        log_callback(f"相机自动回位失败 / Camera restore failed: {restore_error}")
             self.active = False
 
             with pose_lock:
                 pose_rows = list(observed)
             if recording_started and not pose_rows and error is None:
-                error = "PoseMissingError: 录像期间没有获得有效 Pose 样本"
+                error = "PoseMissingError: 录像期间没有有效 Pose / No valid pose samples during recording"
             pose_fields = list(pose_rows[0].keys()) if pose_rows else ["frame", "elapsed_sec"]
             _write_csv(pose_csv, pose_rows, pose_fields)
             timing_fields = list(timing[0].keys()) if timing else ["sequence", "point_index", "label"]
@@ -814,7 +813,7 @@ class TrajectoryRecorder:
             if video_path is not None and video_path.is_file() and video_path not in video_paths:
                 video_paths.append(video_path.resolve())
             if recording_started and video_path is None and error is None:
-                error = "VideoMissingError: OBS 未返回且输出目录中未找到视频"
+                error = "VideoMissingError: OBS 未返回视频 / OBS returned no video and no output file was found"
             status = "failed" if error else ("stopped" if stopped else "completed")
             manifest = {
                 "format": "bmw-standalone-trajectory-capture-v4",
@@ -959,9 +958,9 @@ class BatchTrajectoryRecorder:
         log_callback: Callable[[str], None] | None = None,
     ) -> dict[str, Any]:
         if self.active:
-            raise RuntimeError("批量采集已经在运行")
+            raise RuntimeError("批量采集已经在运行 / Batch capture is already running")
         if not trajectories:
-            raise ValueError("轨迹集为空")
+            raise ValueError("轨迹集为空 / Trajectory set is empty")
         source = Path(source_path).resolve()
         total = len(trajectories)
         indices = (
@@ -970,7 +969,7 @@ class BatchTrajectoryRecorder:
             else list(range(start_index, total))
         )
         if not indices or any(index < 0 or index >= total for index in indices):
-            raise ValueError("批量采集索引超出轨迹集范围")
+            raise ValueError("批量索引超出范围 / Batch index is outside the trajectory set")
 
         resumed = batch_dir is not None
         if resumed:
@@ -1068,7 +1067,7 @@ class BatchTrajectoryRecorder:
                     boundary_started = time.monotonic()
                     try:
                         if log_callback is not None:
-                            log_callback("批次已达到 OBS 重启间隔，在下一条轨迹前安全重启 OBS")
+                            log_callback("达到 OBS 重启间隔，将在下一条轨迹前重启 / Restarting OBS before the next trajectory")
                         obs_for_trajectory = self.obs_restart_factory(target)
                         batch_next_obs_restart_monotonic = (
                             time.monotonic() + self.obs_restart_interval_seconds

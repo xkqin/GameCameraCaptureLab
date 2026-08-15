@@ -1,0 +1,13 @@
+{
+  "svg_parse": "ok",
+  "pdf_pages": 1,
+  "thin_transparent_routes": 4,
+  "wireframe_camera_groups": 14,
+  "embedded_raster_objects": 94,
+  "pdf_render_size": [
+    2592,
+    1413
+  ],
+  "pdf_render": "D:\\pjlabpr\\RE9_Still_Scan\\docs\\paper_figures\\openfly_style\\qa_pdf\\openfly_07_multisource_teaser_v4_from_pdf.png",
+  "hybrid_vector_raster": true
+}

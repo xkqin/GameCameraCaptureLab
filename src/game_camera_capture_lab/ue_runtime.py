@@ -11,7 +11,7 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 import struct
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 
 class UeRuntimeProfileError(ValueError):
@@ -242,16 +242,34 @@ def _pe_executable_sections(data: bytes) -> tuple[SectionBytes, ...]:
 
 def scan_executable(path: str | Path, hook: HookProfile) -> tuple[tuple[str, int, int], ...]:
     """Return ``(section, pattern_offset, hook_address_offset)`` matches."""
+    return scan_executable_hooks(path, {"hook": hook})["hook"]
+
+
+def scan_executable_hooks(
+    path: str | Path,
+    hooks: Mapping[str, HookProfile],
+) -> dict[str, tuple[tuple[str, int, int], ...]]:
+    """Scan several hooks while reading a large game executable only once."""
     source = Path(path).resolve()
     try:
         data = source.read_bytes()
     except OSError as exc:
         raise UeRuntimeProfileError(f"cannot read {source}: {exc}") from exc
-    matches: list[tuple[str, int, int]] = []
-    for section in _pe_executable_sections(data):
-        for pattern_offset in hook.pattern.find_all(section.data):
-            matches.append((section.name, pattern_offset, section.offset + pattern_offset + hook.hook_offset))
-    return tuple(matches)
+    sections = _pe_executable_sections(data)
+    result: dict[str, tuple[tuple[str, int, int], ...]] = {}
+    for name, hook in hooks.items():
+        matches: list[tuple[str, int, int]] = []
+        for section in sections:
+            for pattern_offset in hook.pattern.find_all(section.data):
+                matches.append(
+                    (
+                        section.name,
+                        pattern_offset,
+                        section.offset + pattern_offset + hook.hook_offset,
+                    )
+                )
+        result[name] = tuple(matches)
+    return result
 
 
 def validate_match_count(profile: UeCameraProfile, matches: Iterable[Any]) -> bool:

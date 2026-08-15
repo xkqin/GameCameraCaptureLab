@@ -1,0 +1,405 @@
+{
+  "schema_version": 1,
+  "snapshot_date": "2026-08-15",
+  "methodology": "Public free-camera evidence and project-native runtime acceptance are recorded separately. A public compatibility entry never creates or certifies a native runtime profile.",
+  "sources": [
+    {
+      "id": "public-ue5-camera-compatibility",
+      "kind": "online",
+      "title": "UE5 free-camera compatibility and camera-path documentation",
+      "uri": "https://opm.fransbouma.com/uuuv5.htm",
+      "checked_on": "2026-08-15"
+    },
+    {
+      "id": "public-ue4-camera-compatibility",
+      "kind": "online",
+      "title": "UE4 free-camera compatibility and camera-path documentation",
+      "uri": "https://opm.fransbouma.com/uuuv4.htm",
+      "checked_on": "2026-08-15"
+    },
+    {
+      "id": "public-camera-reference-source",
+      "kind": "online",
+      "title": "BSD-2-Clause game-specific camera reference source",
+      "uri": "https://github.com/FransBouma/InjectableGenericCameraSystem",
+      "checked_on": "2026-08-15"
+    },
+    {
+      "id": "public-camera-connector-data",
+      "kind": "online",
+      "title": "Read-only live camera data exposed by the public connector",
+      "uri": "https://github.com/FransBouma/IgcsConnector#camera-data-made-available-to-reshade-shaders",
+      "checked_on": "2026-08-15"
+    },
+    {
+      "id": "project-black-myth-runtime",
+      "kind": "project",
+      "title": "Black Myth project runtime acceptance manifest",
+      "uri": "games/black-myth-wukong/game.json",
+      "checked_on": "2026-08-15"
+    },
+    {
+      "id": "project-backrooms-runtime",
+      "kind": "project",
+      "title": "Backrooms Lost Runners project runtime acceptance manifest",
+      "uri": "games/backrooms-lost-runners/game.json",
+      "checked_on": "2026-08-15"
+    }
+  ],
+  "games": [
+    {
+      "id": "black-myth-wukong",
+      "name": "Black Myth: Wukong",
+      "engine": "Unreal Engine 5",
+      "evidence_level": "project_runtime_verified",
+      "native_profile_status": "runtime_verified",
+      "public_camera_features": [
+        "free_camera",
+        "camera_paths",
+        "camera_path_location_orientation_fov"
+      ],
+      "risk": "offline_single_player_only",
+      "notes": [
+        "Project runtime Pose and atomic absolute setPose are live-verified.",
+        "The public compatibility note says the console key may need an input-ini entry and HUD toggle may not work."
+      ],
+      "sources": [
+        "project-black-myth-runtime",
+        "public-ue5-camera-compatibility"
+      ]
+    },
+    {
+      "id": "backrooms-lost-runners",
+      "name": "Backrooms Lost Runners",
+      "engine": "Unreal Engine 5.6",
+      "evidence_level": "project_runtime_verified",
+      "native_profile_status": "runtime_verified",
+      "public_camera_features": [],
+      "risk": "offline_single_player_only",
+      "notes": [
+        "Three camera-copy hooks, live Pose, relative control, atomic setPose, and native trajectory playback are project-verified.",
+        "OBS rendered-output acceptance remains separate from native camera acceptance."
+      ],
+      "sources": [
+        "project-backrooms-runtime"
+      ]
+    },
+    {
+      "id": "senuas-saga-hellblade-ii",
+      "name": "Senua's Saga: Hellblade II",
+      "engine": "Unreal Engine 5",
+      "evidence_level": "public_free_camera_verified",
+      "native_profile_status": "profile_required",
+      "public_camera_features": [
+        "free_camera",
+        "camera_paths",
+        "camera_path_location_orientation_fov"
+      ],
+      "risk": "offline_single_player_only",
+      "notes": [
+        "Public compatibility requires camera runtime version 5.1.6 or later.",
+        "Native project Pose and absolute setPose are not yet certified."
+      ],
+      "sources": [
+        "public-ue5-camera-compatibility"
+      ]
+    },
+    {
+      "id": "silent-hill-2-remake",
+      "name": "Silent Hill 2 Remake",
+      "engine": "Unreal Engine 5",
+      "evidence_level": "public_free_camera_verified",
+      "native_profile_status": "profile_required",
+      "public_camera_features": [
+        "free_camera",
+        "camera_paths",
+        "camera_path_location_orientation_fov"
+      ],
+      "risk": "offline_single_player_only",
+      "notes": [
+        "The public note says skeletal actor pose editing is unavailable; this is not the same as camera Pose.",
+        "Native project Pose and absolute setPose are not yet certified."
+      ],
+      "sources": [
+        "public-ue5-camera-compatibility"
+      ]
+    },
+    {
+      "id": "the-talos-principle-2",
+      "name": "The Talos Principle 2",
+      "engine": "Unreal Engine 5",
+      "evidence_level": "public_free_camera_verified",
+      "native_profile_status": "profile_required",
+      "public_camera_features": [
+        "free_camera",
+        "camera_paths",
+        "camera_path_location_orientation_fov"
+      ],
+      "risk": "offline_single_player_only",
+      "notes": [
+        "Listed as known working in the public UE5 camera compatibility table.",
+        "Native project Pose and absolute setPose are not yet certified."
+      ],
+      "sources": [
+        "public-ue5-camera-compatibility"
+      ]
+    },
+    {
+      "id": "layers-of-fear-2023",
+      "name": "Layers of Fear (2023)",
+      "engine": "Unreal Engine 5",
+      "evidence_level": "public_free_camera_verified",
+      "native_profile_status": "profile_required",
+      "public_camera_features": [
+        "free_camera",
+        "camera_paths",
+        "camera_path_location_orientation_fov"
+      ],
+      "risk": "offline_single_player_only",
+      "notes": [
+        "Listed as known working in the public UE5 camera compatibility table.",
+        "Native project Pose and absolute setPose are not yet certified."
+      ],
+      "sources": [
+        "public-ue5-camera-compatibility"
+      ]
+    },
+    {
+      "id": "robocop-rogue-city",
+      "name": "RoboCop: Rogue City",
+      "engine": "Unreal Engine 5",
+      "evidence_level": "public_free_camera_verified",
+      "native_profile_status": "profile_required",
+      "public_camera_features": [
+        "free_camera",
+        "camera_paths",
+        "camera_path_location_orientation_fov"
+      ],
+      "risk": "offline_single_player_only",
+      "notes": [
+        "Public compatibility requires camera runtime version 5.0.7 or later.",
+        "Native project Pose and absolute setPose are not yet certified."
+      ],
+      "sources": [
+        "public-ue5-camera-compatibility"
+      ]
+    },
+    {
+      "id": "still-wakes-the-deep",
+      "name": "Still Wakes the Deep",
+      "engine": "Unreal Engine 5",
+      "evidence_level": "public_free_camera_verified",
+      "native_profile_status": "profile_required",
+      "public_camera_features": [
+        "free_camera",
+        "camera_paths",
+        "camera_path_location_orientation_fov"
+      ],
+      "risk": "offline_single_player_only",
+      "notes": [
+        "Listed as known working in the public UE5 camera compatibility table.",
+        "Native project Pose and absolute setPose are not yet certified."
+      ],
+      "sources": [
+        "public-ue5-camera-compatibility"
+      ]
+    },
+    {
+      "id": "clair-obscur-expedition-33",
+      "name": "Clair Obscur: Expedition 33",
+      "engine": "Unreal Engine 5",
+      "evidence_level": "public_free_camera_verified",
+      "native_profile_status": "profile_required",
+      "public_camera_features": [
+        "free_camera",
+        "camera_paths",
+        "camera_path_location_orientation_fov"
+      ],
+      "risk": "offline_single_player_only",
+      "notes": [
+        "Public compatibility requires version 5.4.11 or later.",
+        "Mouse camera rotation may fail in dialogue cutscenes or combat; keyboard or gamepad is recommended.",
+        "Native project Pose and absolute setPose are not yet certified."
+      ],
+      "sources": [
+        "public-ue5-camera-compatibility"
+      ]
+    },
+    {
+      "id": "immortals-of-aveum",
+      "name": "Immortals of Aveum",
+      "engine": "Unreal Engine 5",
+      "evidence_level": "public_free_camera_verified",
+      "native_profile_status": "profile_required",
+      "public_camera_features": [
+        "free_camera",
+        "camera_paths",
+        "camera_path_location_orientation_fov"
+      ],
+      "risk": "offline_single_player_only",
+      "notes": [
+        "Listed as known working in the public UE5 camera compatibility table.",
+        "Native project Pose and absolute setPose are not yet certified."
+      ],
+      "sources": [
+        "public-ue5-camera-compatibility"
+      ]
+    },
+    {
+      "id": "nobody-wants-to-die",
+      "name": "Nobody Wants to Die",
+      "engine": "Unreal Engine 5",
+      "evidence_level": "public_free_camera_verified",
+      "native_profile_status": "profile_required",
+      "public_camera_features": [
+        "free_camera",
+        "camera_paths",
+        "camera_path_location_orientation_fov"
+      ],
+      "risk": "offline_single_player_only",
+      "notes": [
+        "Public compatibility recommends version 5.2.2 or later for a proper HUD toggle.",
+        "Native project Pose and absolute setPose are not yet certified."
+      ],
+      "sources": [
+        "public-ue5-camera-compatibility"
+      ]
+    },
+    {
+      "id": "remnant-ii",
+      "name": "Remnant II",
+      "engine": "Unreal Engine 5",
+      "evidence_level": "public_free_camera_verified",
+      "native_profile_status": "profile_required",
+      "public_camera_features": [
+        "free_camera",
+        "camera_paths",
+        "camera_path_location_orientation_fov"
+      ],
+      "risk": "offline_single_player_only",
+      "notes": [
+        "Listed as known working in the public UE5 camera compatibility table.",
+        "Use only in offline single-player mode; native project Pose and absolute setPose are not yet certified."
+      ],
+      "sources": [
+        "public-ue5-camera-compatibility"
+      ]
+    },
+    {
+      "id": "the-7th-guest-remake",
+      "name": "The 7th Guest VR Remake",
+      "engine": "Unreal Engine 5",
+      "evidence_level": "public_free_camera_verified",
+      "native_profile_status": "profile_required",
+      "public_camera_features": [
+        "free_camera",
+        "camera_paths",
+        "camera_path_location_orientation_fov"
+      ],
+      "risk": "offline_single_player_only",
+      "notes": [
+        "Listed as The 7th Guest Remake in the public UE5 camera compatibility table.",
+        "VR rendering makes dataset acceptance a separate test from camera movement."
+      ],
+      "sources": [
+        "public-ue5-camera-compatibility"
+      ]
+    },
+    {
+      "id": "lies-of-p",
+      "name": "Lies of P",
+      "engine": "Unreal Engine 4",
+      "evidence_level": "public_free_camera_verified",
+      "native_profile_status": "profile_required",
+      "public_camera_features": [
+        "free_camera",
+        "camera_paths",
+        "camera_path_location_orientation_fov"
+      ],
+      "risk": "offline_single_player_only",
+      "notes": [
+        "The public UE4 compatibility table marks it working; hotsampling may require applying the size twice.",
+        "The current project LWC ABI is UE5-specific, so this title needs a UE4 camera adapter."
+      ],
+      "sources": [
+        "public-ue4-camera-compatibility"
+      ]
+    },
+    {
+      "id": "hogwarts-legacy",
+      "name": "Hogwarts Legacy",
+      "engine": "Unreal Engine 4",
+      "evidence_level": "public_free_camera_verified",
+      "native_profile_status": "profile_required",
+      "public_camera_features": [
+        "free_camera",
+        "camera_paths",
+        "camera_path_location_orientation_fov"
+      ],
+      "risk": "offline_single_player_only",
+      "notes": [
+        "The public UE4 compatibility table marks it working.",
+        "The current project LWC ABI is UE5-specific, so this title needs a UE4 camera adapter."
+      ],
+      "sources": [
+        "public-ue4-camera-compatibility"
+      ]
+    },
+    {
+      "id": "star-wars-jedi-survivor",
+      "name": "Star Wars Jedi: Survivor",
+      "engine": "Unreal Engine 4",
+      "evidence_level": "public_free_camera_verified",
+      "native_profile_status": "profile_required",
+      "public_camera_features": [
+        "free_camera",
+        "camera_paths",
+        "camera_path_location_orientation_fov"
+      ],
+      "risk": "offline_single_player_only",
+      "notes": [
+        "The public UE4 compatibility table marks it working and documents cutscene pause and HUD/hotsampling caveats.",
+        "The current project LWC ABI is UE5-specific, so this title needs a UE4 camera adapter."
+      ],
+      "sources": [
+        "public-ue4-camera-compatibility"
+      ]
+    },
+    {
+      "id": "lords-of-the-fallen-2023",
+      "name": "Lords of the Fallen (2023)",
+      "engine": "Unreal Engine 5",
+      "evidence_level": "excluded",
+      "native_profile_status": "not_supported",
+      "public_camera_features": [
+        "free_camera",
+        "camera_paths",
+        "camera_path_location_orientation_fov"
+      ],
+      "risk": "anti_cheat_disable_required",
+      "notes": [
+        "The public compatibility note requires disabling Easy Anti-Cheat and says online play and achievements are affected.",
+        "The project does not target anti-cheat bypass or online scenarios."
+      ],
+      "sources": [
+        "public-ue5-camera-compatibility"
+      ]
+    },
+    {
+      "id": "fortnite",
+      "name": "Fortnite",
+      "engine": "Unreal Engine 5",
+      "evidence_level": "excluded",
+      "native_profile_status": "not_supported",
+      "public_camera_features": [],
+      "risk": "online_anti_cheat",
+      "notes": [
+        "The public UE5 documentation explicitly says it is not supported.",
+        "The project does not target online or anti-cheat games."
+      ],
+      "sources": [
+        "public-ue5-camera-compatibility"
+      ]
+    }
+  ]
+}

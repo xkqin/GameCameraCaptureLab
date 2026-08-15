@@ -192,13 +192,13 @@ class OBSProcessRestarter:
     def validate(self) -> str:
         if not self.command:
             raise RuntimeError(
-                "未找到 OBS 可执行文件；请在 games/black-myth-wukong/settings.json "
-                "配置 obs_restart_command。"
+                "未找到 OBS 可执行文件；请配置 obs_restart_command。 / "
+                "OBS executable was not found; configure obs_restart_command."
             )
         if not self.explicit_command and not host_is_local(self.host):
             raise RuntimeError(
-                f"OBS 主机 {self.host or '<empty>'} 不是本机，已阻止误杀本机 OBS；"
-                "请配置能在目标主机执行的 obs_restart_command。"
+                f"OBS 主机 {self.host or '<empty>'} 不是本机，已阻止本地重启。 / "
+                "Remote OBS host detected; configure obs_restart_command for that host."
             )
         return self.command
 
@@ -228,7 +228,7 @@ class OBSProcessRestarter:
                 **detached_process_kwargs(self.platform, hide_console=True),
             )
         except OSError as exc:
-            raise RuntimeError(f"启动 OBS 失败：{exc}") from exc
+            raise RuntimeError(f"启动 OBS 失败 / Failed to start OBS: {exc}") from exc
         finally:
             if handle is not None:
                 handle.close()
@@ -253,7 +253,7 @@ class OBSProcessRestarter:
                     except Exception:
                         pass
                 self.sleeper(0.5)
-        raise RuntimeError(f"OBS 重启后 WebSocket 未在 {self.wait_seconds:.1f}s 内恢复：{last_error}")
+        raise RuntimeError(f"OBS 重启后 WebSocket 未恢复 / WebSocket did not recover in {self.wait_seconds:.1f}s: {last_error}")
 
     def _terminate_obs_processes(self) -> None:
         names = obs_process_names(self.platform)

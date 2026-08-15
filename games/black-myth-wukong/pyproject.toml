@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "black-myth-wukong-camera-capture-studio"
-version = "0.1.0"
-description = "Standalone free-camera, absolute-pose, still-capture, and trajectory-capture UI for Black Myth: Wukong."
+name = "unified-game-camera-capture-studio"
+version = "0.2.0"
+description = "Unified free-camera, absolute-pose, still-capture, and trajectory-capture UI for supported games."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -19,6 +19,7 @@ dependencies = [
 dev = ["pytest>=8"]
 
 [project.scripts]
+unified-camera-studio = "bmw_capture_studio.__main__:main"
 bmw-capture-studio = "bmw_capture_studio.__main__:main"
 
 [tool.setuptools]

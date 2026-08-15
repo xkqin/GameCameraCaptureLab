@@ -1,0 +1,21 @@
+{
+    "SceneSummary": "A bright, natural landscape features a narrow dirt path leading to a simple wooden structure under a blue sky, evoking tranquility and simple beauty.",
+    "SceneDescription": "A bright landscape is bathed in the light of a clear, blue sky. A narrow dirt path winds its way uphill, flanked by dense, green and brown vegetation. The scene evokes a sense of natural beauty and tranquility. At the top of the hill, a small, simple wooden structure stands against the bright sky. The overall tone is peaceful and serene, with a hint of simplicity.",
+    "CameraMotion": "The camera steadily moves forward along a winding path, with a slight leftward drift as it ascends. The motion is smooth and consistent, revealing the landscape ahead. The view gradually shifts upward, emphasizing the terrain's incline and the distant wooden structure.",
+    "ShotImmersion": "The camera glides forward along a winding dirt path, its movement steady and deliberate. Dense green and brown vegetation flanks the way as the terrain rises, revealing a small wooden structure against the bright sky. The scene feels peaceful, natural, and steeped in quiet beauty.",
+    "CategoryTags": {
+        "sceneType": {
+            "first": "Natural Landscape",
+            "second": "Hillside Path"
+        },
+        "brightness": "Bright",
+        "timeOfDay": "Daytime",
+        "weather": "Sunny",
+        "crowdDensity": "Deserted"
+    },
+    "MotionTrends": [
+        "forward translate",
+        "left translate",
+        "upward drift"
+    ]
+}

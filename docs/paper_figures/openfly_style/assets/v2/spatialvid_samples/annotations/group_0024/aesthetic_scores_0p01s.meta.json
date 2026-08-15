@@ -1,0 +1,14 @@
+{
+  "group_id": "group_0024",
+  "id": "1d204cc8-0db1-5e88-93ff-f85f45ac9bc9",
+  "video_path": "/mnt/inspurfs/evla2_t/EZCAM/dataset/spatialvid_high_aesthetic_full_0001_0074_real/videos/group_0024/1d204cc8-0db1-5e88-93ff-f85f45ac9bc9.mp4",
+  "fps": 29.97002997002997,
+  "frame_count": 235,
+  "sample_interval_sec": 0.01,
+  "sampling_step_frames": 1,
+  "sampled_frames": 235,
+  "annotation_file": "/mnt/inspurfs/evla2_t/EZCAM/dataset/spatialvid_high_aesthetic_full_0001_0074_real/annotations/group_0024/1d204cc8-0db1-5e88-93ff-f85f45ac9bc9/aesthetic_scores_0p01s.jsonl",
+  "generated_at_utc": "2026-06-11T07:56:42.648862+00:00",
+  "device": "cuda:3",
+  "rank": 3
+}

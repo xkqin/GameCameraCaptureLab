@@ -4,12 +4,12 @@
   "name": "Black Myth: Wukong",
   "short_name": "Black Myth",
   "engine": "Unreal Engine 5",
-  "maturity": "experimental",
-  "summary": "使用自研 Camera Bridge 读取精确位姿、执行原子绝对 setPose，并完成静态与平滑轨迹采集；不依赖 UUU。",
+  "maturity": "beta",
+  "summary": "通过统一 UE Camera Runtime 读取精确位姿、执行原子绝对 setPose，并完成静态与平滑轨迹采集。",
   "documentation": "README.md",
   "examples": "examples",
   "capabilities": {
-    "free_camera": "standalone_bridge_pending_clean_runtime_acceptance",
+    "free_camera": "live_runtime_verified",
     "pose_read": "standalone_lwc_double_precision",
     "absolute_pose_control": "atomic_set_pose",
     "relative_pose_control": "standalone_native",
@@ -21,8 +21,8 @@
   "actions": [
     {
       "id": "capture",
-      "label": "打开黑神话采集界面",
-      "description": "启动自研 Camera Bridge、点位和轨迹采集界面。",
+      "label": "打开统一采集界面（黑神话适配器）",
+      "description": "启动统一游戏相机采集器，并载入黑神话 Camera Profile。",
       "platforms": ["windows"],
       "working_directory": ".",
       "command": [
@@ -36,8 +36,8 @@
     },
     {
       "id": "capture-linux",
-      "label": "打开黑神话采集界面（Linux）",
-      "description": "通过本机回环 Relay 连接 Proton 游戏中的自研 Camera Bridge。",
+      "label": "打开统一采集界面（Linux / 黑神话适配器）",
+      "description": "启动统一游戏相机采集器，通过本机回环 Relay 连接 Proton 游戏。",
       "platforms": ["linux"],
       "working_directory": ".",
       "command": ["bash", "{game}/launch_bmw_capture_studio.sh"]

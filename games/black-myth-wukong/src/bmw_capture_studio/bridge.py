@@ -60,7 +60,7 @@ CONTROL_CAP_SET_POSE = (
 CONTROL_ERRORS = {
     0: "no error",
     1: "standalone camera hooks are unavailable",
-    2: "unsupported Black Myth game build",
+    2: "unsupported game build or camera profile",
     3: "the game camera has not rendered a pose yet",
     4: "invalid camera-control command",
     5: "standalone camera control failed internally",
@@ -257,13 +257,13 @@ class CameraPoseBridge:
                 return
             if sys.platform != "win32":
                 raise PoseUnavailableError(
-                    "Linux 不能直接打开 Windows 共享内存；请配置 Camera Bridge Proton Relay。"
+                    "Linux 不能直接打开 Windows 共享内存；请配置 Relay。 / Linux cannot open Windows shared memory; configure the relay."
                 )
             try:
                 self.mapping = mmap.mmap(-1, MAPPING_SIZE, self.mapping_name)
             except (OSError, TypeError) as exc:
                 raise PoseUnavailableError(
-                    "无法打开 Camera Bridge 共享内存；请先把 BmwCameraBridge.dll 注入游戏。"
+                    "无法打开 Runtime 共享内存；请先注入。 / Cannot open runtime shared memory; inject UeCameraRuntime.dll first."
                 ) from exc
 
     def close(self) -> None:
@@ -407,8 +407,8 @@ class CameraPoseBridge:
         )
         if not self._looks_valid(pose):
             raise PoseUnavailableError(
-                "共享内存已建立，但自研 Camera Bridge 尚未观察到有效游戏相机。"
-                "请确认游戏画面正在渲染，且当前进程没有加载 UUU/旧 Connector。"
+                "共享内存已建立，但尚无有效相机 Pose。 / "
+                "Shared memory is ready but no valid camera pose was observed."
             )
         return pose
 
@@ -531,11 +531,11 @@ class CameraPoseBridge:
     ) -> NativeTrajectoryStatus:
         values = list(points)
         if len(values) < 2:
-            raise ValueError("平滑轨迹至少需要两个关键帧")
+            raise ValueError("平滑轨迹至少需要两个关键帧 / Smooth trajectory needs at least two keyframes")
         if len(values) > MAX_TRAJECTORY_KEYFRAMES:
             raise ValueError(
-                f"轨迹包含 {len(values)} 个关键帧，原生播放器最多支持 "
-                f"{MAX_TRAJECTORY_KEYFRAMES} 个"
+                f"轨迹包含 / Trajectory has {len(values)} keyframes; maximum "
+                f"is {MAX_TRAJECTORY_KEYFRAMES}"
             )
         first_time = float(values[0].time_sec)
         rows: list[tuple[float, ...]] = []
@@ -553,14 +553,14 @@ class CameraPoseBridge:
                 float(point.pose.fov_degrees),
             )
             if not all(math.isfinite(value) for value in row):
-                raise ValueError("轨迹关键帧包含非有限数值")
+                raise ValueError("轨迹关键帧包含非有限数值 / Keyframe contains non-finite values")
             if relative_time <= previous_time:
-                raise ValueError("轨迹 time_sec 必须严格递增")
+                raise ValueError("轨迹 time_sec 必须严格递增 / time_sec must be strictly increasing")
             previous_time = relative_time
             rows.append(row)
         duration = rows[-1][0]
         if duration <= 0.0:
-            raise ValueError("轨迹持续时间必须大于 0 秒")
+            raise ValueError("轨迹持续时间必须大于 0 / Trajectory duration must be positive")
         rate = min(240.0, max(30.0, float(playback_hz)))
 
         status = self.read_trajectory_status()
@@ -570,7 +570,7 @@ class CameraPoseBridge:
                 "Restart the game and inject the rebuilt bridge first."
             )
         if status.playing:
-            raise RuntimeError("原生平滑轨迹已经在播放")
+            raise RuntimeError("平滑轨迹已经在播放 / Smooth trajectory is already playing")
         sequence = max(status.request_sequence, status.acknowledge_sequence) + 1
         if sequence > 0x7FFFFFFF:
             sequence = 1
@@ -679,8 +679,8 @@ class CameraPoseBridge:
         status = self.read_control_status()
         if status is None:
             raise PoseUnavailableError(
-                "Loaded Camera Bridge is too old for native camera control. "
-                "Restart the game and inject the rebuilt standalone bridge first."
+                "Loaded Camera Runtime is too old for native camera control. "
+                "Restart the game and inject the rebuilt runtime first."
             )
         if not status.ready:
             raise PoseUnavailableError(
@@ -739,8 +739,8 @@ class CameraPoseBridge:
         status = self.read_absolute_pose_status()
         if status is None or not status.ready:
             raise PoseUnavailableError(
-                "The loaded bridge does not provide standalone absolute setPose. "
-                "Restart the game without UUU and inject BmwCameraBridge.dll."
+                "The loaded camera runtime does not provide standalone absolute setPose. "
+                "Restart the game and inject the current UeCameraRuntime.dll."
             )
         sequence = max(status.request_sequence, status.acknowledge_sequence) + 1
         if sequence > 0x7FFFFFFF:
@@ -818,7 +818,7 @@ class CameraPoseBridge:
         status = self.read_hud_status()
         if status is None or not status.ready:
             raise PoseUnavailableError(
-                "当前 Camera Bridge 没有可用的 HUD 控制 Hook；请彻底重启游戏后重新注入。"
+                "当前 Runtime 没有可用的 HUD Hook；请重启后重新注入。 / HUD hook unavailable; restart and reinject."
             )
         sequence = max(status.request_sequence, status.acknowledge_sequence) + 1
         if sequence > 0x7FFFFFFF:

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .bridge import BridgeMetadata, CameraPoseBridge, PoseUnavailableError
+from .game_context import HUD_REQUIRED
 from .injection import integration_status
 from .models import CameraPose
 
@@ -35,22 +36,35 @@ def classify_connection(
         return ConnectionReport(
             code="platform_unsupported",
             level="warning",
-            title="Linux 等待 Proton Relay",
-            detail=str(integration.get("message", "请配置 BMW_BRIDGE_ENDPOINT。")),
+            title="等待 Proton Relay / Waiting for Proton Relay",
+            detail=str(
+                integration.get(
+                    "message",
+                    "请配置 BMW_BRIDGE_ENDPOINT。 / Configure BMW_BRIDGE_ENDPOINT.",
+                )
+            ),
         )
     if not integration.get("game_running"):
         return ConnectionReport(
             code="game_missing",
             level="error",
-            title="未检测到游戏",
-            detail="请先启动《黑神话：悟空》并进入可渲染的游戏画面。",
+            title="未检测到游戏 / Game Not Detected",
+            detail=(
+                "请启动一个已支持的游戏并进入可渲染画面。 / "
+                "Start a supported game and enter a rendered scene."
+            ),
         )
     if not integration.get("module_scan_ok", True):
         return ConnectionReport(
             code="module_scan_failed",
             level="error",
-            title="无法检查游戏模块",
-            detail=str(integration.get("message", "请检查程序权限。")),
+            title="无法检查游戏模块 / Module Check Failed",
+            detail=str(
+                integration.get(
+                    "message",
+                    "请检查程序权限。 / Check application permissions.",
+                )
+            ),
             pid=pid,
         )
     if integration.get("conflicting_camera_tool"):
@@ -58,10 +72,24 @@ def classify_connection(
         return ConnectionReport(
             code="camera_tool_conflict",
             level="error",
-            title="检测到 UUU/旧 Connector 冲突",
+            title="相机工具冲突 / Camera Tool Conflict",
             detail=(
                 f"当前游戏已加载 {names or '第三方相机模块'}。"
-                "请彻底退出游戏和 IGCSClient，重开游戏后只注入自研 Camera Bridge。"
+                "请彻底退出游戏和其他相机工具，重开后只注入统一 Runtime。 / "
+                f"The game loaded {names or 'another camera module'}; restart it and inject only the Unified Runtime."
+            ),
+            pid=pid,
+        )
+    if not integration.get("bridge_loaded") and not integration.get(
+        "native_artifacts_ready", True
+    ):
+        return ConnectionReport(
+            code="integration_repair_needed",
+            level="error",
+            title="相机组件不完整 / Camera Components Incomplete",
+            detail=(
+                "点击“自动修复并注入”完成构建和签名检查。 / "
+                "Use Repair & Inject to build and validate signatures."
             ),
             pid=pid,
         )
@@ -69,24 +97,24 @@ def classify_connection(
         return ConnectionReport(
             code="bridge_needed",
             level="warning",
-            title=f"游戏运行中 · PID {pid}",
-            detail="点击“注入 Camera Bridge”，不需要再打开 UUU。",
+            title=f"游戏运行中 / Game Running · PID {pid}",
+            detail="点击“检查并注入”载入 Runtime。 / Click Check & Inject to load the runtime.",
             pid=pid,
         )
     if metadata is None:
         return ConnectionReport(
             code="bridge_starting",
             level="warning",
-            title="Camera Bridge 正在启动",
-            detail="DLL 已加载，正在建立共享内存并扫描相机 hook。",
+            title="Camera Runtime 正在启动 / Starting",
+            detail="DLL 已加载，正在建立共享内存并扫描 Hook。 / Initializing shared memory and camera hooks.",
             pid=pid,
         )
     if metadata.process_id != pid:
         return ConnectionReport(
             code="stale_bridge",
             level="error",
-            title="检测到上一局残留状态",
-            detail="共享内存不属于当前游戏进程；请关闭采集器后重新打开。",
+            title="检测到残留状态 / Stale Runtime State",
+            detail="共享内存不属于当前游戏；请重开采集器。 / Shared memory belongs to another process; restart the studio.",
             pid=pid,
             metadata=metadata,
         )
@@ -94,10 +122,11 @@ def classify_connection(
         return ConnectionReport(
             code="hook_unavailable",
             level="error",
-            title="相机 hook 未安装",
+            title="相机 Hook 未安装 / Camera Hook Missing",
             detail=(
                 "当前游戏版本没有匹配到已验证的 LWC Camera View 签名。"
-                "不要继续采集；请保留版本信息后更新签名。"
+                "不要继续采集；请更新签名。 / "
+                "No validated LWC Camera View signature matched; update the profile before capture."
             ),
             pid=pid,
             metadata=metadata,
@@ -106,22 +135,23 @@ def classify_connection(
         return ConnectionReport(
             code="input_capture_unavailable",
             level="error",
-            title="相机输入独占未就绪",
+            title="相机输入独占未就绪 / Input Capture Not Ready",
             detail=(
                 "低级键盘 Hook 安装失败；当前版本不能保证 WASD/QE 不再控制角色。"
-                "请以管理员身份重新启动采集器和游戏后再次注入。"
+                "请以管理员身份重启后再注入。 / "
+                "The keyboard hook failed; restart the game and studio as administrator."
             ),
             pid=pid,
             metadata=metadata,
         )
-    if not metadata.hud_control_ready:
+    if HUD_REQUIRED and not metadata.hud_control_ready:
         return ConnectionReport(
             code="hud_control_unavailable",
             level="error",
-            title="HUD 控制 Hook 未安装",
+            title="HUD Hook 未安装 / HUD Hook Missing",
             detail=(
                 "当前游戏版本没有匹配到已验证的 HUD 签名；Delete 和界面按钮不可用。"
-                "不要开始正式采集，请先更新 HUD 签名。"
+                "请先更新签名。 / No validated HUD signature matched; update it before capture."
             ),
             pid=pid,
             metadata=metadata,
@@ -130,8 +160,8 @@ def classify_connection(
         return ConnectionReport(
             code="pose_waiting",
             level="warning",
-            title="hook 已安装 · 等待首帧相机",
-            detail="回到游戏画面等待一两秒；首次有效 Pose 到达后可按 Insert 启用自由相机。",
+            title="Hook 已安装 · 等待首帧 / Waiting for First Frame",
+            detail="回到游戏等待一两秒，再按 Insert。 / Return to the game, wait briefly, then press Insert.",
             pid=pid,
             metadata=metadata,
         )
@@ -139,8 +169,13 @@ def classify_connection(
         return ConnectionReport(
             code="pose_invalid",
             level="error",
-            title="精确 Pose 数据异常",
-            detail=str(pose_status.get("message", "Camera Bridge 未返回有效 Pose。")),
+            title="Pose 数据异常 / Invalid Pose Data",
+            detail=str(
+                pose_status.get(
+                    "message",
+                    "Camera Runtime 未返回有效 Pose。 / No valid pose returned.",
+                )
+            ),
             pid=pid,
             metadata=metadata,
         )
@@ -149,8 +184,8 @@ def classify_connection(
         return ConnectionReport(
             code="pose_invalid",
             level="error",
-            title="Pose 数据格式异常",
-            detail="请重启游戏和采集器后重试。",
+            title="Pose 格式异常 / Invalid Pose Format",
+            detail="请重启游戏和采集器。 / Restart the game and studio.",
             pid=pid,
             metadata=metadata,
         )
@@ -162,8 +197,8 @@ def classify_connection(
         return ConnectionReport(
             code="native_control_outdated",
             level="error",
-            title="缺少相机控制协议",
-            detail="游戏中加载的不是当前自研 Bridge；请彻底重启游戏后重新注入。",
+            title="缺少相机控制协议 / Camera Control Protocol Missing",
+            detail="请重启游戏并重新注入当前 Runtime。 / Restart the game and inject the current runtime.",
             pid=pid,
             pose=pose,
             metadata=metadata,
@@ -172,8 +207,12 @@ def classify_connection(
         return ConnectionReport(
             code="native_control_waiting",
             level="warning",
-            title="Pose 已连接 · 控制尚未就绪",
-            detail=getattr(control, "error_message", "等待 Camera Bridge 控制能力。"),
+            title="Pose 已连接 · 控制未就绪 / Control Not Ready",
+            detail=getattr(
+                control,
+                "error_message",
+                "等待 Camera Runtime 控制能力。 / Waiting for runtime control.",
+            ),
             pid=pid,
             pose=pose,
             metadata=metadata,
@@ -182,18 +221,18 @@ def classify_connection(
         return ConnectionReport(
             code="absolute_pose_outdated",
             level="error",
-            title="缺少绝对 setPose",
-            detail="游戏中加载的不是当前自研 Bridge；请彻底重启游戏后重新注入。",
+            title="缺少绝对 setPose / Absolute setPose Missing",
+            detail="请重启游戏并重新注入当前 Runtime。 / Restart the game and inject the current runtime.",
             pid=pid,
             pose=pose,
             metadata=metadata,
         )
-    if hud is None or not hud.ready:
+    if HUD_REQUIRED and (hud is None or not hud.ready):
         return ConnectionReport(
             code="hud_control_outdated",
             level="error",
-            title="缺少 HUD 显示控制",
-            detail="游戏中加载的不是当前自研 Bridge；请彻底重启游戏后重新注入。",
+            title="缺少 HUD 控制 / HUD Control Missing",
+            detail="请重启游戏并重新注入当前 Runtime。 / Restart the game and inject the current runtime.",
             pid=pid,
             pose=pose,
             metadata=metadata,
@@ -202,24 +241,28 @@ def classify_connection(
         return ConnectionReport(
             code="smooth_trajectory_outdated",
             level="error",
-            title="缺少进程内平滑轨迹",
-            detail="请彻底重启游戏后重新注入当前 BmwCameraBridge.dll。",
+            title="缺少进程内平滑轨迹 / Smooth Trajectory Missing",
+            detail="请重启游戏并注入当前 Runtime。 / Restart the game and inject the current runtime.",
             pid=pid,
             pose=pose,
             metadata=metadata,
         )
     if not pose.camera_enabled:
-        title = "自研 Camera Bridge 已连接 · Camera OFF"
-        detail = "Insert 开启自由相机；鼠标观察；Delete 隐藏 HUD；按住 Shift 可 5× 加速。"
+        title = "Unified Camera Runtime 已连接 / Connected · Camera OFF"
+        detail = "Insert 开启相机；鼠标观察；Shift 5× 加速。 / Insert enables camera; mouse looks; Shift accelerates."
+        if metadata.hud_control_ready:
+            detail += " Delete 隐藏 HUD / hides HUD."
     elif pose.movement_locked:
-        title = "自研 Camera Bridge 已连接 · Movement Locked"
-        detail = "自动 setPose/轨迹可用；手动 WASD 移动请回到游戏按 Home 解锁。"
+        title = "Unified Camera Runtime 已连接 / Connected · Movement Locked"
+        detail = "自动控制可用；Home 解锁手动移动。 / Automated control is ready; press Home to unlock movement."
     else:
-        title = "自研 Camera Bridge 已连接 · Camera ON"
+        title = "Unified Camera Runtime 已连接 / Connected · Camera ON"
         detail = (
-            "WASD/QE 和鼠标视角已由相机独占，Shift 5× 加速，Delete 切换 HUD；"
-            "绝对 setPose、点位和轨迹采集均已就绪。"
+            "WASD/QE 和鼠标视角已由相机独占，Shift 5× 加速；"
+            "setPose、点位和轨迹已就绪。 / Camera input is captured; setPose, points, and trajectories are ready."
         )
+        if metadata.hud_control_ready:
+            detail += " Delete 切换 HUD / toggles HUD."
     return ConnectionReport(
         code="ready",
         level="success",
@@ -248,16 +291,16 @@ def probe_connection(bridge: CameraPoseBridge) -> ConnectionReport:
                 return ConnectionReport(
                     code="linux_bridge_waiting",
                     level="warning",
-                    title="Linux/Proton Relay 已连接，等待 Bridge",
-                    detail="Relay 可达，但游戏内 Bridge 尚未发布有效元数据。",
+                    title="Relay 已连接 · 等待 Runtime / Waiting for Runtime",
+                    detail="Relay 可达，但尚无有效元数据。 / Relay is reachable but runtime metadata is not ready.",
                 )
             pose_status = bridge.status()
         except (PoseUnavailableError, OSError, TimeoutError, ConnectionError) as exc:
             return ConnectionReport(
                 code="linux_bridge_waiting",
                 level="warning",
-                title="等待 Linux/Proton Camera Bridge Relay",
-                detail=f"无法连接 Relay：{exc}",
+                title="等待 Camera Runtime Relay / Waiting for Relay",
+                detail=f"无法连接 Relay / Relay connection failed: {exc}",
             )
         integration.update(
             {

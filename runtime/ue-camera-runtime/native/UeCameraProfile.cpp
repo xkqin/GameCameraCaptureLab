@@ -41,6 +41,12 @@ constexpr const wchar_t* kBlackMythProcessNames[] = {
     kBlackMythProcessesAlt,
 };
 
+constexpr wchar_t kBackroomsLostRunnersProcess[] =
+    L"BackroomsLostRunners-Win64-Shipping.exe";
+constexpr const wchar_t* kBackroomsLostRunnersProcessNames[] = {
+    kBackroomsLostRunnersProcess,
+};
+
 const HookProfile kBlackMythHudHook{
     "black_myth_hud_opacity_v1",
     kBlackMythHudPattern,
@@ -69,9 +75,31 @@ const GameProfile kBlackMythProfile{
     &kBlackMythHudHook,
 };
 
+// UE 5.6.0, ProductVersion ++UE5+Release-5.6-CL-44394996.
+// The three validated copy sites use the same RCX destination / RDX source
+// LWC FMinimalViewInfo prefix as the existing adapter. HUD control remains
+// disabled until a game-specific draw path has been validated.
+const GameProfile kBackroomsLostRunnersProfile{
+    "backrooms-lost-runners",
+    "Backrooms Lost Runners",
+    "ue5",
+    kBackroomsLostRunnersProcessNames,
+    std::size(kBackroomsLostRunnersProcessNames),
+    {
+        "fminimal_view_info_copy_lwc_v1",
+        kBlackMythCameraPattern,
+        std::size(kBlackMythCameraPattern),
+        9,
+        0x25,
+        3,
+        3,
+    },
+    nullptr,
+};
+
 std::vector<const GameProfile*> makeRegistry()
 {
-    return {&kBlackMythProfile};
+    return {&kBlackMythProfile, &kBackroomsLostRunnersProfile};
 }
 
 bool sameName(const wchar_t* first, const wchar_t* second)
