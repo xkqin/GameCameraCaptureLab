@@ -1,0 +1,122 @@
+{
+  "scene_id": "scene_3.2",
+  "purpose": "high_score_start_terminal_gain_to_single_global_max",
+  "generation_status": "candidate_set_requires_smoke_capture",
+  "source_scored_pose_count": 9922,
+  "anchor_selection_diagnostics": {
+    "eligible_start_anchor_count": 1,
+    "selection_policy": "all unique XYZ starts inside configured terminal-gain and distance bounds; highest-scoring eligible measured pose retained at each XYZ",
+    "rejected": {
+      "terminal_gain": 9874,
+      "start_distance": 46
+    },
+    "eligible_start_anchors": [
+      {
+        "node_id": "scene_3.2|scene_3.2_y02_hull_dense_y02_17p64|2556|31",
+        "score": 6.541645,
+        "distance_to_global_max_m": 3.008362
+      }
+    ]
+  },
+  "start_anchors": [
+    {
+      "family_id": "family_01",
+      "node_id": "scene_3.2|scene_3.2_y02_hull_dense_y02_17p64|2556|31",
+      "score": 6.541645,
+      "x": 28.3138204352,
+      "y": 17.637516187,
+      "z": -325.2667612347647,
+      "yaw": 135.0,
+      "pitch": 0.0,
+      "terminal_gain": 0.194076
+    }
+  ],
+  "global_max": {
+    "node_id": "scene_3.2|scene_3.2_y01_hull_dense_y01_14p63|466|22",
+    "score": 6.735721,
+    "x": 28.3138204352,
+    "y": 14.629153775,
+    "z": -325.2667612347647,
+    "yaw": 135.0,
+    "pitch": 0.0
+  },
+  "generation_parameters": {
+    "scene_id": "scene_3.2",
+    "scored_jsonl": "datasets/scene_3.2/aesthetic_scored/all_scores_with_annotations.jsonl",
+    "extra_scored_jsonl": null,
+    "output_dir": "datasets/scene_3.2/trajectories_shortgain0p05to0p25_distance5_globalmax_interpolated_1000",
+    "num_trajectories": 1000,
+    "keyframe_count": 30,
+    "time_step_sec": 0.1,
+    "maximum_lateral_offset_m": 0.18,
+    "maximum_lateral_ratio": 0.12,
+    "maximum_yaw_bulge_deg": 3.0,
+    "maximum_pitch_bulge_deg": 1.5,
+    "signature_quantization_m": 0.01,
+    "minimum_terminal_gain": 0.05,
+    "maximum_terminal_gain": 0.25,
+    "minimum_start_distance_m": 0.4,
+    "maximum_start_distance_m": 5.0,
+    "maximum_start_yaw_difference_deg": 45.0,
+    "maximum_start_pitch_difference_deg": 45.0,
+    "seed": 20260814
+  },
+  "candidate_attempts": {
+    "family_01": 1001
+  },
+  "statistics": {
+    "terminal_gain": {
+      "min": 0.194076,
+      "mean": 0.194076,
+      "median": 0.194076,
+      "max": 0.194076
+    },
+    "path_xyz_length": {
+      "min": 3.008362,
+      "mean": 3.029064,
+      "median": 3.028207,
+      "max": 3.068154
+    },
+    "net_xyz_distance": {
+      "min": 3.008362,
+      "mean": 3.008362,
+      "median": 3.008362,
+      "max": 3.008362
+    },
+    "path_to_net_ratio": {
+      "min": 1.0,
+      "mean": 1.006881,
+      "median": 1.006596,
+      "max": 1.019875
+    },
+    "max_xyz_step": {
+      "min": 0.194352,
+      "mean": 0.194352,
+      "median": 0.194352,
+      "max": 0.194352
+    },
+    "max_speed_mps": {
+      "min": 1.94352,
+      "mean": 1.94352,
+      "median": 1.94352,
+      "max": 1.94352
+    },
+    "max_yaw_step_deg": {
+      "min": 0.0,
+      "mean": 0.175937,
+      "median": 0.175785,
+      "max": 0.351368
+    },
+    "max_pitch_step_deg": {
+      "min": 0.0,
+      "mean": 0.087848,
+      "median": 0.088172,
+      "max": 0.175601
+    }
+  },
+  "score_semantics": {
+    "measured_frames_per_trajectory": 2,
+    "unscored_interpolated_frames_per_trajectory": 28,
+    "intermediate_monotonicity_required": false
+  }
+}

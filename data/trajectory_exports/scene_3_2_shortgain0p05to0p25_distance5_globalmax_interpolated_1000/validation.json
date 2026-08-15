@@ -1,0 +1,42 @@
+{
+  "validation_passed": true,
+  "checks": {
+    "trajectory_count_is_requested": true,
+    "all_eligible_start_families_used": true,
+    "families_balanced": true,
+    "trajectory_ids_unique": true,
+    "pose_curves_exactly_unique": true,
+    "physical_curves_unique_at_1cm_quantization": true,
+    "all_end_at_single_global_max": true,
+    "only_real_endpoints_have_measured_scores": true,
+    "all_paths_have_no_sampled_target_distance_backtrack": true,
+    "all_path_to_net_ratios_at_most_1p08": true,
+    "all_structural_checks_pass": true
+  },
+  "failure_counts": {},
+  "trajectory_count": 1000,
+  "family_distribution": {
+    "family_01": 1000
+  },
+  "unique_exact_pose_curve_count": 1000,
+  "unique_1cm_physical_curve_count": 1000,
+  "global_max": {
+    "node_id": "scene_3.2|scene_3.2_y01_hull_dense_y01_14p63|466|22",
+    "score": 6.735721,
+    "x": 28.3138204352,
+    "y": 14.629153775,
+    "z": -325.2667612347647,
+    "yaw": 135.0,
+    "pitch": 0.0
+  },
+  "score_semantics": {
+    "measured_frames_per_trajectory": 2,
+    "unscored_interpolated_frames_per_trajectory": 28,
+    "intermediate_monotonicity_required": false
+  },
+  "remaining_external_validation": [
+    "Current capture UI runtime was not available in this workspace for an end-to-end load test.",
+    "Collision clearance is unproven without a scene collision mesh or smoke capture.",
+    "Interpolated video frames are unscored until replay capture and optional rescoring."
+  ]
+}
