@@ -21,7 +21,7 @@ def _expand_path(value: str | Path) -> Path:
 
 def _default_config_path() -> Path:
     for name in platform_config_names(sys.platform):
-        candidate = resolve_project_path(Path("configs") / name)
+        candidate = resolve_project_path(Path("core") / "configs" / name)
         if candidate.exists():
             return candidate
     return DEFAULT_CONFIG_PATH

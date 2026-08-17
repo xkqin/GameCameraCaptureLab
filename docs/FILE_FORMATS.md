@@ -34,13 +34,13 @@
 }
 ```
 
-完整定义：[`../schemas/camera_pose_v1.schema.json`](../schemas/camera_pose_v1.schema.json)。
+完整定义：[`../core/schemas/camera_pose_v1.schema.json`](../core/schemas/camera_pose_v1.schema.json)。
 
 ## camera-point-set/v1
 
 点位集合包含 `scene_id` 和 `points[]`。每个点至少有稳定 `id` 与 `pose`，可以附带标签、时间和 metadata。
 
-完整定义：[`../schemas/point_set_v1.schema.json`](../schemas/point_set_v1.schema.json)。
+完整定义：[`../core/schemas/point_set_v1.schema.json`](../core/schemas/point_set_v1.schema.json)。
 
 ## camera-trajectory/v1
 
@@ -48,7 +48,7 @@
 
 格式只表示目标路径，不代表所有适配器都能绝对回放。KCD2 或 UUU 适配器可以读取同一轨迹做规划或相对控制，同时在运行清单中记录实际达到的 pose。
 
-完整定义：[`../schemas/trajectory_v1.schema.json`](../schemas/trajectory_v1.schema.json)。
+完整定义：[`../core/schemas/trajectory_v1.schema.json`](../core/schemas/trajectory_v1.schema.json)。
 
 ## 原生格式兼容
 
@@ -62,4 +62,4 @@
 
 ## 示例
 
-跨游戏示例位于 [`../schemas/examples/`](../schemas/examples/)。游戏原生、可直接供现有 UI 读取的示例则放在各自的 `games/<id>/examples/` 或 RE9 根目录 `data/` 下。
+跨游戏示例位于 [`../core/schemas/examples/`](../core/schemas/examples/)。游戏原生、可直接供现有 UI 读取的示例则放在各自的 `games/<id>/examples/` 或 RE9 根目录 `data/` 下。

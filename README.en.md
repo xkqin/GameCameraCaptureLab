@@ -144,7 +144,7 @@ The same area keeps a **Keep Capture Studio on Top** button, which is off by def
 
 ## Feishu and Discord setup
 
-The unified studio includes a 中文/English setup guide plus separate **Test Feishu** and **Test Discord** buttons. Copy `configs/windows.yaml` to the Git-ignored `configs/windows.local.yaml`, then configure:
+The unified studio includes a 中文/English setup guide plus separate **Test Feishu** and **Test Discord** buttons. Copy `core/configs/windows.yaml` to the Git-ignored `core/configs/windows.local.yaml`, then configure:
 
 ```yaml
 notifications:
@@ -164,7 +164,7 @@ Environment alternatives are `UNIFIED_DISCORD_WEBHOOK_URL`, `UNIFIED_FEISHU_WEBH
 
 ## Data and repository structure
 
-Shared formats live under [`schemas/`](schemas/):
+Shared formats live under [`core/schemas/`](core/schemas/):
 
 - `camera-pose/v1`: XYZ, rotation, FOV, coordinate frame, and units;
 - `camera-point-set/v1`: spatial points, scenes, and capture metadata;
@@ -174,29 +174,31 @@ Shared formats live under [`schemas/`](schemas/):
 
 ```text
 GameCameraCaptureLab/
-├─ launchers/                   # Unified entry points and game discovery
+├─ core/                        # Shared code, configs, schemas, runtime, tests, caches
+│  ├─ src/                      # Hub, registry, and mature RE9 capture stack
+│  ├─ configs/                  # Platform, OBS, alert, and recovery templates
+│  ├─ schemas/                  # Cross-game pose, point, trajectory, UE profile
+│  ├─ catalogs/                 # Evidence-bounded game support catalog
+│  ├─ runtime/                  # UE profiles, scanner, and generic injector source
+│  └─ tests/                    # Shared-layer offline tests
 ├─ games/                       # RE9, KCD2, Black Myth, and future adapters
-├─ runtime/ue-camera-runtime/   # UE profiles, scanner, and generic injector
-├─ src/                         # Hub, registry, and mature RE9 capture stack
-├─ schemas/                     # Cross-game pose, point, trajectory, UE profile
 ├─ data/                        # Point maps, scan plans, representative paths
-├─ configs/                     # Platform, OBS, alert, and recovery settings
 ├─ docs/                        # Architecture, formats, visuals, legacy guide
-├─ scripts/                     # Capture, analysis, and maintenance scripts
-│  └─ media/                    # Legacy video transcode and transfer tools
-└─ tests/                       # Root and adapter-level offline tests
+├─ launchers/                   # Unified entry points and game discovery
+├─ scripts/                     # Capture, analysis, media, and maintenance scripts
+└─ outputs/                    # Lightweight reproducible analysis outputs
 ```
 
-See [ADDING_A_GAME.md](docs/ADDING_A_GAME.md) for regular adapters and [UE Camera Runtime](runtime/ue-camera-runtime/README.en.md) for UE camera profiles.
+See [ADDING_A_GAME.md](docs/ADDING_A_GAME.md) for regular adapters and [UE Camera Runtime](core/runtime/ue-camera-runtime/README.en.md) for UE camera profiles.
 
 ## Development and verification
 
 ```powershell
-$env:PYTHONPATH = "src"
+$env:PYTHONPATH = "core/src"
 python -m game_camera_capture_lab.validate
-python -m unittest discover -s tests -v
+python -m unittest discover -s core/tests -v
 
-$env:PYTHONPATH = "games\black-myth-wukong\src"
+$env:PYTHONPATH = "core/src;games\black-myth-wukong\src"
 python -m unittest discover -s games\black-myth-wukong\tests -v
 ```
 

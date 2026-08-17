@@ -57,4 +57,4 @@ python -m game_camera_capture_lab.support_catalog --level public_free_camera_ver
 python -m game_camera_capture_lab.support_catalog --json
 ```
 
-The source data is [`catalogs/game_support_catalog_v1.json`](../catalogs/game_support_catalog_v1.json). Public free-camera evidence and project-native runtime verification are mutually exclusive evidence levels, preventing a candidate from being displayed as a shipped adapter.
+The source data is [`core/catalogs/game_support_catalog_v1.json`](../core/catalogs/game_support_catalog_v1.json). Public free-camera evidence and project-native runtime verification are mutually exclusive evidence levels, preventing a candidate from being displayed as a shipped adapter.

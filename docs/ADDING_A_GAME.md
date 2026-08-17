@@ -84,7 +84,7 @@ games/my-game/
 ## 5. 验证
 
 ```powershell
-$env:PYTHONPATH = "src"
+$env:PYTHONPATH = "core/src"
 python -m game_camera_capture_lab.validate
 python -m compileall -q games\my-game
 ```

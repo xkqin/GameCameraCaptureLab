@@ -33,7 +33,7 @@ class SupportCatalogTests(unittest.TestCase):
 
     def test_only_runtime_verified_games_have_native_profiles(self) -> None:
         catalog = load_support_catalog()
-        profile_dir = REPO_ROOT / "runtime" / "ue-camera-runtime" / "profiles"
+        profile_dir = REPO_ROOT / "core" / "runtime" / "ue-camera-runtime" / "profiles"
         profile_ids = {path.stem for path in profile_dir.glob("*.json")}
         runtime_ids = {
             game.id

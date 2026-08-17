@@ -38,7 +38,7 @@ UE_INJECTOR_PATH = (
     NATIVE_DIR / "build_standalone_v1" / "Release" / "UeCameraInjector.exe"
 )
 NATIVE_BUILD_SCRIPT_PATH = NATIVE_DIR / "build_standalone.ps1"
-UE_PROFILE_DIR = REPOSITORY_ROOT / "runtime" / "ue-camera-runtime" / "profiles"
+UE_PROFILE_DIR = REPOSITORY_ROOT / "core" / "runtime" / "ue-camera-runtime" / "profiles"
 ACTIVE_RUNTIME_CONFIG_PATH = LOGS_DIR / "ue_camera_active_profile.json"
 PREFLIGHT_DIAGNOSTIC_PATH = LOGS_DIR / "ue_camera_preflight_latest.json"
 # Use the profile-driven runtime when it has been built; keep the legacy names

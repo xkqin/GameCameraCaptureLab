@@ -57,4 +57,4 @@ python -m game_camera_capture_lab.support_catalog --level public_free_camera_ver
 python -m game_camera_capture_lab.support_catalog --json
 ```
 
-数据源位于 [`catalogs/game_support_catalog_v1.json`](../catalogs/game_support_catalog_v1.json)。目录把“公开自由相机可用”和“本项目原生运行时已验证”做成两个互斥证据等级，避免后续 README、UI 或自动脚本把候选游戏误报成已经支持。
+数据源位于 [`core/catalogs/game_support_catalog_v1.json`](../core/catalogs/game_support_catalog_v1.json)。目录把“公开自由相机可用”和“本项目原生运行时已验证”做成两个互斥证据等级，避免后续 README、UI 或自动脚本把候选游戏误报成已经支持。

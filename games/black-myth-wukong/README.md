@@ -48,7 +48,7 @@
 
 ## 飞书与 Discord 通知
 
-采集界面的“通知与自动修复 / Notifications & Recovery”区域提供中英文设置指南和两种通知的独立测试按钮。推荐复制 `configs/windows.yaml` 为不会提交的 `configs/windows.local.yaml`，只在本机写入真实密钥：
+采集界面的“通知与自动修复 / Notifications & Recovery”区域提供中英文设置指南和两种通知的独立测试按钮。推荐复制 `core/configs/windows.yaml` 为不会提交的 `core/configs/windows.local.yaml`，只在本机写入真实密钥：
 
 ```yaml
 notifications:

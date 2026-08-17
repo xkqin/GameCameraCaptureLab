@@ -16,7 +16,7 @@ from typing import Any, Iterable, Sequence
 from .registry import REPO_ROOT
 
 
-DEFAULT_CATALOG_PATH = REPO_ROOT / "catalogs" / "game_support_catalog_v1.json"
+DEFAULT_CATALOG_PATH = REPO_ROOT / "core" / "catalogs" / "game_support_catalog_v1.json"
 EVIDENCE_LEVELS = {
     "project_runtime_verified",
     "public_free_camera_verified",

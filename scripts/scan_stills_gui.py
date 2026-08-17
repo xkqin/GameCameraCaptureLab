@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SRC = PROJECT_ROOT / "src"
+SRC = PROJECT_ROOT / "core" / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
@@ -19,7 +19,7 @@ if __name__ == "__main__":
         "--obs-password",
         "123456",
         "--layers-config",
-        "configs/still_scan_layers.yaml",
+        "core/configs/still_scan_layers.yaml",
         "--points-x",
         "5",
         "--points-z",

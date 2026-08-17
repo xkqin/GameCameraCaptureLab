@@ -36,24 +36,24 @@ REFramework Lua 文件通道控制 FreeCam，通过 OBS WebSocket 截图和录�
 
 | 项目 | Windows 原生版 | Linux + Steam Proton 版 |
 | --- | --- | --- |
-| 配置模板 | `configs/windows.yaml` | `configs/linux.yaml` |
-| 本机配置 | `configs/windows.local.yaml` | `configs/linux.local.yaml` |
+| 配置模板 | `core/configs/windows.yaml` | `core/configs/linux.yaml` |
+| 本机配置 | `core/configs/windows.local.yaml` | `core/configs/linux.local.yaml` |
 | GUI 启动器 | `scripts/scan_gui.ps1` | `scripts/scan_gui.sh` |
 | OBS 进程 | `obs64.exe`，使用 `taskkill` | `obs`，使用 `pkill` |
 | Codex 任务锁 | Windows `msvcrt` | POSIX `flock` |
 | 完整功能 | 报警、自动 Debug、断点续采、视频验证、定期重启 OBS | 报警、自动 Debug、断点续采、视频验证、定期重启 OBS |
 
-`configs/default.yaml` 仅作为旧版 Windows 配置兼容入口保留。新部署应复制明确的平台
+`core/configs/default.yaml` 仅作为旧版 Windows 配置兼容入口保留。新部署应复制明确的平台
 模板到对应的 `*.local.yaml`；本机路径和凭据只写入 local 文件。
 
 ## 1. 安全原则
 
 - 不要提交游戏文件、截图、视频、数据集、日志、Webhook 或签名密钥。
-- Windows 使用 `configs/windows.local.yaml`，Linux 使用
-  `configs/linux.local.yaml`；两个文件都被 Git 忽略。
+- Windows 使用 `core/configs/windows.local.yaml`，Linux 使用
+  `core/configs/linux.local.yaml`；两个文件都被 Git 忽略。
 - Discord Webhook、飞书 Webhook 和飞书签名 Secret 都应视为密码。
 - 如果凭据被发到公共聊天、截图或日志中，请立即在对应平台重新生成。
-- `outputs/`、`runtime/`、视频和截图目录默认不会进入 Git。
+- `outputs/`、`core/runtime/`、视频和截图目录默认不会进入 Git。
 
 ## 2. 安装
 
@@ -74,13 +74,13 @@ Windows：
 .\.venv\Scripts\activate
 ```
 
-Windows 安装脚本会在文件不存在时创建 `configs/windows.local.yaml`。也可以手动
+Windows 安装脚本会在文件不存在时创建 `core/configs/windows.local.yaml`。也可以手动
 执行：
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-Copy-Item configs\windows.yaml configs\windows.local.yaml
+Copy-Item core\configs\windows.yaml core\configs\windows.local.yaml
 ```
 
 然后安装并启动：
@@ -94,8 +94,8 @@ Copy-Item configs\windows.yaml configs\windows.local.yaml
 
 编辑当前平台的 local 配置：
 
-- Windows：`configs/windows.local.yaml`
-- Linux：`configs/linux.local.yaml`
+- Windows：`core/configs/windows.local.yaml`
+- Linux：`core/configs/linux.local.yaml`
 
 Windows 路径示例：
 
@@ -142,7 +142,7 @@ obs:
 
 ```powershell
 .\.venv\Scripts\python.exe -m re9_pose_recorder.cli obs-test `
-  --config configs\windows.local.yaml `
+  --config core\configs\windows.local.yaml `
   --obs-password YOUR_PASSWORD
 ```
 
@@ -150,7 +150,7 @@ Linux：
 
 ```bash
 .venv/bin/python -m re9_pose_recorder.cli obs-test \
-  --config configs/linux.local.yaml \
+  --config core/configs/linux.local.yaml \
   --obs-password YOUR_PASSWORD
 ```
 
@@ -160,29 +160,29 @@ Linux：
 
 ```powershell
 .\.venv\Scripts\python.exe -m re9_pose_recorder.cli check-lua `
-  --config configs\windows.local.yaml
+  --config core\configs\windows.local.yaml
 .\.venv\Scripts\python.exe -m re9_pose_recorder.cli backup-lua `
-  --config configs\windows.local.yaml
+  --config core\configs\windows.local.yaml
 .\.venv\Scripts\python.exe -m re9_pose_recorder.cli patch-lua-logger `
-  --config configs\windows.local.yaml
+  --config core\configs\windows.local.yaml
 .\.venv\Scripts\python.exe -m re9_pose_recorder.cli verify-lua-patch `
-  --config configs\windows.local.yaml
+  --config core\configs\windows.local.yaml
 ```
 
 Linux：
 
 ```bash
 .venv/bin/python -m re9_pose_recorder.cli check-lua \
-  --config configs/linux.local.yaml
+  --config core/configs/linux.local.yaml
 
 .venv/bin/python -m re9_pose_recorder.cli backup-lua \
-  --config configs/linux.local.yaml
+  --config core/configs/linux.local.yaml
 
 .venv/bin/python -m re9_pose_recorder.cli patch-lua-logger \
-  --config configs/linux.local.yaml
+  --config core/configs/linux.local.yaml
 
 .venv/bin/python -m re9_pose_recorder.cli verify-lua-patch \
-  --config configs/linux.local.yaml
+  --config core/configs/linux.local.yaml
 ```
 
 更新 Lua 后需要重启游戏或重新加载 REFramework 脚本。
@@ -364,7 +364,7 @@ OBS 只会在一条轨迹已经完整写入后重启。GUI 会等待 WebSocket �
 
 ### Discord
 
-在当前平台的 `configs/*.local.yaml` 中添加：
+在当前平台的 `core/configs/*.local.yaml` 中添加：
 
 ```yaml
 notifications:
@@ -442,7 +442,7 @@ outputs/feishu_notifications.log
 GUI 可以在静态图扫描、轨迹录像或坏图 QA 进入最终错误处理后，自动启动本机
 Codex。程序自己的三次重试仍会先执行；只有最终失败才会触发 Codex。
 
-在当前平台被 Git 忽略的 `configs/*.local.yaml` 中配置：
+在当前平台被 Git 忽略的 `core/configs/*.local.yaml` 中配置：
 
 ```yaml
 automation:
@@ -503,7 +503,7 @@ GUI、OBS、系统代理、其他终端或其他 Codex 会话的网络环境。
 状态和日志位置：
 
 ```text
-runtime/re9_pose_codex_recovery_state.json
+core/runtime/re9_pose_codex_recovery_state.json
 outputs/codex_recovery.log
 ```
 
@@ -530,15 +530,15 @@ outputs/codex_recovery.log
 
 ```powershell
 $env:PYTHONPATH = "src"
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
-.\.venv\Scripts\python.exe -m compileall -q src tests
+.\.venv\Scripts\python.exe -m unittest discover -s core/tests -v
+.\.venv\Scripts\python.exe -m compileall -q core/src core/tests
 ```
 
 Linux：
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
-PYTHONPATH=src .venv/bin/python -m compileall -q src tests
+PYTHONPATH=core/src .venv/bin/python -m unittest discover -s core/tests -v
+PYTHONPATH=core/src .venv/bin/python -m compileall -q core/src core/tests
 bash -n scripts/*.sh
 ```
 

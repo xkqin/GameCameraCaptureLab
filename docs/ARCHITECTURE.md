@@ -24,7 +24,7 @@ OBS, screenshots, videos, manifests, analysis and datasets
 
 ## 动态注册表
 
-`src/game_camera_capture_lab/registry.py` 扫描 `games/*/game.json`。启动中心不包含固定游戏列表，因此新增适配器无需修改 UI 源码。
+`core/src/game_camera_capture_lab/registry.py` 扫描 `games/*/game.json`。启动中心不包含固定游戏列表，因此新增适配器无需修改 UI 源码。
 
 一个清单必须声明：
 

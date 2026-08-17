@@ -19,14 +19,14 @@ if (-not (Test-Path $Python)) {
 
 $ConfigPath = $env:RE9_CONFIG
 if (-not $ConfigPath) {
-    if (Test-Path (Join-Path $ProjectRoot "configs\windows.local.yaml")) {
-        $ConfigPath = "configs\windows.local.yaml"
+    if (Test-Path (Join-Path $ProjectRoot "core\configs\windows.local.yaml")) {
+        $ConfigPath = "core\configs\windows.local.yaml"
     }
-    elseif (Test-Path (Join-Path $ProjectRoot "configs\windows.yaml")) {
-        $ConfigPath = "configs\windows.yaml"
+    elseif (Test-Path (Join-Path $ProjectRoot "core\configs\windows.yaml")) {
+        $ConfigPath = "core\configs\windows.yaml"
     }
     else {
-        $ConfigPath = "configs\default.yaml"
+        $ConfigPath = "core\configs\default.yaml"
     }
 }
 
@@ -57,7 +57,7 @@ elseif ($env:LAYERS_CONFIG) {
     $CliArgs += @("--layers-config", $env:LAYERS_CONFIG)
 }
 else {
-    $CliArgs += @("--layers-config", "configs\scene01_scan_layers.yaml")
+    $CliArgs += @("--layers-config", "core\configs\scene01_scan_layers.yaml")
 }
 
 $OptionalSettings = @(
@@ -75,7 +75,7 @@ foreach ($Setting in $OptionalSettings) {
 }
 
 $PreviousPythonPath = $env:PYTHONPATH
-$SourceRoot = Join-Path $ProjectRoot "src"
+$SourceRoot = Join-Path $ProjectRoot "core\src"
 $env:PYTHONPATH = if ($PreviousPythonPath) {
     "$SourceRoot;$PreviousPythonPath"
 }

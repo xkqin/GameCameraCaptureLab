@@ -4,7 +4,7 @@ project(GameCameraRuntime LANGUAGES CXX)
 if(MSVC)
     enable_language(ASM_MASM)
     set(UE_CAMERA_RUNTIME_NATIVE_DIR
-        "${CMAKE_CURRENT_SOURCE_DIR}/../../../runtime/ue-camera-runtime/native")
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../../core/runtime/ue-camera-runtime/native")
     set(CAMERA_BRIDGE_SOURCES
         standalone/BmwCameraBridge.cpp
         standalone/BmwCameraInput.cpp

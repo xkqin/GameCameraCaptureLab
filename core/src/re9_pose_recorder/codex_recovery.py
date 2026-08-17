@@ -221,7 +221,7 @@ class CodexRecoveryTrigger:
         _write_private_json(request_path, request)
 
         env = os.environ.copy()
-        source_root = str(PROJECT_ROOT / "src")
+        source_root = str(PROJECT_ROOT / "core" / "src")
         existing_pythonpath = env.get("PYTHONPATH", "")
         env["PYTHONPATH"] = (
             source_root
@@ -295,7 +295,7 @@ def _build_recovery_prompt(request: Mapping[str, object]) -> str:
         "3. 保留所有已完成轨迹，从第一个缺失索引安全重启采集；不要覆盖有效视频。\n"
         "4. 验证至少一条新轨迹完整落盘、状态继续增长且错误日志不再更新。\n"
         "5. 保持每 30 条重启 OBS、Discord/飞书告警和 @全体配置有效。\n"
-        "6. 不要输出、提交或上传 configs/*.local.yaml、Webhook、签名密钥、GitHub token、日志或数据集。\n"
+        "6. 不要输出、提交或上传 core/configs/*.local.yaml、Webhook、签名密钥、GitHub token、日志或数据集。\n"
         "7. 不要强推 Git，不要删除用户数据；除非修复本身需要，否则不要扩大改动范围。\n"
     )
 

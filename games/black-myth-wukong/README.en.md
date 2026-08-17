@@ -36,7 +36,7 @@ Controls: `Insert` toggles the camera; `Home` toggles movement lock; `Delete` to
 
 ## Feishu and Discord notifications
 
-The **Notifications & Recovery / 通知与自动修复** section contains a bilingual setup guide and separate test buttons. Copy `configs/windows.yaml` to the untracked `configs/windows.local.yaml`, then keep real credentials only in that local file:
+The **Notifications & Recovery / 通知与自动修复** section contains a bilingual setup guide and separate test buttons. Copy `core/configs/windows.yaml` to the untracked `core/configs/windows.local.yaml`, then keep real credentials only in that local file:
 
 ```yaml
 notifications:

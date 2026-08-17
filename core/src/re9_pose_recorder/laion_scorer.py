@@ -55,9 +55,9 @@ class MLP(nn.Module):
 class LAIONAestheticScorer:
     model_name: str = "vit_l_14"
     device: str = "auto"
-    repo_dir: str | Path = "third_party/aesthetic-predictor"
+    repo_dir: str | Path = "core/third_party/aesthetic-predictor"
     cache_dir: str | Path = "~/.cache/re9_pose_recorder"
-    hf_cache_dir: str | Path = "third_party/huggingface_cache"
+    hf_cache_dir: str | Path = "core/third_party/huggingface_cache"
 
     def __post_init__(self) -> None:
         self.device_name = self._resolve_device(self.device)
@@ -235,9 +235,9 @@ def score_folder(
     model_name: str = "vit_l_14",
     device: str = "auto",
     batch_size: int = 32,
-    repo_dir: str | Path = "third_party/aesthetic-predictor",
+    repo_dir: str | Path = "core/third_party/aesthetic-predictor",
     cache_dir: str | Path = "~/.cache/re9_pose_recorder",
-    hf_cache_dir: str | Path = "third_party/huggingface_cache",
+    hf_cache_dir: str | Path = "core/third_party/huggingface_cache",
 ) -> pd.DataFrame:
     scorer = LAIONAestheticScorer(
         model_name=model_name,
@@ -312,7 +312,7 @@ def _find_or_fetch_weights(
 
     raise RuntimeError(
         f"No official LAION aesthetic predictor weights matching {embedding_dim} dimensions were found. "
-        "Run setup-laion, or place the official .pth weights in third_party/aesthetic-predictor."
+        "Run setup-laion, or place the official .pth weights in core/third_party/aesthetic-predictor."
     )
 
 

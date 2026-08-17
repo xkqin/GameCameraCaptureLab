@@ -61,7 +61,7 @@
   },
   "ui_loader_contract_validation": {
     "validation_passed": true,
-    "loader_contract": "RE9_Still_Scan src/re9_pose_recorder/trajectory_replay.py",
+"loader_contract": "RE9_Still_Scan core/src/re9_pose_recorder/trajectory_replay.py",
     "checks": {
       "root_has_trajectories_list": true,
       "trajectory_count_matches": true,

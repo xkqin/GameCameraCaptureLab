@@ -303,7 +303,7 @@ class OneClickRecordApp:
             device=self.device,
             repo_dir=self.config.laion_repo_dir,
             cache_dir=self.config.raw["laion"]["cache_dir"],
-            hf_cache_dir=self.config.raw["laion"].get("hf_cache_dir", "third_party/huggingface_cache"),
+            hf_cache_dir=self.config.raw["laion"].get("hf_cache_dir", "core/third_party/huggingface_cache"),
         ).load_model()
 
     def _capture_obs_image(self) -> tuple[Image.Image, str]:

@@ -289,7 +289,7 @@ def _build_recovery_prompt(request: Mapping[str, object]) -> str:
         "2. 先做离线检查和最小可靠修复；不要启动游戏或自动采集，除非用户明确授权。\n"
         "3. 保留所有已完成数据，从第一个缺失索引安全恢复；不要覆盖有效视频或图片。\n"
         "4. 运行相关编译和单元测试，并在日志中记录修复结果。\n"
-        "5. 不要输出、提交或上传 configs/*.local.yaml、Webhook、签名密钥、GitHub token、日志或数据集。\n"
+        "5. 不要输出、提交或上传 core/configs/*.local.yaml、Webhook、签名密钥、GitHub token、日志或数据集。\n"
         "6. 不要强推 Git，不要删除用户数据；除非修复本身需要，否则不要扩大改动范围。\n"
     )
 

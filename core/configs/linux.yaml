@@ -37,12 +37,12 @@ video:
 
 laion:
   repo_url: "https://github.com/LAION-AI/aesthetic-predictor.git"
-  repo_dir: "third_party/aesthetic-predictor"
+  repo_dir: "core/third_party/aesthetic-predictor"
   model: "vit_l_14"
   device: "auto"
   batch_size: 32
   cache_dir: "~/.cache/re9_pose_recorder"
-  hf_cache_dir: "third_party/huggingface_cache"
+  hf_cache_dir: "core/third_party/huggingface_cache"
 
 alignment:
   method: "nearest"
@@ -63,7 +63,7 @@ live_score:
   screenshot_height: 288
   screenshot_quality: 80
 
-# Keep real webhook URLs and signing secrets in configs/linux.local.yaml or
+# Keep real webhook URLs and signing secrets in core/configs/linux.local.yaml or
 # environment variables. Never commit them.
 notifications:
   discord:

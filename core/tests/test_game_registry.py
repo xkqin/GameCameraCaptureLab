@@ -42,7 +42,7 @@ class GameRegistryTests(unittest.TestCase):
 
     def test_schemas_are_valid_json_schema_documents(self) -> None:
         for name in SCHEMA_NAMES:
-            payload = json.loads((REPO_ROOT / "schemas" / name).read_text(encoding="utf-8"))
+            payload = json.loads((REPO_ROOT / "core" / "schemas" / name).read_text(encoding="utf-8"))
             self.assertEqual(
                 payload["$schema"],
                 "https://json-schema.org/draft/2020-12/schema",
@@ -85,7 +85,7 @@ class GameRegistryTests(unittest.TestCase):
             self.assertEqual(len(load_registry(root)), 6)
 
     def test_ue_runtime_profile_is_loaded_and_process_selectable(self) -> None:
-        profile_dir = REPO_ROOT / "runtime" / "ue-camera-runtime" / "profiles"
+        profile_dir = REPO_ROOT / "core" / "runtime" / "ue-camera-runtime" / "profiles"
         profiles = load_profiles(profile_dir)
         self.assertEqual(len(profiles), 2)
         profile = load_profile(profile_dir / "black-myth-wukong.json")
@@ -112,7 +112,7 @@ class GameRegistryTests(unittest.TestCase):
 
     def test_ue_runtime_scanner_is_offline_and_counts_real_profile_pattern(self) -> None:
         profile = load_profile(
-            REPO_ROOT / "runtime" / "ue-camera-runtime" / "profiles" / "black-myth-wukong.json"
+            REPO_ROOT / "core" / "runtime" / "ue-camera-runtime" / "profiles" / "black-myth-wukong.json"
         )
         executable = Path(r"D:\steam\steamapps\common\BlackMythWukong\b1\Binaries\Win64\b1-Win64-Shipping.exe")
         if not executable.is_file():
@@ -122,7 +122,7 @@ class GameRegistryTests(unittest.TestCase):
 
     def test_backrooms_profile_matches_installed_ue56_build(self) -> None:
         profile = load_profile(
-            REPO_ROOT / "runtime" / "ue-camera-runtime" / "profiles" /
+            REPO_ROOT / "core" / "runtime" / "ue-camera-runtime" / "profiles" /
             "backrooms-lost-runners.json"
         )
         executable = Path(

@@ -19,7 +19,7 @@ class AlertingTests(unittest.TestCase):
     def test_unified_environment_has_priority_over_legacy_notification_values(self) -> None:
         config = SharedConfig(
             raw={"notifications": {"discord": {}, "feishu": {}}},
-            path=Path("configs/windows.local.yaml"),
+            path=Path("core/configs/windows.local.yaml"),
         )
         with patch.dict(
             "os.environ",
@@ -74,7 +74,7 @@ class AlertingTests(unittest.TestCase):
                     }
                 }
             },
-            path=Path("configs/linux.yaml"),
+            path=Path("core/configs/linux.yaml"),
         )
         with patch.dict(
             "os.environ",
@@ -139,7 +139,7 @@ class AlertingTests(unittest.TestCase):
     def test_repair_is_disabled_by_default_and_uses_re9_fields(self) -> None:
         config = SharedConfig(
             raw={"automation": {"codex_recovery": {"enabled": False}}},
-            path=Path("configs/linux.yaml"),
+            path=Path("core/configs/linux.yaml"),
         )
         trigger = CodexRecoveryTrigger.from_config(config)
         self.assertFalse(trigger.configured_enabled)

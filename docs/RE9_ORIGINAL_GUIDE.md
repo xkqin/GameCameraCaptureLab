@@ -163,8 +163,8 @@ launch syntax, process detachment, OBS restart, and the REFramework file path.
 
 | Area | Windows native | Linux + Steam Proton |
 | --- | --- | --- |
-| Tracked template | `configs/windows.yaml` | `configs/linux.yaml` |
-| Ignored local config | `configs/windows.local.yaml` | `configs/linux.local.yaml` |
+| Tracked template | `core/configs/windows.yaml` | `core/configs/linux.yaml` |
+| Ignored local config | `core/configs/windows.local.yaml` | `core/configs/linux.local.yaml` |
 | Generic GUI launcher | `scripts/scan_gui.ps1` | `scripts/scan_gui.sh` |
 | Game/FreeCam | Native RE9 + REFramework | RE9 under Proton + REFramework |
 | OBS process adapter | `obs64.exe` / `taskkill` | `obs` / `pkill` |
@@ -172,7 +172,7 @@ launch syntax, process detachment, OBS restart, and the REFramework file path.
 | Codex worker lock | Windows `msvcrt` lock | POSIX `flock` |
 | Long-run features | Alerts, auto-debug, resume, validation, scheduled OBS restart | Alerts, auto-debug, resume, validation, scheduled OBS restart |
 
-`configs/default.yaml` remains as a backward-compatible Windows template.
+`core/configs/default.yaml` remains as a backward-compatible Windows template.
 New installations should use the explicit platform template and keep
 machine-specific paths and credentials only in the ignored `*.local.yaml`
 file.
@@ -180,14 +180,14 @@ file.
 The shared platform boundary is intentionally small:
 
 ```text
-configs/
+core/configs/
   windows.yaml          # Windows template
   linux.yaml            # Linux/Proton template
   *.local.yaml          # ignored machine configuration
 scripts/
   scan_gui.ps1          # Windows launcher
   scan_gui.sh           # Linux launcher
-src/re9_pose_recorder/
+core/src/re9_pose_recorder/
   platform_support.py   # config, OBS, command, and process adapters
   ...                   # shared capture engine
 ```
@@ -247,7 +247,7 @@ D:\steam\steamapps\common\RESIDENT EVIL requiem BIOHAZARD requiem\reframework\au
 ### Windows prerequisites
 
 Use native Windows RE9, REFramework, FreeCam, OBS, PowerShell, and
-`configs/windows.local.yaml`. The normal game path resembles:
+`core/configs/windows.local.yaml`. The normal game path resembles:
 
 ```text
 D:\steam\steamapps\common\RESIDENT EVIL requiem BIOHAZARD requiem
@@ -256,7 +256,7 @@ D:\steam\steamapps\common\RESIDENT EVIL requiem BIOHAZARD requiem
 ### Linux prerequisites
 
 Use Steam Proton for the game and native Linux Python/OBS with
-`configs/linux.local.yaml`.
+`core/configs/linux.local.yaml`.
 
 Linux system packages:
 
@@ -323,11 +323,11 @@ Windows:
 python -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt
-Copy-Item configs\windows.yaml configs\windows.local.yaml
+Copy-Item core/configs/windows.yaml core/configs/windows.local.yaml
 python -m re9_pose_recorder.cli setup-laion
 ```
 
-`requirements.txt` includes `-e .`, so the local `src/re9_pose_recorder` package is installed in editable mode and `python -m re9_pose_recorder.cli` works from the virtual environment.
+`requirements.txt` includes `-e .`, so the local `core/src/re9_pose_recorder` package is installed in editable mode and `python -m re9_pose_recorder.cli` works from the virtual environment.
 
 Or use:
 
@@ -336,7 +336,7 @@ Or use:
 .\scripts\setup_laion_repo.ps1
 ```
 
-`setup_windows.ps1` creates the ignored `configs/windows.local.yaml` when it
+`setup_windows.ps1` creates the ignored `core/configs/windows.local.yaml` when it
 does not already exist. Edit that local file and keep real paths, OBS
 credentials, webhooks, and signing secrets out of the tracked templates.
 
@@ -347,7 +347,7 @@ bash scripts/setup_linux.sh
 source .venv/bin/activate
 ```
 
-The setup script creates `configs/linux.local.yaml` when needed. Edit it and
+The setup script creates `core/configs/linux.local.yaml` when needed. Edit it and
 update the REFramework paths:
 
 ```yaml
@@ -367,29 +367,29 @@ Use forward slashes. `~` and environment variables such as `$HOME` are expanded 
 On Linux, when `--config` is omitted, the CLI automatically tries:
 
 ```text
-configs/linux.local.yaml
-configs/linux.yaml
-configs/default.yaml
+core/configs/linux.local.yaml
+core/configs/linux.yaml
+core/configs/default.yaml
 ```
 
 On Windows, the equivalent order is:
 
 ```text
-configs/windows.local.yaml
-configs/windows.yaml
-configs/default.yaml
+core/configs/windows.local.yaml
+core/configs/windows.yaml
+core/configs/default.yaml
 ```
 
 You can also set a shell-wide override:
 
 ```bash
-export RE9_CONFIG=configs/linux.local.yaml
+export RE9_CONFIG=core/configs/linux.local.yaml
 ```
 
 Download/update the official LAION aesthetic-predictor repo:
 
 ```bash
-python -m re9_pose_recorder.cli setup-laion --config configs/linux.local.yaml
+python -m re9_pose_recorder.cli setup-laion --config core/configs/linux.local.yaml
 ```
 
 ## Patch Lua
@@ -414,10 +414,10 @@ python -m re9_pose_recorder.cli verify-lua-patch
 Linux:
 
 ```bash
-python -m re9_pose_recorder.cli check-lua --config configs/linux.local.yaml
-python -m re9_pose_recorder.cli backup-lua --config configs/linux.local.yaml
-python -m re9_pose_recorder.cli patch-lua-logger --config configs/linux.local.yaml
-python -m re9_pose_recorder.cli verify-lua-patch --config configs/linux.local.yaml
+python -m re9_pose_recorder.cli check-lua --config core/configs/linux.local.yaml
+python -m re9_pose_recorder.cli backup-lua --config core/configs/linux.local.yaml
+python -m re9_pose_recorder.cli patch-lua-logger --config core/configs/linux.local.yaml
+python -m re9_pose_recorder.cli verify-lua-patch --config core/configs/linux.local.yaml
 ```
 
 ## Test OBS
@@ -429,7 +429,7 @@ python -m re9_pose_recorder.cli obs-test --obs-password YOUR_PASSWORD
 Linux:
 
 ```bash
-python -m re9_pose_recorder.cli obs-test --config configs/linux.local.yaml --obs-password YOUR_PASSWORD
+python -m re9_pose_recorder.cli obs-test --config core/configs/linux.local.yaml --obs-password YOUR_PASSWORD
 ```
 
 If OBS is not running, WebSocket is disabled, the port is wrong, or the password is wrong, the command prints connection guidance.
@@ -505,9 +505,9 @@ Linux direct CLI equivalent:
 
 ```bash
 python -m re9_pose_recorder.cli scan-stills-gui \
-  --config configs/linux.local.yaml \
+  --config core/configs/linux.local.yaml \
   --obs-password YOUR_PASSWORD \
-  --layers-config configs/scene01_scan_layers.yaml \
+  --layers-config core/configs/scene01_scan_layers.yaml \
   --session-id scene_1 \
   --settle-seconds 0.6 \
   --image-format jpg \
@@ -624,7 +624,7 @@ bash scripts/scan_gui.sh
 
 `RE9_DISCORD_MENTION` is optional. Use `@everyone`, a user mention such as
 `<@123456789>`, or leave it empty. You can alternatively put the settings only
-in the ignored `configs/windows.local.yaml` or `configs/linux.local.yaml`:
+in the ignored `core/configs/windows.local.yaml` or `core/configs/linux.local.yaml`:
 
 ```yaml
 notifications:
@@ -756,7 +756,7 @@ secrets.
 Worker state and output are machine-local:
 
 ```text
-runtime/re9_pose_codex_recovery_state.json
+core/runtime/re9_pose_codex_recovery_state.json
 outputs/codex_recovery.log
 ```
 
@@ -781,8 +781,8 @@ bash scripts/scan_topstart4000_gui.sh
 The scan definitions live in:
 
 ```text
-configs/still_scan_layers.yaml
-configs/scene_2_scan_layers.yaml
+core/configs/still_scan_layers.yaml
+core/configs/scene_2_scan_layers.yaml
 ```
 
 Each layer/zone defines a rectangular region using two diagonal points and a sampling density:
@@ -804,8 +804,8 @@ layers:
 Edit one of these YAML files:
 
 ```text
-configs/still_scan_layers.yaml
-configs/scene_2_scan_layers.yaml
+core/configs/still_scan_layers.yaml
+core/configs/scene_2_scan_layers.yaml
 ```
 
 Use the FreeCam UI in REFramework to read the camera position. The FreeCam panel shows a line like:
@@ -1059,7 +1059,7 @@ outputs/segment_best_5s_SESSION.csv
 
 Each row contains the highest-scoring frame in that 5-second video segment plus nearest logged `x`, `y`, `z`, `yaw`, `pitch`, and `fov`. This uses OBS `split_record_file`, so OBS will produce multiple segment files while recording.
 
-OpenCLIP/Hugging Face model files are cached under `third_party/huggingface_cache` so later launches reuse the project-local copy. Live score samples are saved under `outputs/live_scores_SESSION.csv`. Disable live scoring with:
+OpenCLIP/Hugging Face model files are cached under `core/third_party/huggingface_cache` so later launches reuse the project-local copy. Live score samples are saved under `outputs/live_scores_SESSION.csv`. Disable live scoring with:
 
 ```powershell
 python -m re9_pose_recorder.cli one-click-record --obs-password YOUR_PASSWORD --no-live-score
@@ -1074,7 +1074,7 @@ python -m re9_pose_recorder.cli warmup-laion --device cuda
 Linux uses the same command with the Linux config:
 
 ```bash
-python -m re9_pose_recorder.cli one-click-record --config configs/linux.local.yaml --obs-password YOUR_PASSWORD --device auto
+python -m re9_pose_recorder.cli one-click-record --config core/configs/linux.local.yaml --obs-password YOUR_PASSWORD --device auto
 ```
 
 ## Analyze existing video and pose log
@@ -1087,7 +1087,7 @@ Linux:
 
 ```bash
 python -m re9_pose_recorder.cli analyze-video \
-  --config configs/linux.local.yaml \
+  --config core/configs/linux.local.yaml \
   --video data/videos/session.mp4 \
   --pose-log data/pose_logs/pose_log.csv \
   --fps 2 \
@@ -1144,7 +1144,7 @@ python -m re9_pose_recorder.cli restore-lua --backup backups/lua/RE9FreeCam.lua.
 Linux:
 
 ```bash
-python -m re9_pose_recorder.cli restore-lua --config configs/linux.local.yaml --backup backups/lua/RE9FreeCam.lua.TIMESTAMP.bak
+python -m re9_pose_recorder.cli restore-lua --config core/configs/linux.local.yaml --backup backups/lua/RE9FreeCam.lua.TIMESTAMP.bak
 ```
 
 The restore command copies the selected backup over the configured `RE9FreeCam.lua`.
@@ -1165,8 +1165,8 @@ If existing output files would be overwritten and `video.overwrite` is false, a 
 
 ## Error handling notes
 
-- Wrong Lua path: edit `configs/windows.local.yaml` or
-  `configs/linux.local.yaml`, then rerun `check-lua`.
+- Wrong Lua path: edit `core/configs/windows.local.yaml` or
+  `core/configs/linux.local.yaml`, then rerun `check-lua`.
 - Missing Lua patch: run `patch-lua-logger`.
 - OBS connection failure: open OBS, enable WebSocket, confirm port `4455`, and check the password.
 - Missing Git: install Git and rerun `setup-laion`.
@@ -1235,7 +1235,7 @@ $env:PYTHONPATH = "src"
 Linux:
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+PYTHONPATH=core/src .venv/bin/python -m unittest discover -s core/tests -v
 ```
 
 The tests cover stale Lua acknowledgement rejection, bounded NTFS control-file
@@ -1247,20 +1247,20 @@ notification secret redaction.
 
 ```text
 re9-freecam-aesthetic-pose-recorder/
-  configs/
-    windows.yaml
-    linux.yaml
-    default.yaml
+  core/
+    configs/windows.yaml
+    configs/linux.yaml
+    configs/default.yaml
   scripts/
     scan_gui.ps1
     scan_gui.sh
-  src/re9_pose_recorder/
-    platform_support.py
+    src/re9_pose_recorder/
+      platform_support.py
   data/videos/
   data/frames/
   data/pose_logs/
   outputs/
-  third_party/
+    third_party/
 ```
 
 Run the CLI with:

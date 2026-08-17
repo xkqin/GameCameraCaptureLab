@@ -8,8 +8,8 @@ __pycache__/
 **/.venv/
 **/__pycache__/
 **/*.egg-info/
-configs/linux.local.yaml
-configs/windows.local.yaml
+core/configs/linux.local.yaml
+core/configs/windows.local.yaml
 config.ini
 vkd3d-proton.cache
 rclone_upload_*.log
@@ -21,10 +21,10 @@ transcode_progress.tsv
 transcode_failures.tsv
 batch_console.log
 
-third_party/aesthetic-predictor/
-third_party/huggingface_cache/
+core/third_party/aesthetic-predictor/
+core/third_party/huggingface_cache/
 backups/
-runtime/re9_pose_*
+core/runtime/re9_pose_*
 data/videos/*
 data/frames/*
 data/pose_logs/*
@@ -59,13 +59,13 @@ games/black-myth-wukong/settings.json
 *.obj
 *.lib
 
-!third_party/.gitkeep
+!core/third_party/.gitkeep
 !data/videos/.gitkeep
 !data/frames/.gitkeep
 !data/pose_logs/.gitkeep
 !data/stills/.gitkeep
 !outputs/.gitkeep
-!runtime/.gitkeep
+!core/runtime/.gitkeep
 
 *.mp4
 *.mkv

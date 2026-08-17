@@ -144,7 +144,7 @@ Linux/Proton 可用 `bash launchers/launch_unified_capture_studio.sh <profile-id
 
 ## 飞书与 Discord 设置
 
-统一采集界面的通知区内置中文/English 设置指南，以及“测试飞书”和“测试 Discord”按钮。推荐把 `configs/windows.yaml` 复制成 Git 忽略的 `configs/windows.local.yaml`，然后填写：
+统一采集界面的通知区内置中文/English 设置指南，以及“测试飞书”和“测试 Discord”按钮。推荐把 `core/configs/windows.yaml` 复制成 Git 忽略的 `core/configs/windows.local.yaml`，然后填写：
 
 ```yaml
 notifications:
@@ -164,7 +164,7 @@ notifications:
 
 ## 数据与仓库结构
 
-统一格式位于 [`schemas/`](schemas/)：
+统一格式位于 [`core/schemas/`](core/schemas/)：
 
 - `camera-pose/v1`：XYZ、旋转、FOV、坐标系与单位；
 - `camera-point-set/v1`：空间点位、场景和采集元数据；
@@ -174,29 +174,31 @@ notifications:
 
 ```text
 GameCameraCaptureLab/
-├─ launchers/                   # 统一入口、自动识别和多游戏中心
+├─ core/                        # 共享代码、配置、Schema、Runtime、测试和第三方缓存
+│  ├─ src/                      # 启动中心、注册表与成熟 RE9 采集实现
+│  ├─ configs/                  # 平台、OBS、报警与自动恢复模板
+│  ├─ schemas/                  # 跨游戏 Pose、Point、Trajectory、UE Profile
+│  ├─ catalogs/                 # 游戏支持证据目录
+│  ├─ runtime/                  # UE profile、扫描器和通用注入器源码
+│  └─ tests/                    # 共享层离线测试
 ├─ games/                       # RE9、KCD2、Black Myth 与未来适配器
-├─ runtime/ue-camera-runtime/   # 自研 UE profile、扫描器和通用注入器
-├─ src/                         # 启动中心、注册表与成熟 RE9 采集实现
-├─ schemas/                     # 跨游戏 Pose、Point、Trajectory、UE Profile
 ├─ data/                        # 点位、扫描计划和代表性轨迹
-├─ configs/                     # 平台、OBS、报警与自动恢复配置
 ├─ docs/                        # 架构、格式、图片和历史指南
-├─ scripts/                     # 采集、分析和维护脚本
-│  └─ media/                    # 历史视频转码与数据上传工具
-└─ tests/                       # 根项目及各适配器离线测试
+├─ launchers/                   # 统一入口、自动识别和多游戏中心
+├─ scripts/                     # 采集、分析、媒体和维护脚本
+└─ outputs/                    # 可复现的轻量分析输出
 ```
 
-新增普通游戏适配器见 [ADDING_A_GAME.md](docs/ADDING_A_GAME.md)；UE 相机 profile 见 [UE Camera Runtime](runtime/ue-camera-runtime/README.md)。
+新增普通游戏适配器见 [ADDING_A_GAME.md](docs/ADDING_A_GAME.md)；UE 相机 profile 见 [UE Camera Runtime](core/runtime/ue-camera-runtime/README.md)。
 
 ## 开发与验证
 
 ```powershell
-$env:PYTHONPATH = "src"
+$env:PYTHONPATH = "core/src"
 python -m game_camera_capture_lab.validate
-python -m unittest discover -s tests -v
+python -m unittest discover -s core/tests -v
 
-$env:PYTHONPATH = "games\black-myth-wukong\src"
+$env:PYTHONPATH = "core/src;games\black-myth-wukong\src"
 python -m unittest discover -s games\black-myth-wukong\tests -v
 ```
 

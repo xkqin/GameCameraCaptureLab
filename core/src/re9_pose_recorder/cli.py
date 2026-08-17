@@ -556,7 +556,7 @@ def warmup_laion(
         device=device or cfg.raw["laion"]["device"],
         repo_dir=cfg.laion_repo_dir,
         cache_dir=cfg.raw["laion"]["cache_dir"],
-        hf_cache_dir=cfg.raw["laion"].get("hf_cache_dir", "third_party/huggingface_cache"),
+        hf_cache_dir=cfg.raw["laion"].get("hf_cache_dir", "core/third_party/huggingface_cache"),
     ).load_model()
     console.print(f"[green]LAION scorer ready:[/green] model={scorer.model_name} device={scorer.device_name}")
 
@@ -593,7 +593,7 @@ def score_frames(
         batch_size=batch_size,
         repo_dir=cfg.laion_repo_dir,
         cache_dir=cfg.raw["laion"]["cache_dir"],
-        hf_cache_dir=cfg.raw["laion"].get("hf_cache_dir", "third_party/huggingface_cache"),
+        hf_cache_dir=cfg.raw["laion"].get("hf_cache_dir", "core/third_party/huggingface_cache"),
     )
     console.print(f"[green]Wrote {len(result)} scores:[/green] {output}")
 
@@ -813,7 +813,7 @@ def _record_only(cfg: AppConfig, obs_password: str) -> tuple[Path, Path, str]:
             raise RuntimeError("OBS did not return an output path and no recording directory is configured.")
         video_path = find_latest_video_file(record_dir, before_time=started_at, supported_extensions=cfg.supported_video_extensions)
     if video_path is None:
-        raise RuntimeError("Could not locate the OBS recording. Set obs.recording_output_dir in configs/default.yaml.")
+        raise RuntimeError("Could not locate the OBS recording. Set obs.recording_output_dir in core/configs/default.yaml.")
     return video_path, pose_log, session_id
 
 
@@ -851,7 +851,7 @@ def _analyze_video_pipeline(
         batch_size=int(cfg.raw["laion"]["batch_size"]),
         repo_dir=cfg.laion_repo_dir,
         cache_dir=cfg.raw["laion"]["cache_dir"],
-        hf_cache_dir=cfg.raw["laion"].get("hf_cache_dir", "third_party/huggingface_cache"),
+        hf_cache_dir=cfg.raw["laion"].get("hf_cache_dir", "core/third_party/huggingface_cache"),
     )
 
     pose_copy_for_data = None

@@ -6,7 +6,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
-$profileDir = Join-Path $repositoryRoot "runtime\ue-camera-runtime\profiles"
+$profileDir = Join-Path $repositoryRoot "core\runtime\ue-camera-runtime\profiles"
 $gamesDir = Join-Path $repositoryRoot "games"
 $sharedStudioDir = Join-Path $gamesDir "black-myth-wukong"
 $sharedLauncher = Join-Path $sharedStudioDir "launch_bmw_capture_studio.ps1"

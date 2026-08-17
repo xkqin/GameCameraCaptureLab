@@ -34,7 +34,7 @@ game-camera-support = "game_camera_capture_lab.support_catalog:main"
 re9-pose-recorder = "re9_pose_recorder.cli:app"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["core/src"]
 
 [tool.setuptools.package-data]
 re9_pose_recorder = ["py.typed"]

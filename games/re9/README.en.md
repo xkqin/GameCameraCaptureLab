@@ -4,8 +4,8 @@
 
 This is the most mature adapter in Game Camera Capture Lab. To preserve existing scripts, configuration, and long trajectory files, the RE9 implementation remains at the repository root:
 
-- Python source: `src/re9_pose_recorder/`
-- Lua and platform configuration: `configs/`, `data/scene_2_capture/`
+- Python source: `core/src/re9_pose_recorder/`
+- Lua and platform configuration: `core/configs/`, `data/scene_2_capture/`
 - Still-scan points: `data/scene_points/`
 - Trajectories and exports: `data/trajectories/`, `data/trajectory_exports/`
 - Windows/Linux launch scripts: `scripts/`

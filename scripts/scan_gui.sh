@@ -8,13 +8,13 @@ cd "${PROJECT_ROOT}"
 PYTHON_BIN="${PYTHON_BIN:-${PROJECT_ROOT}/.venv/bin/python}"
 if [[ -n "${RE9_CONFIG:-}" ]]; then
   CONFIG_PATH="${RE9_CONFIG}"
-elif [[ -f configs/linux.local.yaml ]]; then
-  CONFIG_PATH="configs/linux.local.yaml"
+elif [[ -f core/configs/linux.local.yaml ]]; then
+  CONFIG_PATH="core/configs/linux.local.yaml"
 else
-  CONFIG_PATH="configs/linux.yaml"
+  CONFIG_PATH="core/configs/linux.yaml"
 fi
 
-export PYTHONPATH="${PROJECT_ROOT}/src:${PYTHONPATH:-}"
+export PYTHONPATH="${PROJECT_ROOT}/core/src:${PYTHONPATH:-}"
 
 ARGS=(
   -m re9_pose_recorder.cli scan-stills-gui
@@ -33,7 +33,7 @@ if [[ -n "${POSE_PLAN_CONFIG:-}" ]]; then
 elif [[ -n "${LAYERS_CONFIG:-}" ]]; then
   ARGS+=(--layers-config "${LAYERS_CONFIG}")
 else
-  ARGS+=(--layers-config configs/scene01_scan_layers.yaml)
+  ARGS+=(--layers-config core/configs/scene01_scan_layers.yaml)
 fi
 
 if [[ -n "${TRAJECTORY_SET:-}" ]]; then

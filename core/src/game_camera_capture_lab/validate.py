@@ -39,7 +39,7 @@ def validate_repository(repo_root: Path = REPO_ROOT) -> list[str]:
                 errors.append(str(exc))
 
     for name in SCHEMA_NAMES:
-        schema_path = repo_root / "schemas" / name
+        schema_path = repo_root / "core" / "schemas" / name
         try:
             schema = json.loads(schema_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:

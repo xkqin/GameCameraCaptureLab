@@ -7,7 +7,7 @@ param(
 # mirrors scripts/scan_gui.sh and also exposes trajectory profiles and recovery.
 $PreviousLayersConfig = $env:LAYERS_CONFIG
 if (-not $env:LAYERS_CONFIG -and -not $env:POSE_PLAN_CONFIG) {
-    $env:LAYERS_CONFIG = "configs\still_scan_layers.yaml"
+    $env:LAYERS_CONFIG = "core\configs\still_scan_layers.yaml"
 }
 
 try {

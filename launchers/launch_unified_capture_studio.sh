@@ -7,12 +7,12 @@ if [[ $# -gt 0 ]]; then
     shift
 fi
 
-profile_path="$repository_root/runtime/ue-camera-runtime/profiles/$game_id.json"
+profile_path="$repository_root/core/runtime/ue-camera-runtime/profiles/$game_id.json"
 adapter_dir="$repository_root/games/$game_id"
 shared_studio_dir="$repository_root/games/black-myth-wukong"
 
 if [[ "$game_id" == "unified-auto" ]]; then
-    profile_path="$repository_root/runtime/ue-camera-runtime/profiles"
+    profile_path="$repository_root/core/runtime/ue-camera-runtime/profiles"
     adapter_dir="$repository_root"
 elif [[ ! -f "$profile_path" || ! -d "$adapter_dir" ]]; then
     echo "Unknown or incomplete adapter: $game_id" >&2
