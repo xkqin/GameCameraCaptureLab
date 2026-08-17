@@ -12,6 +12,7 @@ from tkinter import messagebox, ttk
 
 from .codex_recovery import CodexRecoveryTrigger
 from .config import AppConfig
+from .depth_bridge import DepthBridge
 from .discord_notify import DiscordNotifier
 from .feishu_notify import FeishuNotifier
 from .paths import PROJECT_ROOT, ensure_dir
@@ -245,6 +246,8 @@ class StillScanApp:
         trajectory_label: str | None = None,
         trajectory_session_prefix: str | None = None,
         topmost: bool = True,
+        capture_depth: bool = False,
+        depth_timeout: float = 10.0,
     ) -> None:
         self.config = config
         self.obs_password = obs_password
@@ -269,6 +272,11 @@ class StillScanApp:
         self.stop_event = threading.Event()
         self.trajectory_stop_event = threading.Event()
         self.topmost = topmost
+        self.depth_bridge = DepthBridge(config)
+        self.capture_depth_default = bool(capture_depth)
+        self.depth_timeout_default = max(0.1, float(depth_timeout))
+        self.active_capture_depth = False
+        self.active_depth_timeout = self.depth_timeout_default
         self.obs_restart_every = self._read_int_env("RE9_OBS_RESTART_EVERY_N", 0)
         self.obs_restart_command = os.environ.get("RE9_OBS_RESTART_COMMAND", "").strip()
         if self.obs_restart_every > 0 and not self.obs_restart_command:
@@ -359,6 +367,9 @@ class StillScanApp:
         self.codex_recovery_status_var = tk.StringVar(
             value=self.codex_recovery.status_text
         )
+        self.capture_depth_var = tk.BooleanVar(value=self.capture_depth_default)
+        self.depth_timeout_var = tk.DoubleVar(value=self.depth_timeout_default)
+        self.depth_status_var = tk.StringVar(value=self.depth_bridge.status_text())
 
         outer = ttk.Frame(self.root)
         outer.pack(fill="both", expand=True)
@@ -400,6 +411,27 @@ class StillScanApp:
         self.start_button.pack(fill="x", padx=8, pady=4)
         self.stop_button = ttk.Button(capture_frame, text="Stop After Current Shot", command=self.stop, state="disabled")
         self.stop_button.pack(fill="x", padx=8, pady=4)
+        depth_controls = ttk.Frame(capture_frame)
+        depth_controls.pack(fill="x", padx=8, pady=(4, 2))
+        self.capture_depth_check = ttk.Checkbutton(
+            depth_controls,
+            text="Capture per-pixel depth (3DGS)",
+            variable=self.capture_depth_var,
+        )
+        self.capture_depth_check.pack(side="left")
+        ttk.Label(depth_controls, text="Timeout (s)").pack(side="left", padx=(18, 5))
+        self.depth_timeout_spinbox = ttk.Spinbox(
+            depth_controls,
+            from_=1.0,
+            to=120.0,
+            increment=1.0,
+            width=6,
+            textvariable=self.depth_timeout_var,
+        )
+        self.depth_timeout_spinbox.pack(side="left")
+        ttk.Label(capture_frame, textvariable=self.depth_status_var, wraplength=760).pack(
+            anchor="w", padx=8, pady=(0, 4)
+        )
         self.qa_button = ttk.Button(
             capture_frame,
             text="Delete Broken Capture Images",
@@ -516,6 +548,7 @@ class StillScanApp:
         ttk.Label(content, textvariable=self.output_var, wraplength=720).pack(anchor="w", pady=5)
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.root.after(500, self._refresh_depth_status)
         if os.environ.get("RE9_TRAJECTORY_AUTO_RESUME", "").lower() in {"1", "true", "yes"}:
             # Useful for unattended recovery after an OBS/UI restart.  The
             # normal button remains confirmation-based.
@@ -537,11 +570,27 @@ class StillScanApp:
     def start(self) -> None:
         if self.running or self.trajectory_running:
             return
+        self.active_capture_depth = bool(self.capture_depth_var.get())
+        try:
+            self.active_depth_timeout = max(0.1, float(self.depth_timeout_var.get()))
+        except (TypeError, ValueError, tk.TclError):
+            messagebox.showerror("Invalid depth timeout", "Depth timeout must be a positive number of seconds.")
+            return
+        if self.active_capture_depth and not self.depth_bridge.is_ready():
+            messagebox.showerror(
+                "Depth plugin unavailable",
+                "re9_depth_bridge.dll is not reporting ready. Install it under "
+                "reframework/plugins, start RE9, and then enable depth capture.",
+            )
+            self._refresh_depth_status()
+            return
         self.running = True
         self.stop_event.clear()
         self.start_button.configure(state="disabled")
         self._set_trajectory_buttons("disabled")
         self.stop_button.configure(state="normal")
+        self.capture_depth_check.configure(state="disabled")
+        self.depth_timeout_spinbox.configure(state="disabled")
         self.status_var.set("Starting in 5 seconds. Press Insert to close REFramework/FreeCam UI now.")
         self._countdown_start(5)
 
@@ -552,6 +601,8 @@ class StillScanApp:
             self.start_button.configure(state="normal")
             self._set_trajectory_buttons("normal")
             self.stop_button.configure(state="disabled")
+            self.capture_depth_check.configure(state="normal")
+            self.depth_timeout_spinbox.configure(state="normal")
             return
         if seconds_left <= 0:
             self.status_var.set("Connecting to OBS and starting still scan...")
@@ -666,6 +717,9 @@ class StillScanApp:
                     max_samples=self.max_samples,
                     progress_callback=self._progress,
                     stop_event=self.stop_event,
+                    capture_depth=self.active_capture_depth,
+                    depth_timeout=self.active_depth_timeout,
+                    depth_bridge=self.depth_bridge,
                 )
             elif self.layers_config is not None:
                 outputs = run_layered_still_scan(
@@ -685,6 +739,9 @@ class StillScanApp:
                     progress_callback=self._progress,
                     stop_event=self.stop_event,
                     resume_from_layer=self.resume_from_layer,
+                    capture_depth=self.active_capture_depth,
+                    depth_timeout=self.active_depth_timeout,
+                    depth_bridge=self.depth_bridge,
                 )
             else:
                 heights = parse_float_list(self.y_values)
@@ -708,6 +765,9 @@ class StillScanApp:
                     max_samples=self.max_samples,
                     progress_callback=self._progress,
                     stop_event=self.stop_event,
+                    capture_depth=self.active_capture_depth,
+                    depth_timeout=self.active_depth_timeout,
+                    depth_bridge=self.depth_bridge,
                 )
             self.output_dir = outputs["output_dir"]
             done = self.captured_count
@@ -888,6 +948,8 @@ class StillScanApp:
             self.output_var.set(f"Output: {output_dir}")
             self.start_button.configure(state="normal")
             self.stop_button.configure(state="disabled")
+            self.capture_depth_check.configure(state="normal")
+            self.depth_timeout_spinbox.configure(state="normal")
             self._set_trajectory_buttons("normal")
             self._refresh_qa_button()
 
@@ -1023,6 +1085,8 @@ class StillScanApp:
         self.output_var.set(f"Error log: {error_log}")
         self.start_button.configure(state="normal")
         self.stop_button.configure(state="disabled")
+        self.capture_depth_check.configure(state="normal")
+        self.depth_timeout_spinbox.configure(state="normal")
         self._set_trajectory_buttons("normal")
         self._refresh_qa_button()
         messagebox.showerror("Still scan failed", message)
@@ -1374,6 +1438,13 @@ class StillScanApp:
         state = "normal" if samples_csv is not None and samples_csv.exists() and not self.running else "disabled"
         self.qa_button.configure(state=state)
 
+    def _refresh_depth_status(self) -> None:
+        try:
+            self.depth_status_var.set(self.depth_bridge.status_text())
+            self.root.after(2000, self._refresh_depth_status)
+        except tk.TclError:
+            return
+
     def _set_trajectory_buttons(self, state: str) -> None:
         if self.trajectory_count <= 0:
             state = "disabled"
@@ -1497,6 +1568,8 @@ def run_still_scan_gui(
     trajectory_label: str | None = None,
     trajectory_session_prefix: str | None = None,
     topmost: bool = True,
+    capture_depth: bool = False,
+    depth_timeout: float = 10.0,
 ) -> None:
     StillScanApp(
         config,
@@ -1525,5 +1598,7 @@ def run_still_scan_gui(
         trajectory_label=trajectory_label,
         trajectory_session_prefix=trajectory_session_prefix,
         topmost=topmost,
+        capture_depth=capture_depth,
+        depth_timeout=depth_timeout,
     ).run()
 

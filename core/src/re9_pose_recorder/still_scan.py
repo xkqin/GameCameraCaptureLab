@@ -15,6 +15,7 @@ from typing import Any, Callable, Iterable
 import yaml
 
 from .config import AppConfig
+from .depth_bridge import DepthBridge, DepthCaptureResult
 from .lua_control import LuaControl, make_session_id
 from .obs_control import OBSController
 from .paths import ensure_dir
@@ -54,6 +55,49 @@ class StillLayer:
     points_z: int | None = None
     hull_points: tuple[tuple[float, float, float], ...] | None = None
     exclude_ellipsoids: tuple[tuple[float, float, float, float, float, float], ...] = ()
+
+
+BASE_SAMPLE_FIELDS = [
+    "session_id",
+    "dataset_id",
+    "sample_index",
+    "point_index",
+    "group_id",
+    "layer_id",
+    "zone_id",
+    "height_index",
+    "pattern",
+    "x",
+    "y",
+    "z",
+    "yaw_deg",
+    "yaw_rad",
+    "pitch_deg",
+    "pitch_rad",
+    "source_name",
+    "image_path",
+    "captured_at_unix",
+]
+
+DEPTH_SAMPLE_FIELDS = [
+    "capture_id",
+    "depth_path",
+    "depth_raw_path",
+    "depth_preview_path",
+    "valid_mask_path",
+    "camera_metadata_path",
+    "depth_status",
+    "depth_width",
+    "depth_height",
+    "depth_unit",
+    "meters_per_game_unit",
+    "near_clip",
+    "far_clip",
+    "projection_matrix",
+    "render_frame_id",
+    "reversed_z",
+    "valid_depth_pixels",
+]
 
 
 def linspace(start: float, stop: float, count: int) -> list[float]:
@@ -258,6 +302,9 @@ def run_layered_still_scan(
     progress_callback: Callable[[StillSample, int, Path], None] | None = None,
     stop_event: Event | None = None,
     resume_from_layer: str | None = None,
+    capture_depth: bool = False,
+    depth_timeout: float = 10.0,
+    depth_bridge: DepthBridge | None = None,
 ) -> dict[str, Path]:
     plan = build_layered_still_scan_plan(layers, points_x=points_x, points_z=points_z)
     replace_layer_ids: set[str] | None = None
@@ -280,6 +327,9 @@ def run_layered_still_scan(
         stop_event=stop_event,
         append_existing=bool(resume_from_layer),
         replace_layer_ids=replace_layer_ids,
+        capture_depth=capture_depth,
+        depth_timeout=depth_timeout,
+        depth_bridge=depth_bridge,
     )
 
 
@@ -363,6 +413,9 @@ def run_still_pose_plan(
     max_samples: int | None = None,
     progress_callback: Callable[[StillSample, int, Path], None] | None = None,
     stop_event: Event | None = None,
+    capture_depth: bool = False,
+    depth_timeout: float = 10.0,
+    depth_bridge: DepthBridge | None = None,
 ) -> dict[str, Path]:
     """Move FreeCam through explicit poses and save one still per pose."""
     plan = load_still_pose_plan(pose_plan, group_id=session_id or "scene_1_extra")
@@ -380,6 +433,9 @@ def run_still_pose_plan(
         max_samples=max_samples,
         progress_callback=progress_callback,
         stop_event=stop_event,
+        capture_depth=capture_depth,
+        depth_timeout=depth_timeout,
+        depth_bridge=depth_bridge,
     )
 
 
@@ -403,6 +459,9 @@ def run_still_scan(
     max_samples: int | None = None,
     progress_callback: Callable[[StillSample, int, Path], None] | None = None,
     stop_event: Event | None = None,
+    capture_depth: bool = False,
+    depth_timeout: float = 10.0,
+    depth_bridge: DepthBridge | None = None,
 ) -> dict[str, Path]:
     """Move FreeCam through a grid and save OBS still screenshots plus metadata."""
     plan = build_still_scan_plan(
@@ -428,6 +487,9 @@ def run_still_scan(
         max_samples=max_samples,
         progress_callback=progress_callback,
         stop_event=stop_event,
+        capture_depth=capture_depth,
+        depth_timeout=depth_timeout,
+        depth_bridge=depth_bridge,
     )
 
 
@@ -447,6 +509,9 @@ def _run_plan(
     stop_event: Event | None,
     append_existing: bool = False,
     replace_layer_ids: set[str] | None = None,
+    capture_depth: bool = False,
+    depth_timeout: float = 10.0,
+    depth_bridge: DepthBridge | None = None,
 ) -> dict[str, Path]:
     obs_cfg = config.raw["obs"]
     session = session_id or f"stills_{make_session_id()}"
@@ -460,6 +525,14 @@ def _run_plan(
 
     controller = OBSController(obs_cfg["host"], int(obs_cfg["port"]), obs_password or obs_cfg.get("password", ""))
     control = LuaControl(config)
+    depth_controller: DepthBridge | None = None
+    if capture_depth:
+        depth_controller = depth_bridge or DepthBridge(config)
+        if not depth_controller.wait_until_ready(timeout_sec=min(5.0, max(0.1, depth_timeout))):
+            raise RuntimeError(
+                "Depth capture is enabled, but re9_depth_bridge.dll is not reporting ready. "
+                "Install the plugin under reframework/plugins and keep RE9 running."
+            )
     samples_backup: Path | None = None
     if append_existing and replace_layer_ids:
         samples_backup = _remove_sample_rows_for_layers(samples_csv, replace_layer_ids)
@@ -468,27 +541,14 @@ def _run_plan(
 
     source_used = ""
     dataset_files: dict[str, tuple[object, csv.DictWriter]] = {}
-    fieldnames = [
-        "session_id",
-        "dataset_id",
-        "sample_index",
-        "point_index",
-        "group_id",
-        "layer_id",
-        "zone_id",
-        "height_index",
-        "pattern",
-        "x",
-        "y",
-        "z",
-        "yaw_deg",
-        "yaw_rad",
-        "pitch_deg",
-        "pitch_rad",
-        "source_name",
-        "image_path",
-        "captured_at_unix",
-    ]
+    fieldnames = _sample_fieldnames(capture_depth)
+    schema_backup: Path | None = None
+    if append_existing:
+        fieldnames, schema_backup = _prepare_csv_for_append(
+            samples_csv,
+            fieldnames,
+            create_backup=samples_backup is None,
+        )
     try:
         write_header = not append_existing or not samples_csv.exists() or samples_csv.stat().st_size == 0
         mode = "a" if append_existing else "w"
@@ -550,6 +610,25 @@ def _run_plan(
                     height=image_height,
                     quality=image_quality,
                 )
+                depth_result: DepthCaptureResult | None = None
+                capture_id = ""
+                if capture_depth:
+                    assert depth_controller is not None
+                    capture_id = f"{session}:{sample_id}:{time.time_ns()}"
+                    try:
+                        depth_result = depth_controller.capture(
+                            capture_id=capture_id,
+                            dataset_dir=dataset_dir,
+                            sample_id=sample_id,
+                            timeout_sec=depth_timeout,
+                            expected_width=image_width,
+                            expected_height=image_height,
+                        )
+                    except Exception:
+                        # A depth-enabled sample is atomic: an unpaired RGB must
+                        # not look like a completed reconstruction sample.
+                        image_path.unlink(missing_ok=True)
+                        raise
                 row = {
                     **asdict(sample),
                     "session_id": session,
@@ -558,6 +637,8 @@ def _run_plan(
                     "image_path": str(image_path),
                     "captured_at_unix": f"{time.time():.6f}",
                 }
+                if depth_result is not None:
+                    row.update(_depth_row(depth_result))
                 writer.writerow(row)
                 dataset_writer = _dataset_writer(dataset_files, dataset_dir, fieldnames)
                 dataset_writer.writerow(row)
@@ -583,7 +664,78 @@ def _run_plan(
     }
     if samples_backup is not None:
         outputs["samples_backup"] = samples_backup
+    if schema_backup is not None:
+        outputs["samples_schema_backup"] = schema_backup
     return outputs
+
+
+def _depth_row(result: DepthCaptureResult) -> dict[str, object]:
+    return {
+        "capture_id": result.capture_id,
+        "depth_path": str(result.depth_path),
+        "depth_raw_path": str(result.raw_path),
+        "depth_preview_path": str(result.preview_path),
+        "valid_mask_path": str(result.valid_mask_path),
+        "camera_metadata_path": str(result.camera_metadata_path),
+        "depth_status": "ok",
+        "depth_width": result.width,
+        "depth_height": result.height,
+        "depth_unit": "m",
+        "meters_per_game_unit": "1.0",
+        "near_clip": f"{result.near_clip:.9g}",
+        "far_clip": f"{result.far_clip:.9g}",
+        "projection_matrix": json.dumps(result.projection_matrix, separators=(",", ":")),
+        "render_frame_id": result.render_frame_id,
+        "reversed_z": str(result.reversed_z).lower(),
+        "valid_depth_pixels": result.valid_pixel_count,
+    }
+
+
+def _sample_fieldnames(capture_depth: bool) -> list[str]:
+    fieldnames = list(BASE_SAMPLE_FIELDS)
+    if capture_depth:
+        fieldnames.extend(DEPTH_SAMPLE_FIELDS)
+    return fieldnames
+
+
+def _prepare_csv_for_append(
+    path: Path,
+    required_fieldnames: list[str],
+    *,
+    create_backup: bool = True,
+) -> tuple[list[str], Path | None]:
+    """Preserve old rows while extending a resumed CSV to the current schema."""
+    if not path.exists() or path.stat().st_size == 0:
+        return list(required_fieldnames), None
+
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        existing_fieldnames = list(reader.fieldnames or [])
+        rows = list(reader)
+    if not existing_fieldnames:
+        return list(required_fieldnames), None
+
+    merged_fieldnames = existing_fieldnames + [
+        field for field in required_fieldnames if field not in existing_fieldnames
+    ]
+    if merged_fieldnames == existing_fieldnames:
+        return existing_fieldnames, None
+
+    backup: Path | None = None
+    if create_backup:
+        backup = path.with_name(f"samples_before_schema_upgrade_{time.time_ns()}.csv")
+        shutil.copy2(path, backup)
+
+    temporary = path.with_name(f".{path.name}.schema-{time.time_ns()}.tmp")
+    try:
+        with temporary.open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=merged_fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return merged_fieldnames, backup
 
 
 def _remove_sample_rows_for_layers(path: Path, layer_ids: set[str]) -> Path | None:

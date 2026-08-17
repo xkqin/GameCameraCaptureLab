@@ -341,6 +341,8 @@ def scan_stills(
     session_id: Optional[str] = typer.Option(None, "--session-id"),
     layers_config: Optional[Path] = typer.Option(None, "--layers-config"),
     pose_plan_config: Optional[Path] = typer.Option(None, "--pose-plan-config"),
+    capture_depth: bool = typer.Option(False, "--capture-depth/--no-capture-depth"),
+    depth_timeout: float = typer.Option(10.0, "--depth-timeout"),
     config: Optional[Path] = typer.Option(None, "--config"),
 ) -> None:
     """Capture OBS stills on a grid using the 22-view pitch/yaw sampling pattern."""
@@ -393,6 +395,8 @@ def scan_stills(
             image_quality=image_quality,
             session_id=session_id,
             max_samples=max_samples,
+            capture_depth=capture_depth,
+            depth_timeout=depth_timeout,
         )
     elif layers_config is not None:
         console.print(
@@ -413,6 +417,8 @@ def scan_stills(
             image_quality=image_quality,
             session_id=session_id,
             max_samples=max_samples,
+            capture_depth=capture_depth,
+            depth_timeout=depth_timeout,
         )
     else:
         console.print(
@@ -437,6 +443,8 @@ def scan_stills(
             image_quality=image_quality,
             session_id=session_id,
             max_samples=max_samples,
+            capture_depth=capture_depth,
+            depth_timeout=depth_timeout,
         )
     table = Table(title="Still scan outputs")
     table.add_column("Name")
@@ -473,6 +481,8 @@ def scan_stills_gui(
     trajectory_label: Optional[str] = typer.Option(None, "--trajectory-label"),
     trajectory_session_prefix: Optional[str] = typer.Option(None, "--trajectory-session-prefix"),
     topmost: bool = typer.Option(True, "--topmost/--no-topmost"),
+    capture_depth: bool = typer.Option(False, "--capture-depth/--no-capture-depth"),
+    depth_timeout: float = typer.Option(10.0, "--depth-timeout"),
     config: Optional[Path] = typer.Option(None, "--config"),
 ) -> None:
     """Open a progress UI for the 22-view OBS still-image grid scan."""
@@ -506,6 +516,8 @@ def scan_stills_gui(
         trajectory_label=trajectory_label,
         trajectory_session_prefix=trajectory_session_prefix,
         topmost=topmost,
+        capture_depth=capture_depth,
+        depth_timeout=depth_timeout,
     )
 
 

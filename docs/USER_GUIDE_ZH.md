@@ -270,6 +270,30 @@ SETTLE_SECONDS=0.8 bash scripts/scan_gui.sh
 扫描结束后可以点击 `Delete Broken Capture Images`。该操作只删除明显损坏、无法读取或
 近乎全黑/全白的截图，并在 `qa/` 下写入审计 CSV。
 
+### 7.1 同步采集逐像素深度（实验性）
+
+RE9 静态采集界面提供 `Capture per-pixel depth (3DGS)`，默认关闭。开启前先在
+`games/re9/native/re9-depth-bridge/` 构建并安装 DLL，重启游戏，并确认界面显示
+`Depth plugin: ready (..., D3D12)`。深度开启后，每张 RGB 都会配套生成：
+
+```text
+images/<sample>.jpg
+depth/<sample>.npy
+depth_raw/<sample>.raw
+depth_preview/<sample>.png
+valid_masks/<sample>.png
+cameras/<sample>.json
+```
+
+`depth/*.npy` 是与 RGB 同宽高的逐像素 `float32` 线性 view-space Z，当前 RE9 配置按
+`1 game unit = 1 m` 保存为米。重建使用 `.npy`、mask、相机元数据和 RGB；预览 PNG
+只用于目视检查。RGB 与深度分辨率不同或深度读取失败时，本张 RGB 会被删除，也不会
+写入完成记录。旧 RGB-only 扫描断点续采时，程序会先备份 `samples.csv`，再为空缺的
+深度列补空值并追加新样本。
+
+首次实机使用必须拍摄静止墙面，将相机向前移动 1 game unit，确认墙面深度约减少 1 m，
+并检查 RGB 与深度预览的物体边缘在完全相同的渲染分辨率下对齐。
+
 ## 8. 轨迹视频采集
 
 GUI 支持：
