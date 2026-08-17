@@ -115,6 +115,13 @@ def activate_re9_window(value: str | None = None) -> bool:
     Windows, Wayland, and minimal Linux installs retain their existing
     behavior.
     """
+    if os.environ.get("RE9_DISABLE_WINDOW_ACTIVATION", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
+        return False
     if platform_key(value) != "linux" or not os.environ.get("DISPLAY"):
         return False
     try:

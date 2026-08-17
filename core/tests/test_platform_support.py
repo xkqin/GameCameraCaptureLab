@@ -89,6 +89,15 @@ class PlatformSupportTests(unittest.TestCase):
         x11.XMapRaised.assert_called_once_with(0x300, 0xA200003)
         x11.XSetInputFocus.assert_not_called()
 
+    @patch.dict(
+        os.environ,
+        {"DISPLAY": ":0", "RE9_DISABLE_WINDOW_ACTIVATION": "1"},
+    )
+    @patch("re9_pose_recorder.platform_support.subprocess.run")
+    def test_activation_can_be_disabled_for_the_current_process(self, run_mock) -> None:
+        self.assertFalse(activate_re9_window("linux"))
+        run_mock.assert_not_called()
+
     def test_platform_families_and_config_precedence(self) -> None:
         self.assertEqual(platform_key("win32"), "windows")
         self.assertEqual(platform_key("linux"), "linux")

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -304,6 +305,31 @@ class LuaReplayPreflightTests(unittest.TestCase):
             completion_grace_sec=0.0,
         )
         activate_mock.assert_called_once_with()
+
+    @patch.dict(os.environ, {"RE9_DISABLE_PERIODIC_FOCUS_REFRESH": "1"})
+    @patch("re9_pose_recorder.trajectory_replay.activate_re9_window")
+    def test_trajectory_completion_can_skip_periodic_focus_refresh(
+        self,
+        activate_mock,
+    ) -> None:
+        control = FakeLuaControl(
+            status={
+                "session_id": "session",
+                "trajectory_id": "trajectory",
+                "trajectory_frame_count": 2,
+                "trajectory_enabled": False,
+            }
+        )
+
+        _wait_for_lua_trajectory_complete(
+            control,
+            "session",
+            "trajectory",
+            expected_duration_sec=0.0,
+            completion_grace_sec=0.0,
+        )
+
+        activate_mock.assert_not_called()
 
     @patch("re9_pose_recorder.trajectory_replay.activate_re9_window")
     @patch("re9_pose_recorder.trajectory_replay.time.sleep")

@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 import math
+import os
 import shutil
 import time
 from bisect import bisect_right
@@ -643,6 +644,9 @@ def _wait_for_lua_trajectory_complete(
         0.1,
         float(expected_duration_sec) + max(1.0, float(completion_grace_sec)),
     )
+    periodic_focus_disabled = os.environ.get(
+        "RE9_DISABLE_PERIODIC_FOCUS_REFRESH", ""
+    ).strip().lower() in {"1", "true", "yes", "on"}
     focus_interval = max(0.5, float(focus_refresh_sec))
     next_focus_at = started_at
     last_status: dict[str, Any] = {}
@@ -650,7 +654,7 @@ def _wait_for_lua_trajectory_complete(
         now = time.monotonic()
         if now >= deadline:
             break
-        if now >= next_focus_at:
+        if not periodic_focus_disabled and now >= next_focus_at:
             activate_re9_window()
             next_focus_at = now + focus_interval
         status = control.read_status() or {}
