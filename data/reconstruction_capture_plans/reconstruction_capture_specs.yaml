@@ -1,0 +1,62 @@
+schema_version: 1
+defaults:
+  yaw_offsets_deg: [-35.0, 0.0, 35.0]
+  pitch_bottom_deg: 10.0
+  pitch_top_deg: -20.0
+  max_intralayer_route_step: 2.0
+
+scenes:
+  - scene_id: scene_1.1
+    source_config: core/configs/scene01_scan_layers.yaml
+    source_group: scene_1.1
+    grid_points_x: 81
+    grid_points_z: 5
+    base_grid_points_x: 21
+    base_grid_points_z: 5
+    expected_base_positions: 420
+
+  - scene_id: scene_1.2
+    source_config: core/configs/scene01_scan_layers.yaml
+    source_group: scene_1.2
+    grid_points_x: 63
+    grid_points_z: 5
+    base_grid_points_x: 32
+    base_grid_points_z: 5
+    expected_base_positions: 640
+
+  - scene_id: scene_1.3
+    source_config: core/configs/scene01_scan_layers.yaml
+    source_group: scene_1.3
+    grid_points_x: 46
+    grid_points_z: 9
+    base_grid_points_x: 6
+    base_grid_points_z: 3
+    expected_base_positions: 54
+
+  - scene_id: scene_2
+    source_config: core/configs/scene_2_no_lamp_scan_layers.yaml
+    source_group: scene_2
+    grid_points_x: 15
+    grid_points_z: 15
+    base_grid_points_x: 15
+    base_grid_points_z: 15
+    expected_base_positions: 567
+    max_intralayer_route_step: 4.0
+
+  - scene_id: scene_3.1
+    source_config: data/scene_points/scene_3.1/scene_3.1_5layer_dense_scan_layers.yaml
+    source_group: scene_3.1
+    grid_points_x: 40
+    grid_points_z: 40
+    base_grid_points_x: 14
+    base_grid_points_z: 14
+    expected_base_positions: 520
+
+  - scene_id: scene_3.2
+    source_config: data/scene_points/scene_3.2/scene_3.2_5layer_dense_scan_layers.yaml
+    source_group: scene_3.2
+    grid_points_x: 41
+    grid_points_z: 69
+    base_grid_points_x: 11
+    base_grid_points_z: 18
+    expected_base_positions: 451
