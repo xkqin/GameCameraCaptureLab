@@ -64,12 +64,13 @@ class StillScanHullTests(unittest.TestCase):
         self.assertEqual(metrics["unique_position_count"], 567)
         self.assertEqual(metrics["route_position_count"], 570)
         self.assertEqual(metrics["route_revisit_count"], 3)
-        self.assertEqual(metrics["sample_count"], 2_280)
+        self.assertEqual(metrics["sample_count"], 2_850)
+        self.assertEqual(metrics["views_per_route_position"], 5)
         self.assertLessEqual(metrics["max_intralayer_step"], 0.631)
         self.assertLessEqual(metrics["max_route_step_including_layer_changes"], 2.848)
 
         loaded = load_still_pose_plan(plan_path, group_id="scene_2_indoor_oblique")
-        self.assertEqual(len(loaded), 2_280)
+        self.assertEqual(len(loaded), 2_850)
         self.assertEqual(len({sample.layer_id for sample in loaded}), 6)
 
         layers = load_still_layers(PROJECT_ROOT / "configs" / "scene_2_no_lamp_scan_layers.yaml")
@@ -87,6 +88,8 @@ class StillScanHullTests(unittest.TestCase):
         pitches = Counter(sample.pitch_deg for sample in loaded)
         self.assertIn(60.0, pitches)
         self.assertIn(-60.0, pitches)
+        self.assertEqual(pitches[82.0], 299)
+        self.assertEqual(pitches[-82.0], 271)
         self.assertEqual(pitches[0.0], 1_710)
 
 

@@ -49,6 +49,14 @@ VERTICAL_VIEWS = {
     "scene_2_y05": ("floor_oblique", -45.0),
     "scene_2_y06": ("floor_oblique", -60.0),
 }
+DIRECT_VERTICAL_VIEWS = {
+    "scene_2_y01": ("ceiling_direct", 82.0),
+    "scene_2_y02": ("ceiling_direct", 82.0),
+    "scene_2_y03": ("ceiling_direct", 82.0),
+    "scene_2_y04": ("floor_direct", -82.0),
+    "scene_2_y05": ("floor_direct", -82.0),
+    "scene_2_y06": ("floor_direct", -82.0),
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -224,6 +232,7 @@ def build_plan() -> dict[str, object]:
         positions = []
         samples = []
         vertical_kind, vertical_pitch = VERTICAL_VIEWS[layer.layer_id]
+        direct_vertical_kind, direct_vertical_pitch = DIRECT_VERTICAL_VIEWS[layer.layer_id]
         for route_index, point in enumerate(route, start=1):
             cell = coordinate(point)
             route_revisit = cell in seen_cells
@@ -261,6 +270,7 @@ def build_plan() -> dict[str, object]:
                 for kind, offset in HORIZONTAL_VIEWS
             ]
             views.append((vertical_kind, 0.0, vertical_pitch))
+            views.append((direct_vertical_kind, 0.0, direct_vertical_pitch))
             for kind, yaw_offset, pitch in views:
                 yaw = (camera_yaw + yaw_offset) % 360.0
                 sample_id = f"scene_2_indoor_s{global_sample_index:05d}_{kind}"
@@ -295,6 +305,8 @@ def build_plan() -> dict[str, object]:
                 "y": rounded(layer.y),
                 "vertical_view_kind": vertical_kind,
                 "vertical_pitch_deg": vertical_pitch,
+                "direct_vertical_view_kind": direct_vertical_kind,
+                "direct_vertical_pitch_deg": direct_vertical_pitch,
                 "unique_position_count": len(grid_layers[layer.height_index - 1]),
                 "route_position_count": len(route),
                 "positions": positions,
@@ -312,7 +324,7 @@ def build_plan() -> dict[str, object]:
     return {
         "schema_version": 1,
         "kind": "re9_indoor_oblique_reconstruction_pose_plan",
-        "plan_id": "scene_2_indoor_oblique_reconstruction_v1",
+        "plan_id": "scene_2_indoor_oblique_reconstruction_v2",
         "scene_id": "scene_2",
         "purpose": "Indoor oblique still capture with wall, ceiling, floor, and obstacle-aware coverage",
         "ui_compatible": True,
@@ -330,7 +342,10 @@ def build_plan() -> dict[str, object]:
             "vertical_pitch_by_layer_deg": {
                 layer_id: pitch for layer_id, (_, pitch) in VERTICAL_VIEWS.items()
             },
-            "views_per_route_position": 4,
+            "direct_vertical_pitch_by_layer_deg": {
+                layer_id: pitch for layer_id, (_, pitch) in DIRECT_VERTICAL_VIEWS.items()
+            },
+            "views_per_route_position": 5,
             "depth_capture_recommended": True,
             "camera_yaw_convention": "RE9FreeCam yaw 0 camera-forward is world -Z",
             "coordinate_units": "RE9 game units; depth export uses the configured 1 unit = 1 m scale",
@@ -340,7 +355,7 @@ def build_plan() -> dict[str, object]:
             "unique_position_count": len(unique_positions),
             "route_position_count": route_position_count,
             "route_revisit_count": route_revisit_count,
-            "views_per_route_position": 4,
+            "views_per_route_position": 5,
             "sample_count": sample_count,
             "max_intralayer_step": rounded(max(within_layer_steps, default=0.0)),
             "max_route_step_including_layer_changes": rounded(max(all_steps, default=0.0)),
