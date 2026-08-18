@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "scene_count": 2,
+  "logical_trajectory_count": 14,
+  "capture_segment_count": 34,
+  "nominal_speed_game_units_per_sec": 4.0,
+  "target_extract_spacing_game_units": 0.8,
+  "scenes": [
+    {
+      "scene_id": "scene_3.1",
+      "file": "scene_3.1_reconstruction_video_trajectories.json",
+      "logical_trajectory_count": 7,
+      "capture_segment_count": 11,
+      "total_path_length_game_units": 7114.980922247,
+      "total_duration_sec": 1778.745230562
+    },
+    {
+      "scene_id": "scene_3.2",
+      "file": "scene_3.2_reconstruction_video_trajectories.json",
+      "logical_trajectory_count": 7,
+      "capture_segment_count": 23,
+      "total_path_length_game_units": 13971.138393059,
+      "total_duration_sec": 3492.784598265
+    }
+  ]
+}
