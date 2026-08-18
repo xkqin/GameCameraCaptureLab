@@ -92,6 +92,53 @@ class StillScanHullTests(unittest.TestCase):
         self.assertEqual(pitches[-82.0], 271)
         self.assertEqual(pitches[0.0], 1_710)
 
+    def test_scene_3_outdoor_plans_cover_ground_without_upward_sky_views(self) -> None:
+        repository_root = PROJECT_ROOT.parent
+        expectations = {
+            "scene_3.1": {
+                "positions": 4_856,
+                "samples": 16_405,
+                "direct_down": 1_837,
+                "max_step": 1.869,
+            },
+            "scene_3.2": {
+                "positions": 7_527,
+                "samples": 24_957,
+                "direct_down": 2_376,
+                "max_step": 1.956,
+            },
+        }
+        for scene_id, expected in expectations.items():
+            with self.subTest(scene_id=scene_id):
+                plan_path = (
+                    repository_root
+                    / "data"
+                    / "reconstruction_capture_plans"
+                    / scene_id
+                    / f"{scene_id}_reconstruction_manifest.json"
+                )
+                payload = json.loads(plan_path.read_text(encoding="utf-8"))
+                metrics = payload["metrics"]
+                self.assertTrue(payload["ui_compatible"])
+                self.assertEqual(payload["capture"]["profile"], "outdoor_ground_coverage")
+                self.assertEqual(metrics["position_count"], expected["positions"])
+                self.assertEqual(metrics["sample_count"], expected["samples"])
+                self.assertEqual(metrics["views_per_position_min"], 3)
+                self.assertEqual(metrics["views_per_position_max"], 4)
+                self.assertEqual(
+                    metrics["view_counts"]["terrain_direct_down"],
+                    expected["direct_down"],
+                )
+                self.assertLessEqual(metrics["max_intralayer_step"], expected["max_step"])
+
+                loaded = load_still_pose_plan(plan_path, group_id=f"{scene_id}_reconstruction")
+                self.assertEqual(len(loaded), expected["samples"])
+                self.assertEqual(len({sample.layer_id for sample in loaded}), 5)
+                pitches = Counter(sample.pitch_deg for sample in loaded)
+                self.assertEqual(pitches[-82.0], expected["direct_down"])
+                self.assertTrue(all(pitch <= 0.0 for pitch in pitches))
+                self.assertEqual(set(pitches), {0.0, -10.0, -25.0, -40.0, -55.0, -82.0})
+
 
 if __name__ == "__main__":
     unittest.main()

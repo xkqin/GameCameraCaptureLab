@@ -51,6 +51,11 @@ scenes:
     base_grid_points_x: 14
     base_grid_points_z: 14
     expected_base_positions: 520
+    capture_profile: outdoor_ground_coverage
+    ui_compatible: true
+    pitch_by_layer_deg: [0.0, -10.0, -25.0, -40.0, -55.0]
+    direct_down_height_indexes: [4, 5]
+    direct_down_pitch_deg: -82.0
 
   - scene_id: scene_3.2
     source_config: data/scene_points/scene_3.2/scene_3.2_5layer_dense_scan_layers.yaml
@@ -60,3 +65,8 @@ scenes:
     base_grid_points_x: 11
     base_grid_points_z: 18
     expected_base_positions: 451
+    capture_profile: outdoor_ground_coverage
+    ui_compatible: true
+    pitch_by_layer_deg: [0.0, -10.0, -25.0, -40.0, -55.0]
+    direct_down_height_indexes: [4, 5]
+    direct_down_pitch_deg: -82.0

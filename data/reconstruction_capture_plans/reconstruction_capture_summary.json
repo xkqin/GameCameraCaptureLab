@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scene_count": 6,
   "total_positions": 17072,
-  "total_samples": 51216,
+  "total_samples": 55429,
   "scenes": [
     {
       "scene_id": "scene_1.1",
@@ -12,6 +12,13 @@
       "route_bridge_count": 0,
       "new_position_count": 1200,
       "views_per_position": 3,
+      "views_per_position_min": 3,
+      "views_per_position_max": 3,
+      "view_counts": {
+        "route_forward": 1620,
+        "route_left": 1620,
+        "route_right": 1620
+      },
       "sample_count": 4860,
       "route_distance": 2102.91,
       "max_intralayer_step": 1.8825,
@@ -39,6 +46,13 @@
       "route_bridge_count": 0,
       "new_position_count": 620,
       "views_per_position": 3,
+      "views_per_position_min": 3,
+      "views_per_position_max": 3,
+      "view_counts": {
+        "route_forward": 1260,
+        "route_left": 1260,
+        "route_right": 1260
+      },
       "sample_count": 3780,
       "route_distance": 809.09,
       "max_intralayer_step": 1.290645,
@@ -66,6 +80,13 @@
       "route_bridge_count": 0,
       "new_position_count": 1188,
       "views_per_position": 3,
+      "views_per_position_min": 3,
+      "views_per_position_max": 3,
+      "view_counts": {
+        "route_forward": 1242,
+        "route_left": 1242,
+        "route_right": 1242
+      },
       "sample_count": 3726,
       "route_distance": 1529.02,
       "max_intralayer_step": 1.77,
@@ -93,6 +114,13 @@
       "route_bridge_count": 0,
       "new_position_count": 0,
       "views_per_position": 3,
+      "views_per_position_min": 3,
+      "views_per_position_max": 3,
+      "view_counts": {
+        "route_forward": 567,
+        "route_left": 567,
+        "route_right": 567
+      },
       "sample_count": 1701,
       "route_distance": 364.425123,
       "max_intralayer_step": 3.428571,
@@ -119,8 +147,16 @@
       "legacy_anchor_count": 520,
       "route_bridge_count": 39,
       "new_position_count": 4336,
-      "views_per_position": 3,
-      "sample_count": 14568,
+      "views_per_position": null,
+      "views_per_position_min": 3,
+      "views_per_position_max": 4,
+      "view_counts": {
+        "route_forward": 4856,
+        "route_left": 4856,
+        "route_right": 4856,
+        "terrain_direct_down": 1837
+      },
+      "sample_count": 16405,
       "route_distance": 5217.555395,
       "max_intralayer_step": 1.868222,
       "max_route_step_including_layer_changes": 15.008109,
@@ -146,8 +182,16 @@
       "legacy_anchor_count": 451,
       "route_bridge_count": 63,
       "new_position_count": 7076,
-      "views_per_position": 3,
-      "sample_count": 22581,
+      "views_per_position": null,
+      "views_per_position_min": 3,
+      "views_per_position_max": 4,
+      "view_counts": {
+        "route_forward": 7527,
+        "route_left": 7527,
+        "route_right": 7527,
+        "terrain_direct_down": 2376
+      },
+      "sample_count": 24957,
       "route_distance": 10657.026582,
       "max_intralayer_step": 1.955765,
       "max_route_step_including_layer_changes": 12.879786,

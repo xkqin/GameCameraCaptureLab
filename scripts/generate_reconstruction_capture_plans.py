@@ -299,13 +299,18 @@ def make_positions(
     ordered_layers: list[list[GridPoint]],
     pitch_bottom: float,
     pitch_top: float,
+    pitch_by_layer: list[float] | None = None,
 ) -> list[Position]:
     positions: list[Position] = []
     global_index = 1
     layer_count = len(ordered_layers)
     previous_global: GridPoint | None = None
     for layer_number, route in enumerate(ordered_layers):
-        pitch = pitch_for_layer(layer_number, layer_count, pitch_bottom, pitch_top)
+        pitch = (
+            pitch_by_layer[layer_number]
+            if pitch_by_layer is not None
+            else pitch_for_layer(layer_number, layer_count, pitch_bottom, pitch_top)
+        )
         for route_index, point in enumerate(route):
             heading = heading_for(route, route_index)
             # RE9FreeCam's camera forward is -Z at yaw 0, so looking along a
@@ -339,7 +344,13 @@ def make_positions(
     return positions
 
 
-def make_samples(scene_id: str, positions: list[Position], yaw_offsets: list[float]) -> list[CaptureSample]:
+def make_samples(
+    scene_id: str,
+    positions: list[Position],
+    yaw_offsets: list[float],
+    direct_down_height_indexes: set[int] | None = None,
+    direct_down_pitch: float = -82.0,
+) -> list[CaptureSample]:
     labels = {
         min(yaw_offsets): "route_left",
         0.0: "route_forward",
@@ -365,6 +376,28 @@ def make_samples(scene_id: str, positions: list[Position], yaw_offsets: list[flo
                     pitch_deg=position.pitch_deg,
                     pitch_rad=math.radians(position.pitch_deg),
                     yaw_offset_deg=offset,
+                    legacy_anchor=position.legacy_anchor,
+                    route_bridge=position.route_bridge,
+                )
+            )
+        if direct_down_height_indexes and position.height_index in direct_down_height_indexes:
+            yaw = position.camera_route_yaw_deg
+            samples.append(
+                CaptureSample(
+                    sample_index=len(samples) + 1,
+                    position_index=position.position_index,
+                    scene_id=scene_id,
+                    layer_id=position.layer_id,
+                    height_index=position.height_index,
+                    pattern="terrain_direct_down",
+                    x=position.x,
+                    y=position.y,
+                    z=position.z,
+                    yaw_deg=yaw,
+                    yaw_rad=math.radians(yaw),
+                    pitch_deg=direct_down_pitch,
+                    pitch_rad=math.radians(direct_down_pitch),
+                    yaw_offset_deg=0.0,
                     legacy_anchor=position.legacy_anchor,
                     route_bridge=position.route_bridge,
                 )
@@ -416,7 +449,13 @@ def convex_hull_2d(points: Iterable[tuple[float, float]]) -> list[tuple[float, f
     return lower[:-1] + upper[:-1]
 
 
-def plot_3d(scene_id: str, positions: list[Position], layers: list[StillLayer], path: Path) -> None:
+def plot_3d(
+    scene_id: str,
+    positions: list[Position],
+    layers: list[StillLayer],
+    sample_count: int,
+    path: Path,
+) -> None:
     figure = plt.figure(figsize=(13, 9), dpi=180)
     axis = figure.add_subplot(111, projection="3d")
     colors = plt.get_cmap("tab10")
@@ -471,9 +510,14 @@ def plot_3d(scene_id: str, positions: list[Position], layers: list[StillLayer], 
     axis.set_xlabel("X (game units)")
     axis.set_ylabel("Z (game units)")
     axis.set_zlabel("Y / height (game units)")
+    sample_text = (
+        f"{sample_count:,} three-view samples"
+        if sample_count == len(positions) * 3
+        else f"{sample_count:,} camera samples"
+    )
     axis.set_title(
         f"{scene_id} reconstruction capture positions\n"
-        f"{len(positions):,} positions, {len(positions) * 3:,} three-view samples",
+        f"{len(positions):,} positions, {sample_text}",
         pad=16,
     )
     axis.view_init(elev=24, azim=-58)
@@ -561,13 +605,23 @@ def scene_metrics(positions: list[Position], samples: list[CaptureSample], layer
 
     within_layer_steps = [point.distance_from_previous for point in positions if point.layer_position_index > 1]
     all_steps = [point.distance_from_previous for point in positions if point.position_index > 1]
+    view_counts_by_position: dict[int, int] = defaultdict(int)
+    view_counts_by_pattern: dict[str, int] = defaultdict(int)
+    for sample in samples:
+        view_counts_by_position[sample.position_index] += 1
+        view_counts_by_pattern[sample.pattern] += 1
+    minimum_views = min(view_counts_by_position.values())
+    maximum_views = max(view_counts_by_position.values())
     return {
         "layer_count": len(layers),
         "position_count": len(positions),
         "legacy_anchor_count": sum(point.legacy_anchor for point in positions),
         "route_bridge_count": sum(point.route_bridge for point in positions),
         "new_position_count": sum(not point.legacy_anchor for point in positions),
-        "views_per_position": len(samples) // len(positions),
+        "views_per_position": minimum_views if minimum_views == maximum_views else None,
+        "views_per_position_min": minimum_views,
+        "views_per_position_max": maximum_views,
+        "view_counts": dict(sorted(view_counts_by_pattern.items())),
         "sample_count": len(samples),
         "route_distance": round(sum(all_steps), 6),
         "max_intralayer_step": round(max(within_layer_steps, default=0.0), 6),
@@ -600,6 +654,7 @@ def build_scene(
         raise ValueError(f"{scene_id}: exactly three yaw offsets including 0 are required")
     pitch_bottom = float(spec.get("pitch_bottom_deg", defaults["pitch_bottom_deg"]))
     pitch_top = float(spec.get("pitch_top_deg", defaults["pitch_top_deg"]))
+    capture_profile = str(spec.get("capture_profile") or "translated_three_view")
     max_intralayer_step = float(
         spec.get("max_intralayer_route_step", defaults["max_intralayer_route_step"])
     )
@@ -607,11 +662,45 @@ def build_scene(
     layers = [layer for layer in load_still_layers(source_config) if layer.group_id == source_group]
     if not layers:
         raise ValueError(f"{scene_id}: no layers found for group {source_group} in {source_config}")
+    pitch_by_layer = spec.get("pitch_by_layer_deg")
+    if pitch_by_layer is not None:
+        pitch_by_layer = [float(value) for value in pitch_by_layer]
+        if len(pitch_by_layer) != len(layers):
+            raise ValueError(
+                f"{scene_id}: pitch_by_layer_deg has {len(pitch_by_layer)} values for {len(layers)} layers"
+            )
+        pitch_bottom = pitch_by_layer[0]
+        pitch_top = pitch_by_layer[-1]
+    direct_down_height_indexes = {
+        int(value) for value in spec.get("direct_down_height_indexes", [])
+    }
+    if not direct_down_height_indexes.issubset({layer.height_index for layer in layers}):
+        raise ValueError(f"{scene_id}: direct-down height index is outside the configured layers")
+    direct_down_pitch = float(spec.get("direct_down_pitch_deg", -82.0))
+    if capture_profile == "outdoor_ground_coverage":
+        if pitch_by_layer is None:
+            raise ValueError(f"{scene_id}: outdoor ground coverage requires pitch_by_layer_deg")
+        if any(pitch > 0.0 for pitch in pitch_by_layer):
+            raise ValueError(f"{scene_id}: outdoor ground coverage must not add upward sky views")
+        if not direct_down_height_indexes or direct_down_pitch > -75.0:
+            raise ValueError(f"{scene_id}: outdoor ground coverage requires steep direct-down views")
     grid_layers = generate_grid_points(scene_id, layers, points_x, points_z, factor_x, factor_z)
     ordered_layers = order_layers(grid_layers)
     ordered_layers = densify_intralayer_routes(ordered_layers, layers, max_intralayer_step)
-    positions = make_positions(scene_id, ordered_layers, pitch_bottom, pitch_top)
-    samples = make_samples(scene_id, positions, yaw_offsets)
+    positions = make_positions(
+        scene_id,
+        ordered_layers,
+        pitch_bottom,
+        pitch_top,
+        pitch_by_layer=pitch_by_layer,
+    )
+    samples = make_samples(
+        scene_id,
+        positions,
+        yaw_offsets,
+        direct_down_height_indexes=direct_down_height_indexes,
+        direct_down_pitch=direct_down_pitch,
+    )
     metrics = scene_metrics(positions, samples, layers)
 
     expected_base = int(spec["expected_base_positions"])
@@ -632,27 +721,108 @@ def build_scene(
     sample_records = [round_record(asdict(sample)) for sample in samples]
     write_csv(scene_dir / positions_name, position_records)
     write_csv(scene_dir / samples_name, sample_records)
-    plot_3d(scene_id, positions, layers, scene_dir / map_3d_name)
+    plot_3d(scene_id, positions, layers, len(samples), scene_dir / map_3d_name)
     plot_topdown(scene_id, positions, layers, scene_dir / topdown_name)
 
     layer_summary = []
     for layer in layers:
         layer_positions = [point for point in positions if point.layer_id == layer.layer_id]
-        layer_summary.append(
+        layer_samples = [sample for sample in samples if sample.layer_id == layer.layer_id]
+        layer_view_counts: dict[str, int] = defaultdict(int)
+        for sample in layer_samples:
+            layer_view_counts[sample.pattern] += 1
+        layer_record = {
+            "layer_id": layer.layer_id,
+            "y": round(layer.y, 9),
+            "position_count": len(layer_positions),
+            "legacy_anchor_count": sum(point.legacy_anchor for point in layer_positions),
+            "pitch_deg": round(layer_positions[0].pitch_deg, 6),
+        }
+        if capture_profile == "outdoor_ground_coverage":
+            layer_record.update(
+                {
+                    "pitch_degrees": sorted(
+                        {round(sample.pitch_deg, 6) for sample in layer_samples},
+                        reverse=True,
+                    ),
+                    "sample_count": len(layer_samples),
+                    "view_counts": dict(sorted(layer_view_counts.items())),
+                }
+            )
+        layer_summary.append(layer_record)
+
+    subscenes = []
+    if bool(spec.get("ui_compatible", False)):
+        for layer in layers:
+            layer_samples = [sample for sample in samples if sample.layer_id == layer.layer_id]
+            subscenes.append(
+                {
+                    "subscene_id": layer.layer_id,
+                    "source_layer_id": layer.layer_id,
+                    "height_index": layer.height_index,
+                    "y": round(layer.y, 9),
+                    "sample_count": len(layer_samples),
+                    "samples": [
+                        {
+                            "sample_id": (
+                                f"{scene_id}_reconstruction_s{sample.sample_index:06d}_{sample.pattern}"
+                            ),
+                            "position_index": sample.position_index,
+                            "x": round(sample.x, 9),
+                            "y": round(sample.y, 9),
+                            "z": round(sample.z, 9),
+                            "yaw": round(sample.yaw_deg, 9),
+                            "pitch": round(sample.pitch_deg, 9),
+                            "priority": "reconstruction",
+                            "kind": sample.pattern,
+                        }
+                        for sample in layer_samples
+                    ],
+                }
+            )
+
+    capture = {
+        "order": "layer-major XZ serpentine route",
+        "yaw_offsets_deg": yaw_offsets,
+        "patterns": list(dict.fromkeys(sample.pattern for sample in samples)),
+        "pitch_bottom_deg": pitch_bottom,
+        "pitch_top_deg": pitch_top,
+        "max_intralayer_route_step": max_intralayer_step,
+        "coordinate_units": "RE9 game units; no metric conversion is assumed",
+        "camera_yaw_convention": "RE9FreeCam yaw 0 camera-forward is world -Z",
+    }
+    if capture_profile == "outdoor_ground_coverage":
+        capture.update(
             {
-                "layer_id": layer.layer_id,
-                "y": round(layer.y, 9),
-                "position_count": len(layer_positions),
-                "legacy_anchor_count": sum(point.legacy_anchor for point in layer_positions),
-                "pitch_deg": round(layer_positions[0].pitch_deg, 6),
+                "profile": capture_profile,
+                "pitch_by_layer_deg": {
+                    layer.layer_id: round(
+                        next(point.pitch_deg for point in positions if point.layer_id == layer.layer_id),
+                        6,
+                    )
+                    for layer in layers
+                },
+                "direct_down_height_indexes": sorted(direct_down_height_indexes),
+                "direct_down_pitch_deg": direct_down_pitch,
+                "depth_capture_recommended": True,
             }
         )
+
+    manifest_metrics = dict(metrics)
+    if capture_profile != "outdoor_ground_coverage":
+        manifest_metrics.pop("views_per_position_min")
+        manifest_metrics.pop("views_per_position_max")
+        manifest_metrics.pop("view_counts")
 
     manifest = {
         "schema_version": 1,
         "kind": "re9_3dgs_reconstruction_capture_plan",
         "scene_id": scene_id,
-        "purpose": "Dense translated multi-view screenshots for 3D Gaussian Splatting reconstruction",
+        "purpose": (
+            "Outdoor translated multi-view screenshots with facade, terrain, and object-top coverage"
+            if capture_profile == "outdoor_ground_coverage"
+            else "Dense translated multi-view screenshots for 3D Gaussian Splatting reconstruction"
+        ),
         "source": {
             "config": source_config.relative_to(PROJECT_ROOT).as_posix(),
             "sha256": sha256(source_config),
@@ -668,17 +838,8 @@ def build_scene(
             "hull_filtered": any(layer.hull_points for layer in layers),
             "excluded_ellipsoids": len(layers[0].exclude_ellipsoids),
         },
-        "capture": {
-            "order": "layer-major XZ serpentine route",
-            "yaw_offsets_deg": yaw_offsets,
-            "patterns": ["route_left", "route_forward", "route_right"],
-            "pitch_bottom_deg": pitch_bottom,
-            "pitch_top_deg": pitch_top,
-            "max_intralayer_route_step": max_intralayer_step,
-            "coordinate_units": "RE9 game units; no metric conversion is assumed",
-            "camera_yaw_convention": "RE9FreeCam yaw 0 camera-forward is world -Z",
-        },
-        "metrics": metrics,
+        "capture": capture,
+        "metrics": manifest_metrics,
         "layers": layer_summary,
         "files": {
             "positions_csv": positions_name,
@@ -687,8 +848,12 @@ def build_scene(
             "topdown_png": topdown_name,
         },
         "positions": position_records,
-        "samples": sample_records,
     }
+    if subscenes:
+        manifest["ui_compatible"] = True
+        manifest["subscenes"] = subscenes
+    else:
+        manifest["samples"] = sample_records
     (scene_dir / manifest_name).write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
 
     return {
@@ -740,8 +905,9 @@ This directory contains dense, translated camera routes for rebuilding all six r
 ## Capture convention
 
 - Capture still screenshots at every ordered position; do not record these routes as video.
-- Capture three route-relative views per position: left `-35 deg`, forward `0 deg`, and right `+35 deg`.
-- Pitch changes linearly from `+10 deg` on the lowest layer to `-20 deg` on the highest layer, giving both upward and downward surface coverage.
+- The default profile captures three route-relative views per position: left `-35 deg`, forward `0 deg`, and right `+35 deg`.
+- Scene 3.1 and 3.2 use the outdoor ground-coverage profile. Their five base pitches are `0`, `-10`, `-25`, `-40`, and `-55 deg`, with no upward sky view.
+- Every position on scene 3's upper two layers adds one `-82 deg` direct-down image for terrain, roof, platform, and object-top coverage.
 - Positions use a layer-major XZ serpentine order to keep adjacent screenshots close and preserve parallax.
 - Sparse convex-hull row transitions are interpolated with reconstruction-only bridge points so within-layer steps stay at or below `2.0` game units whenever the exclusion mask permits it.
 - Black outlined points in the maps are positions already present in the old 22-view grids. They remain useful as aesthetic anchors.
@@ -753,12 +919,19 @@ This directory contains dense, translated camera routes for rebuilding all six r
 Each scene directory contains:
 
 - `*_reconstruction_positions.csv`: one row per spatial position in capture order.
-- `*_reconstruction_samples.csv`: three camera poses per position.
-- `*_reconstruction_manifest.json`: metadata plus complete position and sample records.
+- `*_reconstruction_samples.csv`: one row per camera pose.
+- `*_reconstruction_manifest.json`: metadata plus complete position and sample records. Scene 3 manifests can be loaded directly by the capture UI.
 - `*_reconstruction_3d.png`: layered 3D point and route map.
 - `*_reconstruction_topdown.png`: per-layer XZ route panels.
 
 The parent directory also contains `reconstruction_capture_summary.csv`, `reconstruction_capture_summary.json`, and the source specification used to reproduce the package.
+
+## Open scene 3 in the capture UI
+
+```powershell
+.\scripts\scan_scene3_1_reconstruction_gui.ps1
+.\scripts\scan_scene3_2_reconstruction_gui.ps1
+```
 
 ## Regenerate
 
