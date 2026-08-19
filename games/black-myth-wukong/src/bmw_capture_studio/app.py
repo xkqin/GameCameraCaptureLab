@@ -14,12 +14,12 @@ from typing import Callable
 
 from .bridge import PoseUnavailableError, create_pose_bridge
 from .capture_runner import CaptureRunResult, CaptureRunner
+from .depth_bridge import DepthBridge
 from .config import load_shared_config
 from .connection import ConnectionReport, probe_connection
 from .discord_notify import DiscordNotifier
 from .feishu_notify import FeishuNotifier
 from .files import load_points, load_trajectories, save_points
-from .global_hotkey import F8_VK, GlobalHotkey
 from .game_context import GAME_ID, GAME_NAME, PRODUCT_TITLE
 from .input_control import ClosedLoopMover
 from .models import CameraPose, CapturePoint, ImportedTrajectory
@@ -124,6 +124,15 @@ class CaptureStudioApp:
             or os.environ.get("UNIFIED_TRAJECTORY_FILE")
             or os.environ.get("BMW_TRAJECTORY_FILE")
         )
+        self.depth_supported = os.name == "nt"
+        self.depth_enabled_var = tk.BooleanVar(
+            value=(
+                self.depth_supported
+                and bool(self.settings.get("depth_enabled", False))
+            )
+        )
+        self.depth_status_var = tk.StringVar()
+        self.depth_bridge = DepthBridge()
         self.requested_trajectory_path = Path(requested).expanduser() if requested else None
         self.batch_recorder: BatchTrajectoryRecorder | None = None
         self.latest_capture_output_dir: Path = TRAJECTORY_CAPTURES_DIR.resolve()
@@ -139,7 +148,6 @@ class CaptureStudioApp:
         self.last_connection_code: str | None = None
         self.status_refresh_inflight = False
         self.closing = False
-        self.record_point_hotkey = GlobalHotkey(F8_VK)
 
         self.status_var = tk.StringVar(value="等待连接游戏 / Waiting for game")
         self.status_detail_var = tk.StringVar(
@@ -150,13 +158,14 @@ class CaptureStudioApp:
         self.camera_state_var = tk.StringVar(value="Pose 未连接 / Disconnected")
         self.hud_status_var = tk.StringVar(value="HUD：等待 / Waiting")
         self.points_count_var = tk.StringVar(value="0 个空间点 / points · 0 张 / images")
-        self.record_hotkey_status_var = tk.StringVar(value="游戏内 F8 / In-game F8：正在注册…")
+        self.record_hotkey_status_var = tk.StringVar(value="游戏内 E / In-game E：等待 Runtime…")
         self.point_map_var = tk.StringVar(value="尚未记录或加载点位图 / No point map")
         self.static_start_point_var = tk.IntVar(value=1)
         self.static_progress_var = tk.DoubleVar(value=0)
         self.static_progress_text_var = tk.StringVar(value="静态采集 / Still capture：空闲 / Idle")
         self.static_output_var = tk.StringVar(value="输出 / Output：still_captures")
         self.static_resume_var = tk.StringVar(value="没有可继续任务 / No resumable still run")
+        self._update_depth_status()
         self.trajectory_var = tk.StringVar(value="尚未加载轨迹 / No trajectory loaded")
         self.trajectory_choice_var = tk.StringVar(value="")
         self.trajectory_index_var = tk.IntVar(value=1)
@@ -196,6 +205,7 @@ class CaptureStudioApp:
             self.static_progress_text_var,
             self.static_output_var,
             self.static_resume_var,
+            self.depth_status_var,
             self.trajectory_var,
             self.task_progress_text_var,
             self.frame_progress_text_var,
@@ -446,7 +456,7 @@ class CaptureStudioApp:
         ttk.Label(
             setup,
             text=(
-                "统一相机运行时 / Unified Camera Runtime：WASD/QE · Mouse · "
+                "统一相机运行时 / Unified Camera Runtime：WASD · Space/Q · Mouse · "
                 "Shift 5× · Insert On/Off · Home Lock"
             ),
             style="Muted.Card.TLabel",
@@ -716,6 +726,21 @@ class CaptureStudioApp:
             padx=(8, 0),
             pady=(7, 0),
         )
+        depth_controls = ttk.Frame(static_section, style="AltCard.TFrame")
+        depth_controls.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(7, 0))
+        self.depth_checkbox = ttk.Checkbutton(
+            depth_controls,
+            text="同时保存深度 / Save Depth",
+            variable=self.depth_enabled_var,
+            command=self._on_depth_toggled,
+            state="normal" if self.depth_supported else "disabled",
+        )
+        self.depth_checkbox.pack(side="left")
+        ttk.Label(
+            depth_controls,
+            textvariable=self.depth_status_var,
+            style="Muted.AltCard.TLabel",
+        ).pack(side="left", padx=(12, 0))
         self.static_progress = ttk.Progressbar(
             static_section,
             variable=self.static_progress_var,
@@ -723,25 +748,25 @@ class CaptureStudioApp:
             maximum=1,
             style="Capture.Horizontal.TProgressbar",
         )
-        self.static_progress.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(7, 0))
+        self.static_progress.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(7, 0))
         ttk.Label(
             static_section,
             textvariable=self.static_progress_text_var,
             style="Muted.AltCard.TLabel",
             wraplength=250,
-        ).grid(row=3, column=0, sticky="w", pady=(3, 0))
+        ).grid(row=4, column=0, sticky="w", pady=(3, 0))
         ttk.Label(
             static_section,
             textvariable=self.static_output_var,
             style="Muted.AltCard.TLabel",
             wraplength=250,
-        ).grid(row=3, column=1, sticky="e", pady=(3, 0))
+        ).grid(row=4, column=1, sticky="e", pady=(3, 0))
         ttk.Button(
             static_section,
             text="打开图片目录 / Open Images",
             command=self.open_static_output,
             style="Compact.TButton",
-        ).grid(row=4, column=0, sticky="ew", padx=(0, 3), pady=(5, 0))
+        ).grid(row=5, column=0, sticky="ew", padx=(0, 3), pady=(5, 0))
         self.static_stop_button = ttk.Button(
             static_section,
             text="停止静态采集 / Stop Still Capture",
@@ -749,13 +774,13 @@ class CaptureStudioApp:
             style="Compact.TButton",
             state="disabled",
         )
-        self.static_stop_button.grid(row=4, column=1, sticky="ew", padx=(3, 0), pady=(5, 0))
+        self.static_stop_button.grid(row=5, column=1, sticky="ew", padx=(3, 0), pady=(5, 0))
         ttk.Label(
             static_section,
             textvariable=self.static_resume_var,
             style="Muted.AltCard.TLabel",
             wraplength=520,
-        ).grid(row=5, column=0, columnspan=2, sticky="w", pady=(5, 0))
+        ).grid(row=6, column=0, columnspan=2, sticky="w", pady=(5, 0))
         self.static_resume_button = ttk.Button(
             static_section,
             text="继续上次静态采集 / Resume Still Capture",
@@ -764,7 +789,7 @@ class CaptureStudioApp:
             state="disabled",
         )
         self.static_resume_button.grid(
-            row=6,
+            row=7,
             column=0,
             columnspan=2,
             sticky="ew",
@@ -979,6 +1004,34 @@ class CaptureStudioApp:
         state = "开启 / On" if self.always_on_top_var.get() else "关闭 / Off"
         self.log(f"窗口置顶 / Topmost：{state}")
 
+    def _update_depth_status(self) -> None:
+        if not self.depth_supported:
+            self.depth_status_var.set(
+                "当前深度桥仅支持 Windows / Depth bridge is Windows-only"
+            )
+        elif self.depth_enabled_var.get():
+            depth_status = self.depth_bridge.status()
+            latest = (
+                depth_status.get("runtime")
+                or depth_status.get("latest_response")
+                or depth_status.get("last_capture")
+            )
+            bridge_state = (
+                str(latest.get("state") or latest.get("status") or "unknown")
+                if isinstance(latest, dict)
+                else "waiting"
+            )
+            self.depth_status_var.set(
+                "自研 D3D12 原始深度 · "
+                f"{bridge_state} / Native D3D12 raw depth · {bridge_state}"
+            )
+        else:
+            self.depth_status_var.set("深度已关闭 / Depth disabled")
+
+    def _on_depth_toggled(self) -> None:
+        self._update_depth_status()
+        self._persist_settings()
+
     def _persist_settings(self) -> None:
         self.settings["language"] = self.language
         self.settings["obs_host"] = self.obs_host_var.get().strip()
@@ -988,6 +1041,7 @@ class CaptureStudioApp:
             str(self.trajectory_path) if self.trajectory_path is not None else ""
         )
         self.settings["always_on_top"] = bool(self.always_on_top_var.get())
+        self.settings["depth_enabled"] = bool(self.depth_enabled_var.get())
         save_settings(self.settings)
 
     def _refresh_trajectory_choices(
@@ -1125,6 +1179,7 @@ class CaptureStudioApp:
         def success(report: ConnectionReport) -> None:
             self.status_refresh_inflight = False
             self._apply_connection_report(report)
+            self._update_depth_status()
 
         def finished_with_error(exc: Exception) -> None:
             self.status_refresh_inflight = False
@@ -1293,38 +1348,32 @@ class CaptureStudioApp:
         self.log(f"已记录点位 / Point recorded to {ACTIVE_POINT_MAP_PATH.name}: point_{index:04d}")
 
     def _start_record_point_hotkey(self) -> None:
-        if not self.record_point_hotkey.supported:
-            self.record_hotkey_status_var.set("Linux：请使用界面按钮 / Use the UI button")
-            self.log("Linux 未启用全局 F8，请使用界面按钮。 / Global F8 is disabled on Linux; use the UI button.")
-            self.root.after(50, self._poll_record_point_hotkey)
-            return
-        try:
-            self.record_point_hotkey.start()
-        except RuntimeError as exc:
-            self.record_hotkey_status_var.set("游戏内 F8：注册失败 / Registration failed")
-            self.log(str(exc))
-        else:
-            self.record_hotkey_status_var.set("游戏内 F8：记录点位 / Record point")
+        self.record_hotkey_status_var.set("游戏内 E：等待 Runtime / Waiting for Runtime")
         self.root.after(50, self._poll_record_point_hotkey)
 
     def _poll_record_point_hotkey(self) -> None:
         if self.closing:
             return
-        if self.record_point_hotkey.consume():
+        supported, triggered = self.bridge.poll_record_point_hotkey()
+        if supported:
+            self.record_hotkey_status_var.set("游戏内 E：记录点位 / Record point")
+        else:
+            self.record_hotkey_status_var.set("游戏内 E：等待新版 Runtime / Update Runtime")
+        if triggered:
             self._record_point_from_game_hotkey()
         self.root.after(50, self._poll_record_point_hotkey)
 
     def _record_point_from_game_hotkey(self) -> None:
-        if not self.record_point_hotkey.supported:
-            self.log("Linux 不支持前台检测，请使用界面按钮。 / Foreground detection is unavailable on Linux; use the UI button.")
-            return
         try:
             game_pid = find_game_pid()
         except RuntimeError as exc:
-            self.log(f"F8 未记录 / F8 record failed: {exc}")
+            self.log(f"E 未记录 / E record failed: {exc}")
             return
-        if foreground_process_id() != game_pid:
-            self.log("F8 未记录：前台不是当前游戏。 / F8 ignored because the selected game is not foreground.")
+        if (
+            not getattr(self.bridge, "is_linux_relay", False)
+            and foreground_process_id() != game_pid
+        ):
+            self.log("E 未记录：前台不是当前游戏。 / E ignored because the selected game is not foreground.")
             return
         self.record_point()
 
@@ -1939,6 +1988,9 @@ class CaptureStudioApp:
         # file still contains the previous PNG/2K values.
         image_format = "jpg"
         self.settings["screenshot_format"] = image_format
+        depth_enabled = bool(self.depth_enabled_var.get())
+        depth_timeout = float(self.settings.get("depth_timeout_seconds", 8.0))
+        self._persist_settings()
 
         def progress(done: int, total: int, message: str) -> None:
             self.root.after(
@@ -1981,6 +2033,13 @@ class CaptureStudioApp:
                     settle_seconds=float(self.settings["capture_interval_sec"]),
                     image_format=image_format,
                     screenshotter=obs_screenshotter,
+                    depth_bridge=self.depth_bridge,
+                    depth_enabled=depth_enabled,
+                    depth_timeout=depth_timeout,
+                    screenshot_source=obs_source,
+                    screenshot_width=obs_width,
+                    screenshot_height=obs_height,
+                    screenshot_quality=100,
                 )
                 result = runner.run(
                     samples,
@@ -2016,6 +2075,12 @@ class CaptureStudioApp:
                         "obs_source_name": obs_source,
                         "image_width": obs_width,
                         "image_height": obs_height,
+                        "depth_enabled": depth_enabled,
+                        "depth_timeout_seconds": depth_timeout,
+                        "depth_space": (
+                            "raw_device_depth" if depth_enabled else None
+                        ),
+                        "metric_depth": False,
                         "obs_canvas_width": obs_canvas_width,
                         "obs_canvas_height": obs_canvas_height,
                         "view_patterns": view_pattern_manifest(),
@@ -2489,7 +2554,6 @@ and RE9_* variables remain supported; UNIFIED_* variables take precedence.
         if self.batch_recorder is not None and self.batch_recorder.active:
             self.batch_recorder.request_stop()
         self.closing = True
-        self.record_point_hotkey.stop()
         self.bridge.close()
         self.root.destroy()
 

@@ -25,6 +25,10 @@ class GameRegistryTests(unittest.TestCase):
             {adapter.id for adapter in adapters},
             {"re9", "kcd2", "black-myth-wukong", "backrooms-lost-runners"},
         )
+        kcd2 = next(adapter for adapter in adapters if adapter.id == "kcd2")
+        command = kcd2.command_for("capture")
+        self.assertIn("launch_unified_capture_studio.ps1", command[-3])
+        self.assertEqual(command[-2:], ["-GameId", "kcd2"])
         for adapter in adapters:
             self.assertTrue(adapter.documentation.is_file())
             self.assertTrue(adapter.examples.exists())

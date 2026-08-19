@@ -5,6 +5,12 @@
   "short_name": "Black Myth",
   "engine": "Unreal Engine 5",
   "maturity": "beta",
+  "coordinate_system": {
+    "position_unit": "centimeters",
+    "meters_per_unit": 0.01,
+    "scale_source": "user_provided",
+    "native_position_preserved": true
+  },
   "summary": "通过统一 UE Camera Runtime 读取精确位姿、执行原子绝对 setPose，并完成静态与平滑轨迹采集。",
   "documentation": "README.md",
   "examples": "examples",
@@ -15,6 +21,7 @@
     "relative_pose_control": "standalone_native",
     "point_capture": "implemented",
     "still_capture": "implemented_obs_1080p_jpg",
+    "depth_capture": "verified_native_d3d12_raw_depth_pixel_alignment_pending",
     "trajectory_capture": "implemented",
     "trajectory_replay": "standalone_in_process_hermite"
   },

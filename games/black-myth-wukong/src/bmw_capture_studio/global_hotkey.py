@@ -10,7 +10,7 @@ import threading
 WM_HOTKEY = 0x0312
 WM_QUIT = 0x0012
 MOD_NOREPEAT = 0x4000
-F8_VK = 0x77
+E_VK = 0x45
 HOTKEY_ID = 0xB18
 
 
@@ -126,7 +126,8 @@ class GlobalHotkey:
         if not registered:
             error_code = ctypes.get_last_error()
             self._registration_error = RuntimeError(
-                f"F8 注册失败 / Global hotkey failed (Windows {error_code}); it may be in use"
+                f"快捷键 VK 0x{self.virtual_key:02X} 注册失败 / Global hotkey failed "
+                f"(Windows {error_code}); it may be in use"
             )
             self._ready.set()
             return

@@ -36,12 +36,15 @@ docs/assets/*
 games/kcd2/camera_tools/
 games/kcd2/capture_studio_data/
 games/kcd2/game_mods/
+games/kcd2/native/depth-bridge/build/
+core/runtime/depth-bridge/build/
 games/kcd2/current_game_screen.png
 games/kcd2/capture_studio_settings.json
 games/black-myth-wukong/capture_data/
 games/black-myth-wukong/native/build/
 games/black-myth-wukong/native/build_smooth*/
 games/black-myth-wukong/native/build_standalone*/
+games/black-myth-wukong/native/build_native_depth_check/
 games/black-myth-wukong/qa/
 games/black-myth-wukong/settings.json
 # Per-game runtime captures and point/trajectory outputs stay local. Curated

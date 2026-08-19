@@ -8,7 +8,7 @@ import traceback
 from typing import Any, Callable
 
 from ..backend import CameraBackend
-from ..paths import PROJECT_ROOT, ensure_data_dirs
+from ..paths import DATA_ROOT, PROJECT_ROOT, ensure_data_dirs
 from ..settings import load_settings, save_settings
 from .analysis_tab import AnalysisTab
 from .points_tab import PointsTab
@@ -100,7 +100,7 @@ class CaptureStudioApp:
         ).pack(fill="x", pady=(5, 0))
 
         self.root.protocol("WM_DELETE_WINDOW", self.close)
-        self.log("应用已启动；项目数据只写入 capture_studio_data。")
+        self.log(f"应用已启动；项目数据目录：{DATA_ROOT}")
 
     def run(self) -> None:
         self.root.mainloop()

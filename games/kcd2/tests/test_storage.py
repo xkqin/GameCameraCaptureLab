@@ -47,6 +47,13 @@ class PointStoreTests(unittest.TestCase):
                 loaded = store.load()
                 self.assertEqual([point.label for point in loaded], ["corner", "door"])
                 self.assertEqual(loaded[1].pose.x, 9.0)
+                payload = json.loads(store.json_path.read_text(encoding="utf-8"))
+                self.assertEqual(payload["schema_version"], "camera-point-set/v1")
+                self.assertEqual(payload["game_id"], "kcd2")
+                self.assertEqual(payload["points"][0]["id"], "point_0001")
+                self.assertEqual(payload["points"][1]["pose"]["position"]["x"], 9.0)
+                self.assertEqual(payload["coordinate_system"]["meters_per_unit"], 1.0)
+                self.assertEqual(payload["points"][1]["pose"]["position_m"]["x"], 9.0)
 
                 csv_backup, json_backup = store.reset()
                 self.assertIsNotNone(csv_backup)
@@ -67,6 +74,17 @@ class PointStoreTests(unittest.TestCase):
                 self.assertEqual(loaded[0].yaw_degrees, 5.0)
                 payload = json.loads(store.json_path.read_text(encoding="utf-8"))
                 self.assertEqual(payload["trajectory_id"], "walk_01")
+                self.assertEqual(payload["schema_version"], "camera-trajectory/v1")
+                self.assertEqual(payload["game_id"], "kcd2")
+                self.assertEqual(payload["keyframes"][0]["index"], 0)
+                self.assertEqual(payload["keyframes"][0]["pose"]["rotation"]["yaw"], 5.0)
+                self.assertEqual(payload["coordinate_system"]["position_unit"], "meters")
+                self.assertEqual(payload["keyframes"][0]["pose"]["position_m"]["z"], 3.0)
+
+                store.reset()
+                self.assertFalse(store.json_path.exists())
+                self.assertFalse(store.csv_path.exists())
+                self.assertEqual(store.load(), [])
 
 
 if __name__ == "__main__":

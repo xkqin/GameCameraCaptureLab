@@ -9,6 +9,9 @@ from threading import Event
 import time
 from typing import Any, Callable
 
+from .capture import capture_rgb_depth_sample
+from .coordinate_scale import COORDINATE_SCALE
+from .depth_bridge import DepthBridge
 from .models import StillSample
 from .obs_bridge import OBSBridge
 from .paths import STILLS_DIR, ensure_data_dirs
@@ -61,6 +64,9 @@ class AutomatedStillScan:
         "target_x",
         "target_y",
         "target_z",
+        "target_x_m",
+        "target_y_m",
+        "target_z_m",
         "target_yaw_degrees",
         "target_pitch_degrees",
         "target_roll_degrees",
@@ -68,6 +74,9 @@ class AutomatedStillScan:
         "observed_x",
         "observed_y",
         "observed_z",
+        "observed_x_m",
+        "observed_y_m",
+        "observed_z_m",
         "observed_yaw_degrees",
         "observed_pitch_degrees",
         "observed_roll_degrees",
@@ -78,6 +87,12 @@ class AutomatedStillScan:
         "roll_error_degrees",
         "fov_error_degrees",
         "image_path",
+        "depth_path",
+        "depth_preview_path",
+        "sample_metadata_path",
+        "depth_space",
+        "depth_sync_status",
+        "rgb_depth_delta_ms",
         "obs_source",
         "captured_at",
     ]
@@ -88,10 +103,12 @@ class AutomatedStillScan:
         obs: OBSBridge,
         *,
         stop_event: Event | None = None,
+        depth_bridge: DepthBridge | None = None,
     ) -> None:
         self.controller = controller
         self.obs = obs
         self.stop_event = stop_event or Event()
+        self.depth_bridge = depth_bridge
 
     def stop(self) -> None:
         self.stop_event.set()
@@ -110,6 +127,8 @@ class AutomatedStillScan:
         start_sample: int = 1,
         end_sample: int | None = None,
         strict_pose: bool = True,
+        depth_enabled: bool = False,
+        depth_timeout: float = 8.0,
         progress_callback: Callable[
             [StillSample, int, int, Path, dict[str, Any]], None
         ]
@@ -129,9 +148,7 @@ class AutomatedStillScan:
         stamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
         session_id = f"{stamp}_{safe_id(scene_id)}_auto22"
         output_dir = STILLS_DIR / session_id
-        images_dir = output_dir / "images"
         output_dir.mkdir(parents=True, exist_ok=True)
-        images_dir.mkdir(parents=True, exist_ok=True)
         source_copy = output_dir / "source_scan_plan.json"
         shutil.copy2(Path(manifest_path).resolve(), source_copy)
         samples_csv = output_dir / "samples.csv"
@@ -150,6 +167,11 @@ class AutomatedStillScan:
             "completed_count": 0,
             "status": "running",
             "strict_pose": strict_pose,
+            "depth_enabled": depth_enabled,
+            "depth_timeout_seconds": depth_timeout,
+            "depth_space": "raw_device_depth" if depth_enabled else None,
+            "metric_depth": False,
+            "coordinate_system": COORDINATE_SCALE.coordinate_system(),
             "settle_seconds": settle_seconds,
             "output_dir": str(output_dir),
             "samples_csv": str(samples_csv),
@@ -192,22 +214,37 @@ class AutomatedStillScan:
                     )
                     if settle_seconds > 0:
                         time.sleep(settle_seconds)
-                    observed = self.controller.backend.pose()
-                    error = control_report["error"]
-                    image_path = images_dir / (
-                        f"s{sample.sample_index:06d}_p{sample.point_index:05d}_"
-                        f"{safe_id(sample.pattern, 'view')}_"
-                        f"yaw{sample.yaw_degrees:+07.2f}_"
-                        f"pitch{sample.pitch_degrees:+06.2f}.{extension}"
+                    sample_dir = (
+                        output_dir
+                        / "samples"
+                        / f"sample_{sample.sample_index:06d}"
                     )
-                    obs_source = self.obs.save_screenshot(
-                        image_path,
+                    error = control_report["error"]
+                    captured = capture_rgb_depth_sample(
+                        self.controller.backend,
+                        self.obs,
+                        self.depth_bridge,
+                        sample_dir=sample_dir,
                         source_name=source_name,
                         image_format=extension,
                         width=width,
                         height=height,
                         quality=quality,
+                        depth_enabled=depth_enabled,
+                        depth_timeout=depth_timeout,
+                        metadata={
+                            "session_id": session_id,
+                            "scene_id": safe_id(scene_id),
+                            "sample_index": sample.sample_index,
+                            "point_index": sample.point_index,
+                            "pattern": sample.pattern,
+                            "target_pose": target.as_dict(),
+                            "control_error": error,
+                        },
                     )
+                    observed = captured["pose"]
+                    depth = captured["depth"] or {}
+                    image_path = captured["image_path"]
                     row = {
                         "session_id": session_id,
                         "sample_index": sample.sample_index,
@@ -216,6 +253,15 @@ class AutomatedStillScan:
                         "target_x": sample.x,
                         "target_y": sample.y,
                         "target_z": sample.z,
+                        "target_x_m": COORDINATE_SCALE.position_m(
+                            sample.x, sample.y, sample.z
+                        )["x"],
+                        "target_y_m": COORDINATE_SCALE.position_m(
+                            sample.x, sample.y, sample.z
+                        )["y"],
+                        "target_z_m": COORDINATE_SCALE.position_m(
+                            sample.x, sample.y, sample.z
+                        )["z"],
                         "target_yaw_degrees": sample.yaw_degrees,
                         "target_pitch_degrees": sample.pitch_degrees,
                         "target_roll_degrees": 0.0,
@@ -223,6 +269,15 @@ class AutomatedStillScan:
                         "observed_x": observed.x,
                         "observed_y": observed.y,
                         "observed_z": observed.z,
+                        "observed_x_m": COORDINATE_SCALE.position_m(
+                            observed.x, observed.y, observed.z
+                        )["x"],
+                        "observed_y_m": COORDINATE_SCALE.position_m(
+                            observed.x, observed.y, observed.z
+                        )["y"],
+                        "observed_z_m": COORDINATE_SCALE.position_m(
+                            observed.x, observed.y, observed.z
+                        )["z"],
                         "observed_yaw_degrees": observed.yaw_degrees,
                         "observed_pitch_degrees": observed.pitch_degrees,
                         "observed_roll_degrees": observed.roll_degrees,
@@ -233,8 +288,14 @@ class AutomatedStillScan:
                         "roll_error_degrees": error["roll_degrees"],
                         "fov_error_degrees": error["fov_degrees"],
                         "image_path": str(image_path),
-                        "obs_source": obs_source,
-                        "captured_at": dt.datetime.now().astimezone().isoformat(),
+                        "depth_path": str(depth.get("depth_path") or ""),
+                        "depth_preview_path": str(depth.get("preview_path") or ""),
+                        "sample_metadata_path": str(captured["sample_metadata_path"]),
+                        "depth_space": str(depth.get("depth_space") or ""),
+                        "depth_sync_status": captured["depth_sync_status"],
+                        "rgb_depth_delta_ms": captured["rgb_depth_delta_ms"],
+                        "obs_source": captured["obs_source"],
+                        "captured_at": observed.captured_at,
                     }
                     writer.writerow(row)
                     csv_handle.flush()

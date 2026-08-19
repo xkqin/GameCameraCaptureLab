@@ -137,7 +137,7 @@ def classify_connection(
             level="error",
             title="相机输入独占未就绪 / Input Capture Not Ready",
             detail=(
-                "低级键盘 Hook 安装失败；当前版本不能保证 WASD/QE 不再控制角色。"
+                "低级键盘 Hook 安装失败；当前版本不能保证 WASD/Space/Q/E 不再控制角色。"
                 "请以管理员身份重启后再注入。 / "
                 "The keyboard hook failed; restart the game and studio as administrator."
             ),
@@ -258,8 +258,8 @@ def classify_connection(
     else:
         title = "Unified Camera Runtime 已连接 / Connected · Camera ON"
         detail = (
-            "WASD/QE 和鼠标视角已由相机独占，Shift 5× 加速；"
-            "setPose、点位和轨迹已就绪。 / Camera input is captured; setPose, points, and trajectories are ready."
+            "WASD/Space/Q 和鼠标视角已由相机独占，E 记录点位，Shift 5× 加速；"
+            "setPose、点位和轨迹已就绪。 / Camera input is captured; E records a point; setPose and trajectories are ready."
         )
         if metadata.hud_control_ready:
             detail += " Delete 切换 HUD / toggles HUD."

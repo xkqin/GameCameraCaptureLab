@@ -21,7 +21,10 @@
         "handedness": {"enum": ["left", "right", "unknown"]},
         "vertical_axis": {"enum": ["x", "y", "z"]},
         "angle_unit": {"enum": ["degrees", "radians"]},
-        "position_unit": {"type": "string", "default": "game_units"}
+        "position_unit": {"type": "string", "default": "game_units"},
+        "meters_per_unit": {"type": "number", "exclusiveMinimum": 0},
+        "scale_source": {"type": "string"},
+        "native_position_preserved": {"type": "boolean"}
       },
       "additionalProperties": false
     },
@@ -61,6 +64,7 @@
       "required": ["position", "rotation", "fov_degrees"],
       "properties": {
         "position": {"$ref": "#/$defs/vector3"},
+        "position_m": {"$ref": "#/$defs/vector3"},
         "rotation": {"$ref": "#/$defs/rotation"},
         "quaternion": {"$ref": "#/$defs/quaternion"},
         "fov_degrees": {"type": "number", "exclusiveMinimum": 0, "maximum": 360}

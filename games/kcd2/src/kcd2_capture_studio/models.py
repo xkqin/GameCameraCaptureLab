@@ -3,6 +3,13 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from .coordinate_scale import COORDINATE_SCALE
+
+
+def _metric_xyz(x: float, y: float, z: float) -> dict[str, float]:
+    position = COORDINATE_SCALE.position_m(x, y, z)
+    return {"x_m": position["x"], "y_m": position["y"], "z_m": position["z"]}
+
 
 @dataclass(frozen=True)
 class Pose:
@@ -57,6 +64,7 @@ class CapturedPoint:
             "label": self.label,
             "timestamp_sec": self.timestamp_sec,
             **self.pose.as_dict(),
+            **_metric_xyz(self.pose.x, self.pose.y, self.pose.z),
         }
 
 
@@ -68,7 +76,7 @@ class SpatialPoint:
     z: float
 
     def as_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return {**asdict(self), **_metric_xyz(self.x, self.y, self.z)}
 
 
 @dataclass(frozen=True)
@@ -84,7 +92,7 @@ class StillSample:
     fov_degrees: float
 
     def as_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return {**asdict(self), **_metric_xyz(self.x, self.y, self.z)}
 
 
 @dataclass(frozen=True)
@@ -100,4 +108,4 @@ class TrajectoryKeyframe:
     fov_degrees: float
 
     def as_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return {**asdict(self), **_metric_xyz(self.x, self.y, self.z)}

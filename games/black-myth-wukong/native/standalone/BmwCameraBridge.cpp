@@ -1,6 +1,7 @@
 #include "BmwCameraBridgeProtocol.h"
 #include "BmwCameraInput.h"
 #include "BmwCameraMath.h"
+#include "BmwNativeDepth.h"
 #include "BmwCameraRelay.h"
 #include "BmwCameraTrajectory.h"
 #include "UeCameraProfile.h"
@@ -61,9 +62,11 @@ PrecisePose* g_precisePose = nullptr;
 NativeControl* g_control = nullptr;
 AbsolutePoseControl* g_absolutePose = nullptr;
 HudControl* g_hudControl = nullptr;
+InputEvents* g_inputEvents = nullptr;
 NativeTrajectory* g_trajectory = nullptr;
 HANDLE g_workerThread = nullptr;
 HANDLE g_relayThread = nullptr;
+HANDLE g_depthThread = nullptr;
 volatile LONG g_stopRequested = 0;
 volatile LONG g_movementLocked = 0;
 const GameProfile* g_gameProfile = nullptr;
@@ -181,6 +184,7 @@ bool ensureMapping()
     g_absolutePose = reinterpret_cast<AbsolutePoseControl*>(
         g_mappingData + kAbsolutePoseOffset);
     g_hudControl = reinterpret_cast<HudControl*>(g_mappingData + kHudControlOffset);
+    g_inputEvents = reinterpret_cast<InputEvents*>(g_mappingData + kInputEventsOffset);
     g_trajectory = reinterpret_cast<NativeTrajectory*>(g_mappingData + kTrajectoryOffset);
 
     g_metadata->magic = kMetadataMagic;
@@ -204,6 +208,9 @@ bool ensureMapping()
     g_hudControl->version = kHudControlVersion;
     g_hudControl->size = sizeof(HudControl);
     g_hudControl->hidden = 0;
+    g_inputEvents->magic = kInputEventsMagic;
+    g_inputEvents->version = kInputEventsVersion;
+    g_inputEvents->size = sizeof(InputEvents);
     g_trajectory->magic = kTrajectoryMagic;
     g_trajectory->version = kTrajectoryVersion;
     g_trajectory->size = sizeof(NativeTrajectory);
@@ -222,6 +229,7 @@ void releaseMapping()
         g_control = nullptr;
         g_absolutePose = nullptr;
         g_hudControl = nullptr;
+        g_inputEvents = nullptr;
         g_trajectory = nullptr;
     }
     if (g_mapping != nullptr)
@@ -580,6 +588,11 @@ void processInput(const double elapsedSeconds, const bool trajectoryPlaying)
         const LONG current = InterlockedCompareExchange(&g_movementLocked, 0, 0);
         InterlockedExchange(&g_movementLocked, current == 0 ? 1 : 0);
     }
+    if (keyPressed('E') && g_inputEvents != nullptr &&
+        InterlockedCompareExchange(&g_bmwCameraEnabled, 0, 0) != 0)
+    {
+        InterlockedIncrement(&g_inputEvents->recordPointSequence);
+    }
     if (trajectoryPlaying ||
         InterlockedCompareExchange(&g_bmwCameraEnabled, 0, 0) == 0 ||
         InterlockedCompareExchange(&g_movementLocked, 0, 0) != 0)
@@ -620,7 +633,7 @@ void processInput(const double elapsedSeconds, const bool trajectoryPlaying)
     if (keyDown('S') || keyDown(VK_NUMPAD5)) input.moveForward -= moveStep;
     if (keyDown('D') || keyDown(VK_NUMPAD6)) input.moveRight += moveStep;
     if (keyDown('A') || keyDown(VK_NUMPAD4)) input.moveRight -= moveStep;
-    if (keyDown('E') || keyDown(VK_NUMPAD7)) input.moveUp += moveStep;
+    if (keyDown(VK_SPACE) || keyDown(VK_NUMPAD7)) input.moveUp += moveStep;
     if (keyDown('Q') || keyDown(VK_NUMPAD9)) input.moveUp -= moveStep;
     if (keyDown(VK_RIGHT)) input.yawRadians += angleStep * 0.0174532925199433f;
     if (keyDown(VK_LEFT)) input.yawRadians -= angleStep * 0.0174532925199433f;
@@ -665,8 +678,14 @@ DWORD WINAPI bridgeWorker(LPVOID)
     if (inputReady)
     {
         InterlockedOr(&g_metadata->flags, kFlagInputCaptureReady);
+        if (inputUsesWindowCapture())
+        {
+            InterlockedOr(&g_metadata->flags, kFlagWindowInputCapture);
+        }
+        publishRuntimeDiagnostic(300u + inputCaptureDiagnostic());
     }
     g_relayThread = startRelay(g_mappingData, &g_stopRequested);
+    g_depthThread = startNativeDepthCapture(&g_stopRequested);
     LONG lastControlSequence = 0;
     LONG lastAbsoluteSequence = 0;
     LONG lastTrajectorySequence = 0;
@@ -954,6 +973,8 @@ DWORD WINAPI bridgeWorker(LPVOID)
         Sleep(sleepMilliseconds);
     }
     stopRelay(g_relayThread);
+    stopNativeDepthCapture(g_depthThread);
+    g_depthThread = nullptr;
     stopInputCapture();
     restoreHooks();
     return 0;

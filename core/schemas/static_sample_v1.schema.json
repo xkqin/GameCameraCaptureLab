@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xkqin/GameCameraCaptureLab/schemas/static_sample_v1.schema.json",
+  "title": "Game Camera Static RGB Pose Depth Sample v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "game_id",
+    "coordinate_system",
+    "scene_id",
+    "sample_index",
+    "pose",
+    "rgb",
+    "depth",
+    "synchronization"
+  ],
+  "properties": {
+    "schema_version": {"const": "camera-static-sample/v1"},
+    "game_id": {"type": "string", "minLength": 1},
+    "coordinate_system": {
+      "$ref": "camera_pose_v1.schema.json#/$defs/coordinate_system"
+    },
+    "scene_id": {"type": "string", "minLength": 1},
+    "sample_index": {"type": "integer", "minimum": 1},
+    "label": {"type": "string"},
+    "session_id": {"type": "string"},
+    "point_index": {"type": "integer", "minimum": 1},
+    "pattern": {"type": "string"},
+    "target_pose": {"type": "object", "additionalProperties": true},
+    "control_error": {"type": "object", "additionalProperties": true},
+    "pose": {
+      "type": "object",
+      "required": ["before", "after", "delta", "camera_static"],
+      "properties": {
+        "before": {"$ref": "camera_pose_v1.schema.json#/$defs/pose"},
+        "after": {"$ref": "camera_pose_v1.schema.json#/$defs/pose"},
+        "before_captured_at": {"type": "string"},
+        "after_captured_at": {"type": "string"},
+        "pid": {"type": "integer", "minimum": 0},
+        "delta": {"type": "object", "additionalProperties": {"type": "number"}},
+        "camera_static": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "rgb": {
+      "type": "object",
+      "required": ["path", "source", "format", "requested_width", "requested_height"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "source": {"type": "string"},
+        "format": {"enum": ["jpg", "png"]},
+        "requested_width": {"type": "integer", "minimum": 1},
+        "requested_height": {"type": "integer", "minimum": 1},
+        "quality": {"type": "integer", "minimum": 0, "maximum": 100},
+        "started_at": {"type": "string"},
+        "completed_at": {"type": "string"},
+        "file_mtime_unix_ns": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "depth": {
+      "type": "object",
+      "required": ["status", "metric_depth"],
+      "properties": {
+        "status": {"enum": ["completed", "disabled"]},
+        "depth_space": {"type": ["string", "null"]},
+        "metric_depth": {"type": "boolean"},
+        "depth_path": {"type": "string"},
+        "preview_path": {"type": "string"},
+        "near_plane": {"type": ["number", "null"]},
+        "far_plane": {"type": ["number", "null"]}
+      },
+      "additionalProperties": true
+    },
+    "synchronization": {
+      "type": "object",
+      "required": ["status", "guarantee"],
+      "properties": {
+        "status": {
+          "enum": ["rgb_only", "static_camera_best_effort", "camera_moved_during_pair"]
+        },
+        "rgb_depth_delta_ms": {"type": ["number", "null"], "minimum": 0},
+        "resolution_match": {"type": ["boolean", "null"]},
+        "pixel_alignment": {"type": "string"},
+        "guarantee": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

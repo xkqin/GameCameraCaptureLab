@@ -21,6 +21,8 @@ from bmw_capture_studio.bridge import (
     CONTROL_OFFSET,
     HUD_CONTROL,
     HUD_CONTROL_OFFSET,
+    INPUT_EVENTS,
+    INPUT_EVENTS_OFFSET,
     TRAJECTORY_HEADER,
     TRAJECTORY_KEYFRAME,
     TRAJECTORY_OFFSET,
@@ -31,6 +33,7 @@ from bmw_capture_studio.bridge import (
     FLAG_INPUT_CAPTURE_READY,
     METADATA_VERSION,
     BridgeMetadata,
+    InputEventState,
     NativeControlStatus,
     CameraPoseBridge,
 )
@@ -288,6 +291,11 @@ class CoreTests(unittest.TestCase):
             missing_settings = Path(temp_dir) / "settings.json"
             self.assertFalse(load_settings(missing_settings)["always_on_top"])
 
+    def test_depth_capture_is_optional_and_disabled_by_default(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            missing_settings = Path(temp_dir) / "settings.json"
+            self.assertFalse(load_settings(missing_settings)["depth_enabled"])
+
     def test_trajectory_catalog_discovers_supported_files_and_deduplicates(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -350,15 +358,43 @@ class CoreTests(unittest.TestCase):
         self.assertIn("AbsolutePoseControl", protocol)
         self.assertIn("WH_KEYBOARD_LL", input_layer)
         self.assertIn("WH_MOUSE_LL", input_layer)
+        self.assertIn("GWLP_WNDPROC", input_layer)
+        self.assertIn("WM_INPUT", input_layer)
+        self.assertIn("GetRawInputData", input_layer)
+        self.assertIn("RIM_TYPEKEYBOARD", input_layer)
+        self.assertIn("RIM_TYPEMOUSE", input_layer)
+        self.assertIn("DefWindowProcW(window, message", input_layer)
+        self.assertIn("installGameWindowCapture", input_layer)
+        self.assertIn("restoreGameWindowCapture", input_layer)
+        self.assertIn("WH_CALLWNDPROC", input_layer)
+        self.assertIn("SendMessageTimeoutW", input_layer)
+        self.assertIn("RegisterWindowMessageW", input_layer)
+        self.assertIn("kFlagWindowInputCapture", protocol)
+        self.assertIn("inputUsesWindowCapture", bridge)
+        self.assertIn("inputCaptureDiagnostic", bridge)
         self.assertIn("isCameraControlKey", input_layer)
         self.assertIn("inputConsumeMouseDelta", bridge)
         self.assertIn("BMW_CAMERA_MOUSE_SENSITIVITY", bridge)
         self.assertIn("return 1;", input_layer)
         self.assertIn("return wasSwallowed", input_layer)
         self.assertIn("matching release", input_layer)
+        self.assertEqual(input_layer.count("SetCursorPos(center.x, center.y);"), 1)
+        self.assertEqual(
+            input_layer.count("SetCursorPos(screenCenter.x, screenCenter.y)"), 1
+        )
+        self.assertIn("constexpr LONG kWindowMouseEdgeInset = 8;", input_layer)
+        self.assertIn("g_windowRecenterPending", input_layer)
+        self.assertIn("captureWindowMouseMove(window, longParameter);", input_layer)
+        self.assertIn("const bool relativeMovement", input_layer)
+        self.assertIn("if (relativeMovement)", input_layer)
+        self.assertIn("do not treat it as usable", input_layer)
+        self.assertIn("Clear held keys here", input_layer)
         self.assertNotIn("GetAsyncKeyState", bridge)
         self.assertIn("BMW_CAMERA_FAST_MULTIPLIER", bridge)
         self.assertIn("kDefaultFastMultiplier = 5.0f", bridge)
+        self.assertIn("keyPressed('E')", bridge)
+        self.assertNotIn("keyDown('E')", bridge)
+        self.assertIn("keyDown(VK_SPACE)", bridge)
         self.assertIn("BmwHudHook", hooks)
         self.assertIn("BmwCameraHook3", hooks)
         self.assertIn("g_bmwHook3Return", bridge)
@@ -391,6 +427,22 @@ class CoreTests(unittest.TestCase):
     def test_hud_control_structure_is_64_bytes(self) -> None:
         self.assertEqual(HUD_CONTROL.size, 64)
         self.assertEqual(HUD_CONTROL_OFFSET, 896)
+
+    def test_input_events_structure_uses_gap_before_trajectory(self) -> None:
+        self.assertEqual(INPUT_EVENTS.size, 64)
+        self.assertEqual(INPUT_EVENTS_OFFSET, 960)
+
+    def test_record_point_event_is_edge_triggered_without_startup_phantom(self) -> None:
+        camera_bridge = CameraPoseBridge("unused")
+        states = [
+            InputEventState(version=1, size=64, record_point_sequence=4),
+            InputEventState(version=1, size=64, record_point_sequence=4),
+            InputEventState(version=1, size=64, record_point_sequence=5),
+        ]
+        with patch.object(camera_bridge, "read_input_events", side_effect=states):
+            self.assertEqual(camera_bridge.poll_record_point_hotkey(), (True, False))
+            self.assertEqual(camera_bridge.poll_record_point_hotkey(), (True, False))
+            self.assertEqual(camera_bridge.poll_record_point_hotkey(), (True, True))
 
     def test_native_trajectory_structure_is_64_bytes(self) -> None:
         self.assertEqual(TRAJECTORY_HEADER.size, 64)

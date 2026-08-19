@@ -1,3 +1,7 @@
+param(
+    [string]$TrajectoryFile = ""
+)
+
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -39,6 +43,10 @@ if ($null -eq $SelectedPython) {
 Write-Host "KCD2 Capture Studio"
 Write-Host "Project: $ProjectRoot"
 Write-Host "Python:  $SelectedPython"
+if ($TrajectoryFile) {
+    $env:KCD2_TRAJECTORY_JSON = (Resolve-Path -LiteralPath $TrajectoryFile).Path
+    Write-Host "Trajectory: $($env:KCD2_TRAJECTORY_JSON)"
+}
 
 Push-Location (Join-Path $ProjectRoot "src")
 try {

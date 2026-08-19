@@ -7,6 +7,7 @@ import time
 from typing import Any
 
 from .backend import CameraBackend, LivePoseRecorder
+from .coordinate_scale import COORDINATE_SCALE
 from .obs_bridge import OBSBridge
 from .paths import RUNS_DIR, ensure_data_dirs
 from .storage import safe_id
@@ -60,6 +61,7 @@ class VideoPoseSession:
         self.manifest = {
             "session_id": self.session_id,
             "scene_id": self.scene_id,
+            "coordinate_system": COORDINATE_SCALE.coordinate_system(),
             "started_at": now_wall,
             "pose_started_at": self.pose_recorder.started_wall_time,
             "pose_start_monotonic_ns": pose_start_ns,

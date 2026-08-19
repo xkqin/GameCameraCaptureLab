@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Iterable
 
 from .models import CapturedPoint, SpatialPoint, StillSample
+from .coordinate_scale import COORDINATE_SCALE
 from .paths import PLANS_DIR, ensure_data_dirs
 from .storage import safe_id
 
@@ -125,6 +126,7 @@ def save_scan_plan(
                 "views_per_point": 22,
                 "image_count": len(samples),
                 "vertical_axis": "z",
+                "coordinate_system": COORDINATE_SCALE.coordinate_system(),
                 "positions_csv": str(positions_csv),
                 "samples_csv": str(samples_csv),
             },

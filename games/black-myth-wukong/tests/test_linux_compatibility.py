@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 from bmw_capture_studio import bridge, config, global_hotkey, injection, platform_support, screen_capture
 from bmw_capture_studio.connection import classify_connection, probe_connection
-from bmw_capture_studio.global_hotkey import F8_VK, GlobalHotkey
+from bmw_capture_studio.global_hotkey import E_VK, GlobalHotkey
 
 
 class LinuxCompatibilityTests(unittest.TestCase):
@@ -448,7 +448,7 @@ class LinuxCompatibilityTests(unittest.TestCase):
         user32.assert_not_called()
 
     def test_linux_global_hotkey_is_a_noop_and_does_not_start_a_thread(self) -> None:
-        hotkey = GlobalHotkey(F8_VK)
+        hotkey = GlobalHotkey(E_VK)
         with patch.object(sys, "platform", "linux"), patch.object(
             global_hotkey.ctypes, "WinDLL", side_effect=AssertionError("Win32 called")
         ):

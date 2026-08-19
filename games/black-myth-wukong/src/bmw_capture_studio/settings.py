@@ -19,6 +19,8 @@ DEFAULTS: dict[str, Any] = {
     "max_move_seconds": 25.0,
     "native_feedback_timeout_sec": 0.5,
     "screenshot_format": "jpg",
+    "depth_enabled": False,
+    "depth_timeout_seconds": 8.0,
     "obs_host": "127.0.0.1",
     "obs_port": 4455,
     "pose_log_hz": 30.0,

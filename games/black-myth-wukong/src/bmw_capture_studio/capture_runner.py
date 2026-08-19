@@ -4,11 +4,14 @@ import csv
 from dataclasses import dataclass
 from datetime import datetime
 import json
+import math
 from pathlib import Path
 import re
 import time
 from typing import Callable, Iterable, Protocol
 
+from .coordinate_scale import COORDINATE_SCALE
+from .depth_bridge import DepthBridge, DepthCaptureTicket
 from .models import CameraPose, CapturePoint
 
 
@@ -57,7 +60,51 @@ def _sleep_interruptible(seconds: float, stop_requested: Callable[[], bool]) -> 
 
 
 def _pose_columns(prefix: str, pose: CameraPose) -> dict[str, object]:
-    return {f"{prefix}_{key}": value for key, value in pose.as_dict().items()}
+    values = {f"{prefix}_{key}": value for key, value in pose.as_dict().items()}
+    values.update(
+        {
+            f"{prefix}_{axis}_m": value
+            for axis, value in COORDINATE_SCALE.position_m(
+                pose.x, pose.y, pose.z
+            ).items()
+        }
+    )
+    return values
+
+
+def _schema_pose(pose: CameraPose) -> dict[str, object]:
+    return {
+        "position": {"x": pose.x, "y": pose.y, "z": pose.z},
+        "position_m": COORDINATE_SCALE.position_m(pose.x, pose.y, pose.z),
+        "rotation": {
+            "yaw": pose.yaw_degrees,
+            "pitch": pose.pitch_degrees,
+            "roll": pose.roll_degrees,
+        },
+        "quaternion": {
+            "x": pose.qx,
+            "y": pose.qy,
+            "z": pose.qz,
+            "w": pose.qw,
+        },
+        "fov_degrees": pose.fov_degrees,
+    }
+
+
+def _pose_delta(before: CameraPose, after: CameraPose) -> dict[str, float]:
+    position = math.sqrt(
+            (after.x - before.x) ** 2
+            + (after.y - before.y) ** 2
+            + (after.z - before.z) ** 2
+        )
+    return {
+        "position": position,
+        "position_m": position * COORDINATE_SCALE.meters_per_unit,
+        "yaw_degrees": abs(after.yaw_degrees - before.yaw_degrees),
+        "pitch_degrees": abs(after.pitch_degrees - before.pitch_degrees),
+        "roll_degrees": abs(after.roll_degrees - before.roll_degrees),
+        "fov_degrees": abs(after.fov_degrees - before.fov_degrees),
+    }
 
 
 def _capture_metadata(point: CaptureTarget) -> dict[str, object]:
@@ -78,6 +125,13 @@ class CaptureRunner:
         settle_seconds: float = 0.12,
         image_format: str = "png",
         screenshotter: Callable[[int, str | Path], Path] | None = None,
+        depth_bridge: DepthBridge | None = None,
+        depth_enabled: bool = False,
+        depth_timeout: float = 8.0,
+        screenshot_source: str = "obs_websocket_source",
+        screenshot_width: int = 1920,
+        screenshot_height: int = 1080,
+        screenshot_quality: int = 100,
     ) -> None:
         self.bridge = bridge
         self.mover = mover
@@ -85,6 +139,13 @@ class CaptureRunner:
         self.settle_seconds = max(0.0, settle_seconds)
         self.image_format = image_format.lower().lstrip(".") or "png"
         self.screenshotter = screenshotter
+        self.depth_bridge = depth_bridge
+        self.depth_enabled = bool(depth_enabled)
+        self.depth_timeout = max(0.1, float(depth_timeout))
+        self.screenshot_source = screenshot_source
+        self.screenshot_width = max(1, int(screenshot_width))
+        self.screenshot_height = max(1, int(screenshot_height))
+        self.screenshot_quality = min(100, max(0, int(screenshot_quality)))
         self.last_session_dir: Path | None = None
 
     def run(
@@ -113,6 +174,8 @@ class CaptureRunner:
         self.last_session_dir = session_dir.resolve()
         images_dir = session_dir / "images"
         images_dir.mkdir(parents=True, exist_ok=False)
+        samples_dir = session_dir / "samples"
+        samples_dir.mkdir(parents=True, exist_ok=False)
         manifest_json = session_dir / "manifest.json"
         manifest_csv = session_dir / "manifest.csv"
         rows: list[dict[str, object]] = []
@@ -136,28 +199,155 @@ class CaptureRunner:
 
                 if on_progress is not None:
                     on_progress(ordinal - 1, len(values), f"前往 / Moving to {point.label}")
-                actual = self.mover.move_to(
+                self.mover.move_to(
                     point.pose,
                     stop_requested=stop_requested,
                     on_update=on_log,
                 )
                 _sleep_interruptible(self.settle_seconds, stop_requested)
-                actual = self.bridge.read_pose()
+                pose_before = self.bridge.read_pose()
                 filename = (
                     f"{ordinal:05d}_{_safe_label(point.label)}.{self.image_format}"
                 )
-                image_path = self.screenshotter(self.pid, images_dir / filename)
+                sample_dir = samples_dir / f"sample_{ordinal:06d}"
+                sample_dir.mkdir(parents=True, exist_ok=False)
+                depth_ticket: DepthCaptureTicket | None = None
+                rgb_started_at = datetime.now().astimezone().isoformat(
+                    timespec="milliseconds"
+                )
+                try:
+                    if self.depth_enabled:
+                        if self.depth_bridge is None:
+                            raise RuntimeError(
+                                "Depth capture is enabled but no depth bridge is configured"
+                            )
+                        depth_ticket = self.depth_bridge.begin_capture()
+                    image_path = Path(
+                        self.screenshotter(self.pid, images_dir / filename)
+                    )
+                    rgb_completed_at = datetime.now().astimezone().isoformat(
+                        timespec="milliseconds"
+                    )
+                    depth = (
+                        self.depth_bridge.wait_capture(
+                            depth_ticket,
+                            sample_dir,
+                            timeout=self.depth_timeout,
+                        )
+                        if self.depth_enabled
+                        and self.depth_bridge is not None
+                        and depth_ticket is not None
+                        else None
+                    )
+                except Exception:
+                    if depth_ticket is not None and self.depth_bridge is not None:
+                        self.depth_bridge.cancel(depth_ticket)
+                    raise
+                pose_after = self.bridge.read_pose()
                 captured_at = datetime.now().astimezone().isoformat(timespec="milliseconds")
+                delta = _pose_delta(pose_before, pose_after)
+                camera_static = (
+                    delta["position"] <= 1.0
+                    and delta["yaw_degrees"] <= 0.1
+                    and delta["pitch_degrees"] <= 0.1
+                    and delta["roll_degrees"] <= 0.1
+                    and delta["fov_degrees"] <= 0.1
+                )
+                rgb_mtime_ns = image_path.stat().st_mtime_ns
+                depth_capture_ns = int(depth["captured_unix_ns"]) if depth else None
+                rgb_depth_delta_ms = (
+                    abs(rgb_mtime_ns - depth_capture_ns) / 1_000_000.0
+                    if depth_capture_ns is not None
+                    else None
+                )
+                resolution_match = (
+                    int(depth.get("width", -1)) == self.screenshot_width
+                    and int(depth.get("height", -1)) == self.screenshot_height
+                    if depth is not None
+                    else None
+                )
+                sync_status = (
+                    "static_camera_best_effort"
+                    if depth is not None and camera_static
+                    else "camera_moved_during_pair"
+                    if depth is not None
+                    else "rgb_only"
+                )
+                point_metadata = _capture_metadata(point)
+                sample_metadata_path = sample_dir / "metadata.json"
+                sample_metadata = {
+                    "schema_version": "camera-static-sample/v1",
+                    "game_id": "black-myth-wukong",
+                    "coordinate_system": COORDINATE_SCALE.coordinate_system(),
+                    "scene_id": str((run_metadata or {}).get("scene_id") or mode),
+                    "sample_index": ordinal,
+                    "label": point.label,
+                    "point_index": int(point_metadata.get("point_index") or point.index),
+                    **point_metadata,
+                    "target_pose": _schema_pose(point.pose),
+                    "pose": {
+                        "before": _schema_pose(pose_before),
+                        "after": _schema_pose(pose_after),
+                        "before_captured_at": rgb_started_at,
+                        "after_captured_at": captured_at,
+                        "pid": self.pid,
+                        "delta": delta,
+                        "camera_static": camera_static,
+                    },
+                    "rgb": {
+                        "path": str(Path("..") / ".." / "images" / image_path.name),
+                        "source": self.screenshot_source,
+                        "format": self.image_format,
+                        "requested_width": self.screenshot_width,
+                        "requested_height": self.screenshot_height,
+                        "quality": self.screenshot_quality,
+                        "started_at": rgb_started_at,
+                        "completed_at": rgb_completed_at,
+                        "file_mtime_unix_ns": rgb_mtime_ns,
+                    },
+                    "depth": depth
+                    or {
+                        "status": "disabled",
+                        "metric_depth": False,
+                        "depth_space": None,
+                    },
+                    "synchronization": {
+                        "status": sync_status,
+                        "rgb_depth_delta_ms": rgb_depth_delta_ms,
+                        "resolution_match": resolution_match,
+                        "pixel_alignment": "unverified_obs_scene_transform",
+                        "guarantee": "static-camera timestamp alignment; not same GPU frame",
+                    },
+                }
+                sample_metadata_path.write_text(
+                    json.dumps(sample_metadata, ensure_ascii=False, indent=2),
+                    encoding="utf-8",
+                )
                 row: dict[str, object] = {
                     "sequence": ordinal,
                     "point_index": point.index,
                     "label": point.label,
                     "time_sec": point.time_sec,
-                    **_capture_metadata(point),
+                    **point_metadata,
                     "image": str(Path("images") / image_path.name),
+                    "depth": str(Path("samples") / sample_dir.name / "depth.npy")
+                    if depth is not None
+                    else "",
+                    "depth_preview": str(
+                        Path("samples") / sample_dir.name / "depth_preview.png"
+                    )
+                    if depth is not None
+                    else "",
+                    "sample_metadata": str(
+                        Path("samples") / sample_dir.name / "metadata.json"
+                    ),
+                    "depth_space": str(depth.get("depth_space") or "") if depth else "",
+                    "depth_sync_status": sync_status,
+                    "rgb_depth_delta_ms": rgb_depth_delta_ms,
                     "captured_at": captured_at,
                     **_pose_columns("target", point.pose),
-                    **_pose_columns("actual", actual),
+                    **_pose_columns("actual", pose_before),
+                    **_pose_columns("actual_after", pose_after),
                 }
                 rows.append(row)
                 if on_progress is not None:
@@ -197,6 +387,11 @@ class CaptureRunner:
                 "requested_count": len(values),
                 "captured_count": len(rows),
                 "capture_plan": dict(run_metadata or {}),
+                "coordinate_system": COORDINATE_SCALE.coordinate_system(),
+                "depth_enabled": self.depth_enabled,
+                "depth_timeout_seconds": self.depth_timeout,
+                "depth_space": "raw_device_depth" if self.depth_enabled else None,
+                "metric_depth": False,
                 "start_pose": start_pose.as_dict() if start_pose is not None else None,
                 "restore_attempted": restore_attempted,
                 "restore_succeeded": restore_succeeded,

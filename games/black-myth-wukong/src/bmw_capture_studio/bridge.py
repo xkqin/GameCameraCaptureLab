@@ -31,6 +31,7 @@ FLAG_BUFFER_REQUESTED = 1 << 2  # at least one rendered pose observed
 FLAG_NATIVE_CONTROL_READY = 1 << 3
 FLAG_INPUT_CAPTURE_READY = 1 << 4
 FLAG_HUD_CONTROL_READY = 1 << 5
+FLAG_WINDOW_INPUT_CAPTURE = 1 << 6
 
 CONTROL_OFFSET = 512
 CONTROL_HEADER = struct.Struct("<8I")
@@ -78,6 +79,11 @@ HUD_CONTROL_MAGIC = 0x48574D42
 HUD_CONTROL_VERSION = 1
 HUD_CONTROL_CAPABILITY = 1
 
+INPUT_EVENTS_OFFSET = 960
+INPUT_EVENTS = struct.Struct("<16I")
+INPUT_EVENTS_MAGIC = 0x45574D42
+INPUT_EVENTS_VERSION = 1
+
 TRAJECTORY_OFFSET = 1024
 TRAJECTORY_HEADER = struct.Struct("<8I2fIfI3I")
 TRAJECTORY_KEYFRAME = struct.Struct("<8f")
@@ -116,6 +122,7 @@ class BridgeMetadata:
     buffer_request_count: int
     flags: int
     load_tick_milliseconds: int
+    diagnostic_code: int = 0
 
     @property
     def bridge_loaded(self) -> bool:
@@ -146,8 +153,19 @@ class BridgeMetadata:
         return bool(self.flags & FLAG_INPUT_CAPTURE_READY)
 
     @property
+    def window_input_capture(self) -> bool:
+        return bool(self.flags & FLAG_WINDOW_INPUT_CAPTURE)
+
+    @property
     def hud_control_ready(self) -> bool:
         return bool(self.flags & FLAG_HUD_CONTROL_READY)
+
+
+@dataclass(frozen=True)
+class InputEventState:
+    version: int
+    size: int
+    record_point_sequence: int
 
 
 @dataclass(frozen=True)
@@ -250,6 +268,7 @@ class CameraPoseBridge:
         self.mapping_name = mapping_name
         self.mapping: mmap.mmap | None = None
         self._lock = threading.RLock()
+        self._last_record_point_sequence: int | None = None
 
     def connect(self) -> None:
         with self._lock:
@@ -271,6 +290,38 @@ class CameraPoseBridge:
             if self.mapping is not None:
                 self.mapping.close()
                 self.mapping = None
+            self._last_record_point_sequence = None
+
+    def read_input_events(self) -> InputEventState | None:
+        with self._lock:
+            self.connect()
+            assert self.mapping is not None
+            self.mapping.seek(INPUT_EVENTS_OFFSET)
+            raw = self.mapping.read(INPUT_EVENTS.size)
+        return _decode_input_events(raw)
+
+    def record_point_hotkey_supported(self) -> bool:
+        try:
+            return self.read_input_events() is not None
+        except PoseUnavailableError:
+            return False
+
+    def consume_record_point_hotkey(self) -> bool:
+        _supported, triggered = self.poll_record_point_hotkey()
+        return triggered
+
+    def poll_record_point_hotkey(self) -> tuple[bool, bool]:
+        try:
+            state = self.read_input_events()
+        except PoseUnavailableError:
+            state = None
+        if state is None:
+            self._last_record_point_sequence = None
+            return False, False
+        sequence = state.record_point_sequence
+        previous = self._last_record_point_sequence
+        self._last_record_point_sequence = sequence
+        return True, previous is not None and sequence != previous
 
     def read_metadata(self) -> BridgeMetadata | None:
         with self._lock:
@@ -286,7 +337,7 @@ class CameraPoseBridge:
             connect_call_count,
             buffer_request_count,
             flags,
-            _reserved,
+            diagnostic_code,
             load_tick_milliseconds,
         ) = BRIDGE_METADATA.unpack(raw)
         if magic != METADATA_MAGIC or version < METADATA_VERSION:
@@ -298,6 +349,7 @@ class CameraPoseBridge:
             connect_call_count=connect_call_count,
             buffer_request_count=buffer_request_count,
             flags=flags,
+            diagnostic_code=diagnostic_code,
             load_tick_milliseconds=load_tick_milliseconds,
         )
 
@@ -885,6 +937,17 @@ class CameraPoseBridge:
             "movement_locked": pose.movement_locked,
             "pose": pose,
             "metadata": metadata,
+            "input_backend": (
+                "window_raw_input_owner_thread"
+                if metadata is not None and metadata.diagnostic_code == 301
+                else "window_raw_input_direct_fallback"
+                if metadata is not None and metadata.diagnostic_code == 302
+                else "window_raw_input"
+                if metadata is not None and metadata.window_input_capture
+                else "low_level_fallback"
+                if metadata is not None and metadata.input_capture_ready
+                else "unavailable"
+            ),
             "control": control,
             "absolute_pose": absolute_pose,
             "hud": hud,
@@ -933,6 +996,7 @@ RELAY_START_TRAJECTORY = 3
 RELAY_STOP_TRAJECTORY = 4
 RELAY_SET_POSE = 5
 RELAY_SET_HUD = 6
+RELAY_READ_INPUT_EVENTS = 7
 RELAY_HEADER = struct.Struct("<4sBBHI")
 RELAY_STATUS_OK = 0
 RELAY_STATUS_ERROR = 1
@@ -1013,6 +1077,24 @@ def _decode_metadata(raw: bytes) -> BridgeMetadata | None:
         buffer_request_count=buffer_request_count,
         flags=flags,
         load_tick_milliseconds=load_tick_milliseconds,
+    )
+
+
+def _decode_input_events(raw: bytes) -> InputEventState | None:
+    if len(raw) != INPUT_EVENTS.size:
+        return None
+    unpacked = INPUT_EVENTS.unpack(raw)
+    magic, version, size, record_point_sequence = unpacked[:4]
+    if (
+        magic != INPUT_EVENTS_MAGIC
+        or version < INPUT_EVENTS_VERSION
+        or size != INPUT_EVENTS.size
+    ):
+        return None
+    return InputEventState(
+        version=version,
+        size=size,
+        record_point_sequence=record_point_sequence,
     )
 
 
@@ -1245,6 +1327,7 @@ class LinuxRelayCameraPoseBridge:
         ).strip()
         self.timeout_seconds = max(0.1, float(timeout_seconds))
         self._lock = threading.RLock()
+        self._last_record_point_sequence: int | None = None
 
     def _address(self) -> tuple[str, int]:
         try:
@@ -1322,7 +1405,32 @@ class LinuxRelayCameraPoseBridge:
         self._read_state()
 
     def close(self) -> None:
+        self._last_record_point_sequence = None
         return None
+
+    def read_input_events(self) -> InputEventState | None:
+        try:
+            payload = self._request(RELAY_READ_INPUT_EVENTS)
+        except PoseUnavailableError:
+            return None
+        return _decode_input_events(payload)
+
+    def record_point_hotkey_supported(self) -> bool:
+        return self.read_input_events() is not None
+
+    def consume_record_point_hotkey(self) -> bool:
+        _supported, triggered = self.poll_record_point_hotkey()
+        return triggered
+
+    def poll_record_point_hotkey(self) -> tuple[bool, bool]:
+        state = self.read_input_events()
+        if state is None:
+            self._last_record_point_sequence = None
+            return False, False
+        sequence = state.record_point_sequence
+        previous = self._last_record_point_sequence
+        self._last_record_point_sequence = sequence
+        return True, previous is not None and sequence != previous
 
     def read_metadata(self) -> BridgeMetadata | None:
         metadata, _camera, _precise, _control, _absolute, _hud, _trajectory = self._read_state()

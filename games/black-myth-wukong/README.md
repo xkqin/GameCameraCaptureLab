@@ -8,7 +8,7 @@
 
 | 能力 | 状态 |
 |---|---|
-| WASD/QE 自由移动（Camera ON 时独占，不再驱动角色） | 已实现 |
+| WASD＋Space/Q 自由移动（Camera ON 时独占，不再驱动角色） | 已实现 |
 | 鼠标自由观察（Yaw/Pitch） | 已实现 |
 | Shift 5× 加速移动 | 已实现 |
 | Delete / 界面按钮隐藏与恢复 HUD | 已实现，需游戏内视觉验收完整覆盖范围 |
@@ -17,6 +17,7 @@
 | 进程内连续 Hermite 轨迹 | 已实现；结束后保持终点 |
 | 点位文件、自动 22 方向静态采集 | 已接入 |
 | OBS 1920×1080 JPG 截图 | 已接入 |
+| 自研 D3D12 raw device depth（NPY＋预览） | 已实机采集有效场景深度；OBS RGB 像素对齐待验收 |
 | 单条/批量轨迹录像、继续采集 | 已接入 |
 | 每 30 秒重启 OBS 分段释放显存 | 已接入 |
 | Windows 直接注入 | 已实现 |
@@ -38,7 +39,8 @@
 - `Home`：锁定/解锁手动移动
 - `Delete`：隐藏/恢复 HUD
 - 鼠标移动：自由控制 Yaw/Pitch；灵敏度可由 `BMW_CAMERA_MOUSE_SENSITIVITY` 调整
-- `W/S`、`A/D`、`Q/E`：前后、左右、下上
+- `W/S`、`A/D`、`Q/Space`：前后、左右、下上
+- `E`：立即记录当前相机点位并追加到活动点位文件（Camera ON 时）
 - 方向键：Yaw/Pitch
 - `Z/C`：Roll
 - 小键盘 `+/-`：FOV
@@ -110,11 +112,31 @@ export BMW_PROTON_COMMAND="/path/to/Proton/proton"
 export BMW_CAMERA_INJECT_COMMAND='"/path/to/Proton/proton" run {injector}'
 ```
 
-Relay 只监听 `127.0.0.1`，协议支持读取状态、相对控制、绝对 `setPose`、启动轨迹和停止轨迹。Linux 全局 F8 不可用，请使用界面按钮记录点位。
+Relay 只监听 `127.0.0.1`，协议支持读取状态、相对控制、绝对 `setPose`、启动/停止轨迹以及 Runtime 的 `E` 点位事件。旧 Runtime 不支持该事件时，请使用界面按钮记录点位。
 
 ## 采集产物
 
-静态采集写入 `capture_data/still_captures/`，每个空间点展开为 22 个方向，并保存目标 Pose、实际 Pose、JPG 路径和 manifest。
+静态采集写入 `capture_data/still_captures/`，每个空间点展开为 22 个方向。界面中的
+“同时保存深度”是默认关闭的可选项；勾选后每个样本保存 RGB JPG、`depth.npy`、
+`depth_preview.png`、目标/实际 Pose 和 `metadata.json`。深度模块直接编译进
+`UeCameraRuntime.dll`，收到请求后才安装 D3D12 Hook，不需要图形代理或第三方 Add-on。
+
+坐标同时保留原始值和米制 `position_m`。本适配器按用户提供的尺度
+`1 game unit = 1 cm`，因此 `meters_per_unit=0.01`；该尺度用于相机位置，
+不是深度线性化参数。`depth.npy` 仍标记为 `raw_device_depth`、
+`metric_depth=false`。原生 depth buffer 已在实机生成非恒定场景几何；近远平面和 OBS RGB
+像素对齐仍须单独标定后才能升级声明。
+
+```text
+capture_data/still_captures/<run>/
+├─ images/00001_*.jpg
+├─ samples/sample_000001/
+│  ├─ depth.npy
+│  ├─ depth_preview.png
+│  └─ metadata.json
+├─ manifest.json
+└─ manifest.csv
+```
 
 轨迹采集写入：
 

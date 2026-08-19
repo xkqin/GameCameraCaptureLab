@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
+import hashlib
 import json
+import locale
 import os
 from pathlib import Path
 import subprocess
@@ -19,6 +21,7 @@ from .injection import (
 )
 from .paths import (
     ACTIVE_RUNTIME_CONFIG_PATH,
+    NATIVE_BUILD_STAMP_PATH,
     NATIVE_BUILD_SCRIPT_PATH,
     NATIVE_DIR,
     REPOSITORY_ROOT,
@@ -89,7 +92,7 @@ class CameraPreflightReport:
 def _native_sources() -> tuple[Path, ...]:
     roots = (
         NATIVE_DIR,
-        REPOSITORY_ROOT / "runtime" / "ue-camera-runtime" / "native",
+        REPOSITORY_ROOT / "core" / "runtime" / "ue-camera-runtime" / "native",
     )
     suffixes = {".cpp", ".h", ".asm", ".txt", ".ps1"}
     return tuple(
@@ -99,8 +102,109 @@ def _native_sources() -> tuple[Path, ...]:
         for path in root.rglob("*")
         if path.is_file()
         and path.suffix.casefold() in suffixes
-        and "build_standalone_v1" not in path.parts
+        and not any(
+            part.casefold().startswith("build")
+            for part in path.relative_to(root).parts[:-1]
+        )
     )
+
+
+def _native_source_groups() -> dict[str, tuple[Path, ...]]:
+    sources = _native_sources()
+    injector_names = {
+        "cmakelists.txt",
+        "build_standalone.ps1",
+        "uecamerainjector.cpp",
+        "uecameraprofile.cpp",
+        "uecameraprofile.h",
+    }
+    return {
+        "runtime": tuple(
+            path
+            for path in sources
+            if not path.name.casefold().endswith("injector.cpp")
+        ),
+        "injector": tuple(
+            path for path in sources if path.name.casefold() in injector_names
+        ),
+    }
+
+
+def _file_digest(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _source_digest(paths: tuple[Path, ...]) -> str:
+    digest = hashlib.sha256()
+    for path in sorted(paths, key=lambda value: str(value.resolve()).casefold()):
+        try:
+            identity = path.resolve().relative_to(REPOSITORY_ROOT.resolve()).as_posix()
+        except ValueError:
+            identity = str(path.resolve())
+        digest.update(identity.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(_file_digest(path).encode("ascii"))
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _native_build_stamp_valid(
+    source_groups: dict[str, tuple[Path, ...]],
+) -> bool:
+    try:
+        payload = json.loads(NATIVE_BUILD_STAMP_PATH.read_text(encoding="utf-8"))
+        if payload.get("schema_version") != 1:
+            return False
+        recorded_sources = payload["source_digests"]
+        recorded_outputs = payload["outputs"]
+        outputs = {
+            "runtime": UE_RUNTIME_PATH,
+            "injector": UE_INJECTOR_PATH,
+        }
+        return all(
+            recorded_sources.get(name) == _source_digest(source_groups[name])
+            and recorded_outputs.get(name, {}).get("sha256") == _file_digest(output)
+            and int(recorded_outputs.get(name, {}).get("size", -1))
+            == output.stat().st_size
+            for name, output in outputs.items()
+        )
+    except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError):
+        return False
+
+
+def _write_native_build_stamp() -> Path:
+    source_groups = _native_source_groups()
+    outputs = {
+        "runtime": UE_RUNTIME_PATH,
+        "injector": UE_INJECTOR_PATH,
+    }
+    payload = {
+        "schema_version": 1,
+        "verified_at": datetime.now(timezone.utc).isoformat(),
+        "source_digests": {
+            name: _source_digest(paths) for name, paths in source_groups.items()
+        },
+        "outputs": {
+            name: {
+                "path": str(path.resolve()),
+                "size": path.stat().st_size,
+                "sha256": _file_digest(path),
+            }
+            for name, path in outputs.items()
+        },
+    }
+    NATIVE_BUILD_STAMP_PATH.parent.mkdir(parents=True, exist_ok=True)
+    temporary = NATIVE_BUILD_STAMP_PATH.with_suffix(".tmp")
+    temporary.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    temporary.replace(NATIVE_BUILD_STAMP_PATH)
+    return NATIVE_BUILD_STAMP_PATH
 
 
 def _native_build_needed() -> tuple[bool, str]:
@@ -108,12 +212,30 @@ def _native_build_needed() -> tuple[bool, str]:
     missing = [path.name for path in outputs if not path.is_file()]
     if missing:
         return True, f"缺少原生组件 / Missing native components: {', '.join(missing)}"
-    sources = _native_sources()
-    if sources:
-        newest_source = max(path.stat().st_mtime for path in sources)
-        oldest_output = min(path.stat().st_mtime for path in outputs)
-        if newest_source > oldest_output:
-            return True, "原生源码已更新，需要重新构建 / Native sources changed; rebuild DLL/Injector"
+    groups = _native_source_groups()
+    if any(groups.values()):
+        # A successful build can legitimately leave an unchanged target's
+        # timestamp untouched. Validate the exact source/output content first;
+        # mtime remains only the conservative fallback for old worktrees that
+        # do not yet have a verified build stamp.
+        if _native_build_stamp_valid(groups):
+            return False, "原生组件已通过构建验证 / Native components verified"
+        source_groups = (
+            (UE_RUNTIME_PATH, groups["runtime"]),
+            (UE_INJECTOR_PATH, groups["injector"]),
+        )
+        stale_outputs = [
+            output.name
+            for output, relevant_sources in source_groups
+            if relevant_sources
+            and max(path.stat().st_mtime for path in relevant_sources)
+            > output.stat().st_mtime
+        ]
+        if stale_outputs:
+            return True, (
+                "原生源码已更新，需要重新构建 / Native sources changed; rebuild "
+                + ", ".join(stale_outputs)
+            )
     return False, "原生组件已就绪 / Native components ready"
 
 
@@ -284,20 +406,37 @@ def _build_native_runtime() -> str:
         command,
         cwd=NATIVE_DIR,
         capture_output=True,
-        text=True,
         check=False,
         timeout=360,
         creationflags=creationflags,
     )
+
+    def decode_output(value: bytes | str | None) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            return value
+        encodings = ("utf-8-sig", locale.getpreferredencoding(False))
+        for encoding in dict.fromkeys(encodings):
+            try:
+                return value.decode(encoding)
+            except (LookupError, UnicodeDecodeError):
+                continue
+        return value.decode("utf-8", errors="replace")
+
     output = "\n".join(
         value.strip()
-        for value in (completed.stdout, completed.stderr)
+        for value in (
+            decode_output(completed.stdout),
+            decode_output(completed.stderr),
+        )
         if value and value.strip()
     )
     if completed.returncode != 0:
         raise CameraIntegrationError(output or "Camera Runtime 自动构建失败 / Automatic build failed")
     if not UE_RUNTIME_PATH.is_file() or not UE_INJECTOR_PATH.is_file():
         raise CameraIntegrationError("构建后组件不完整 / Build finished without complete Runtime/Injector")
+    _write_native_build_stamp()
     return output
 
 

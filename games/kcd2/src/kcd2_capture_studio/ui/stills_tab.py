@@ -6,6 +6,7 @@ from threading import Event
 
 from ..backend import CameraBackend
 from ..capture import StillCaptureSession
+from ..depth_bridge import DepthBridge
 from ..obs_bridge import OBSBridge, obs_available
 from ..paths import PLANS_DIR, RUNS_DIR, STILLS_DIR
 from ..pose_control import ClosedLoopPoseController, PoseTolerance
@@ -36,6 +37,17 @@ class StillsTab(ttk.Frame):
         self.width_var = tk.IntVar(value=int(obs.get("width", 1920)))
         self.height_var = tk.IntVar(value=int(obs.get("height", 1080)))
         self.quality_var = tk.IntVar(value=int(obs.get("quality", 100)))
+        depth = settings.get("depth", {})
+        self.depth_enabled_var = tk.BooleanVar(
+            value=False
+        )
+        self.depth_timeout_var = tk.DoubleVar(
+            value=float(depth.get("timeout_seconds", 8.0))
+        )
+        self.depth_bridge = DepthBridge()
+        self.depth_status_var = tk.StringVar(
+            value=f"深度 IPC：{self.depth_bridge.channel_dir}"
+        )
         self.label_var = tk.StringVar(value="current")
         self.pose_hz_var = tk.DoubleVar(
             value=float(settings.get("pose_logger_hz", 30.0))
@@ -103,6 +115,29 @@ class StillsTab(ttk.Frame):
             text="打开截图目录",
             command=lambda: open_in_explorer(STILLS_DIR),
         ).grid(row=0, column=11, padx=6)
+        ttk.Checkbutton(
+            still,
+            text="原生深度（KCD2 后端待接入）",
+            variable=self.depth_enabled_var,
+            state="disabled",
+        ).grid(row=1, column=0, columnspan=2, padx=4, pady=(8, 0), sticky="w")
+        labeled_entry(
+            still,
+            1,
+            "深度超时(s)",
+            self.depth_timeout_var,
+            column=2,
+            width=8,
+        )
+        ttk.Button(still, text="检查深度桥", command=self.check_depth_bridge).grid(
+            row=1, column=4, columnspan=2, padx=6, pady=(8, 0), sticky="w"
+        )
+        ttk.Label(
+            still,
+            textvariable=self.depth_status_var,
+            foreground="#1d4ed8",
+            wraplength=760,
+        ).grid(row=2, column=0, columnspan=12, sticky="w", pady=(6, 0))
 
         record = ttk.LabelFrame(self, text="OBS 录像 + 连续 Pose 对齐", padding=10)
         record.pack(fill="x")
@@ -189,6 +224,7 @@ class StillsTab(ttk.Frame):
                     self.backend,
                     bridge,
                     scene_id=self.scene_var.get(),
+                    depth_bridge=self.depth_bridge,
                 )
             else:
                 self.capture_session.obs = bridge
@@ -199,6 +235,8 @@ class StillsTab(ttk.Frame):
                 width=int(self.width_var.get()),
                 height=int(self.height_var.get()),
                 quality=int(self.quality_var.get()),
+                depth_enabled=bool(self.depth_enabled_var.get()),
+                depth_timeout=float(self.depth_timeout_var.get()),
             )
 
         self.app.run_async("OBS 截图并写入 pose metadata", task, self._after_capture)
@@ -229,6 +267,10 @@ class StillsTab(ttk.Frame):
             "pose_logger_hz": float(self.pose_hz_var.get()),
             "scan_settle_seconds": float(self.scan_settle_var.get()),
             "last_scan_plan": self.scan_plan_var.get(),
+            "depth": {
+                "enabled": bool(self.depth_enabled_var.get()),
+                "timeout_seconds": float(self.depth_timeout_var.get()),
+            },
             "obs": {
                 "host": self.host_var.get(),
                 "port": int(self.port_var.get()),
@@ -250,6 +292,18 @@ class StillsTab(ttk.Frame):
         if path:
             self.scan_plan_var.set(path)
             self.inspect_scan_plan()
+
+    def check_depth_bridge(self) -> None:
+        status = self.depth_bridge.status()
+        runtime = status.get("runtime")
+        if isinstance(runtime, dict) and runtime.get("process_id"):
+            self.depth_status_var.set(
+                "检测到原生 D3D12 Runtime 状态，但 KCD2 接入尚未验收；深度保持禁用。"
+            )
+            return
+        self.depth_status_var.set(
+            "KCD2 自研 D3D12 深度后端尚未接入；当前不能采集深度。"
+        )
 
     def inspect_scan_plan(self) -> None:
         try:
@@ -312,6 +366,7 @@ class StillsTab(ttk.Frame):
             controller,
             self._obs(),
             stop_event=Event(),
+            depth_bridge=self.depth_bridge,
         )
         return self.auto_scan.run(
             self.scan_plan_var.get(),
@@ -325,6 +380,8 @@ class StillsTab(ttk.Frame):
             start_sample=int(self.scan_start_var.get()),
             end_sample=int(end_text) if end_text else None,
             strict_pose=bool(self.scan_strict_var.get()),
+            depth_enabled=bool(self.depth_enabled_var.get()),
+            depth_timeout=float(self.depth_timeout_var.get()),
             progress_callback=self._scan_progress,
         )
 
@@ -351,7 +408,12 @@ class StillsTab(ttk.Frame):
         )
 
     def _after_capture(self, row: dict) -> None:
-        self.status_var.set(f"截图完成：{row['image_path']}")
+        depth_text = (
+            f"；Depth={row['depth_path']}"
+            if row.get("depth_path")
+            else "；Depth=关闭"
+        )
+        self.status_var.set(f"截图完成：{row['image_path']}{depth_text}")
         self.app.log(
             f"静态样本 #{row['sample_index']} 已保存：{row['image_path']}"
         )

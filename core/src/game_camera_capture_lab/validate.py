@@ -10,6 +10,7 @@ SCHEMA_NAMES = (
     "camera_pose_v1.schema.json",
     "game_support_catalog_v1.schema.json",
     "point_set_v1.schema.json",
+    "static_sample_v1.schema.json",
     "trajectory_v1.schema.json",
     "ue_camera_profile_v1.schema.json",
 )

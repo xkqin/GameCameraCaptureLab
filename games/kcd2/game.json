@@ -4,8 +4,16 @@
   "name": "Kingdom Come: Deliverance II",
   "short_name": "KCD2",
   "engine": "CryEngine",
+  "camera_backend": "kcd2_igcs_camera_tools",
+  "integration": "unified_launcher_route",
   "maturity": "beta",
-  "summary": "读取 Camera Tools 位姿，管理边界点与扫描计划，并执行已验证的相对随机运镜。",
+  "coordinate_system": {
+    "position_unit": "meters",
+    "meters_per_unit": 1.0,
+    "scale_source": "user_provided",
+    "native_position_preserved": true
+  },
+  "summary": "读取 Camera Tools 位姿，管理边界点与扫描计划，并采集 OBS RGB 与 Pose；原始 D3D12 深度后端待接入。",
   "documentation": "README.md",
   "examples": "examples",
   "capabilities": {
@@ -15,6 +23,7 @@
     "relative_pose_control": "verified",
     "point_capture": "verified",
     "still_capture": "implemented_requires_obs",
+    "depth_capture": "backend_integration_pending",
     "trajectory_capture": "verified",
     "trajectory_replay": "relative_only"
   },
@@ -31,7 +40,9 @@
         "-ExecutionPolicy",
         "Bypass",
         "-File",
-        "{game}/launch_kcd2_capture_studio.ps1"
+        "{repo}/launchers/launch_unified_capture_studio.ps1",
+        "-GameId",
+        "kcd2"
       ]
     }
   ]

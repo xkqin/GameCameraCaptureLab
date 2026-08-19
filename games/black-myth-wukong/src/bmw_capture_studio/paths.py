@@ -37,6 +37,9 @@ UE_RUNTIME_PATH = (
 UE_INJECTOR_PATH = (
     NATIVE_DIR / "build_standalone_v1" / "Release" / "UeCameraInjector.exe"
 )
+NATIVE_BUILD_STAMP_PATH = (
+    NATIVE_DIR / "build_standalone_v1" / "Release" / "native_build_verified.json"
+)
 NATIVE_BUILD_SCRIPT_PATH = NATIVE_DIR / "build_standalone.ps1"
 UE_PROFILE_DIR = REPOSITORY_ROOT / "core" / "runtime" / "ue-camera-runtime" / "profiles"
 ACTIVE_RUNTIME_CONFIG_PATH = LOGS_DIR / "ue_camera_active_profile.json"

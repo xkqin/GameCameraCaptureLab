@@ -30,7 +30,7 @@
 |---|---|---|
 | 相机层 | 自由移动、鼠标视角、Pose 读取、绝对 `setPose`、FOV、HUD | 可控制且可测量的相机 |
 | 空间层 | 手工记录边界、3D 点位图、分层铺点、导入点位文件 | 可复用的场景扫描计划 |
-| 静态采集 | 每个空间点自动采集 22 个方向，OBS 输出 1920×1080 JPG | 图片、目标/实测 Pose、manifest |
+| 静态采集 | 每个空间点自动采集 22 个方向；OBS RGB，支持游戏 depth buffer | RGB、raw depth、目标/实测 Pose、manifest |
 | 轨迹采集 | 自动加载轨迹、连续回放、录像、批次进度与断点继续 | 视频、关键帧、逐帧 Pose、时间线 |
 | 工程层 | 多游戏注册表、统一 Schema、Windows/Linux、报警与恢复 | 可扩展、可审计的数据采集系统 |
 
@@ -89,8 +89,8 @@ p(u) = h00(u)p0 + h10(u)Δt·m0 + h01(u)p1 + h11(u)Δt·m1,  u ∈ [0, 1]
 | 游戏 | 引擎 | 位姿读取 | 绝对位姿控制 | 静态/轨迹采集 | 成熟度 |
 |---|---|---|---|---|---|
 | RE Engine / RE9 | RE Engine | 已验证 | 已验证 Lua `setPose` | 已验证 | 稳定 |
-| Kingdom Come: Deliverance II | CryEngine | 已验证 | 画面结果待完整确认 | OBS 与批量采集已实现 | Beta |
-| Black Myth: Wukong | Unreal Engine 5 | 自研 Runtime 已实机验证 | 原子 `setPose` 已实机验证 | 22 方向静态与进程内轨迹已接入 | Beta |
+| Kingdom Come: Deliverance II | CryEngine | 已验证 | 画面结果待完整确认 | OBS 批量采集已实现；自研原始深度后端待接入 | Beta |
+| Black Myth: Wukong | Unreal Engine 5 | 自研 Runtime 已实机验证 | 原子 `setPose` 已实机验证 | 22 方向 RGB/Pose/raw depth 与进程内轨迹已接入；原生场景深度已实机采到，RGB 对齐待验收 | Beta |
 | Backrooms Lost Runners | Unreal Engine 5.6 | 三处 Hook 与实时 Pose 已验证 | 相对控制与原子 `setPose` 已验证 | 进程内轨迹已验证；OBS 等待可见验收 | Beta |
 
 “读到 Pose”“命令被运行时接收”和“游戏画面到达目标”是三层不同的验收。表格不会把一个游戏的结果自动套到另一个游戏。
@@ -136,6 +136,20 @@ Windows 可以直接双击 `launchers\启动多游戏采集中心.bat` 选择任
 
 Linux/Proton 可用 `bash launchers/launch_unified_capture_studio.sh <profile-id>` 启动同一套采集 UI，并支持点位/轨迹文件、OBS WebSocket 和回环 Relay；注入器与 Runtime 仍需在游戏所属 Proton 前缀中运行。未配置实时链路时，界面只进入离线/等待状态，不会伪造已连接。
 
+KCD2 是统一入口中的独立 CryEngine 适配器：`-GameId kcd2` 会路由到 Camera Tools/IGCS
+底层后端和 KCD2 采集页面，不会套用 UE Camera Runtime；它的统一数据根目录为
+`capture_data/kcd2/`。启动器会自动发现并校验已有 Camera Tools 目录。静态采集已接入
+静态深度输出接口，目标格式为 `rgb.jpg + depth.npy + depth_preview.png + metadata.json`；
+KCD2 的自研 D3D12 后端尚未接入，当前不会启用或伪造深度。KCD2 的绝对
+`setPose` 仍按“画面结果待验收”门控。
+
+黑神话的 `UeCameraRuntime.dll` 已内置项目自研、按请求启用的 D3D12 depth bridge，
+不依赖图形代理或第三方 Add-on。KCD2 后续复用同一 v2 IPC 协议，但必须单独完成运行时接入。
+静态样本同时保留原始游戏坐标和米制坐标：黑神话按用户提供的
+`1 game unit = 1 cm` 写入 `meters_per_unit=0.01`，KCD2 按
+`1 game unit = 1 m` 写入 `meters_per_unit=1.0`。该换算只作用于相机位置；
+`depth.npy` 仍是 raw device depth，不会被误标成米制距离。
+
 ## 采集界面控制
 
 统一采集器启动后，运行时控制区提供一个语言下拉框，可在 `中文` 和 `English` 之间直接切换，不需要重启。主界面、动态状态、进度文本以及“通知与自动修复”设置指南会同步切换到所选语言。
@@ -166,8 +180,9 @@ notifications:
 
 统一格式位于 [`core/schemas/`](core/schemas/)：
 
-- `camera-pose/v1`：XYZ、旋转、FOV、坐标系与单位；
+- `camera-pose/v1`：原始 XYZ、米制 `position_m`、旋转、FOV、坐标系与单位换算来源；
 - `camera-point-set/v1`：空间点位、场景和采集元数据；
+- `camera-static-sample/v1`：单个 RGB、Pose、raw depth 与同步质量；
 - `camera-trajectory/v1`：带时间的轨迹关键帧；
 - `ue_camera_profile_v1`：UE 进程、Hook 签名、ABI 和能力声明。
 - `game_support_catalog/v1`：公开相机证据、本项目运行时验收和排除风险分层。

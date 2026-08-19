@@ -13,6 +13,7 @@ import time
 from typing import Any, Callable, Protocol, Sequence
 
 from .bridge import METADATA_VERSION
+from .coordinate_scale import COORDINATE_SCALE
 from .models import CameraPose, CapturePoint, ImportedTrajectory
 from .paths import TRAJECTORY_CAPTURES_DIR
 
@@ -64,7 +65,13 @@ def safe_id(value: str) -> str:
 
 
 def _pose_row(pose: CameraPose) -> dict[str, Any]:
-    return pose.as_dict()
+    position_m = COORDINATE_SCALE.position_m(pose.x, pose.y, pose.z)
+    return {
+        **pose.as_dict(),
+        "x_m": position_m["x"],
+        "y_m": position_m["y"],
+        "z_m": position_m["z"],
+    }
 
 
 def _wrap_degrees(value: float) -> float:
@@ -817,6 +824,8 @@ class TrajectoryRecorder:
             status = "failed" if error else ("stopped" if stopped else "completed")
             manifest = {
                 "format": "bmw-standalone-trajectory-capture-v4",
+                "game_id": "black-myth-wukong",
+                "coordinate_system": COORDINATE_SCALE.coordinate_system(),
                 "status": status,
                 "error": error,
                 "control_method": (
@@ -991,6 +1000,8 @@ class BatchTrajectoryRecorder:
             manifest_path = target / "run_manifest.json"
             manifest = {
                 "format": "bmw-uuu-trajectory-batch-v2",
+                "game_id": "black-myth-wukong",
+                "coordinate_system": COORDINATE_SCALE.coordinate_system(),
                 "scene_id": self.scene_id,
                 "source_path": str(source),
                 "source_copy": str(source_copy),

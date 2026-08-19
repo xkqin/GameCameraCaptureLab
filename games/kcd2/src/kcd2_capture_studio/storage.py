@@ -9,6 +9,7 @@ import time
 from typing import Any
 
 from .models import CapturedPoint, Pose, TrajectoryKeyframe
+from .coordinate_scale import COORDINATE_SCALE
 from .paths import BACKUPS_DIR, POINTS_DIR, TRAJECTORIES_DIR, ensure_data_dirs
 
 
@@ -22,6 +23,9 @@ POINT_FIELDS = [
     "x",
     "y",
     "z",
+    "x_m",
+    "y_m",
+    "z_m",
     "q0",
     "q1",
     "q2",
@@ -31,6 +35,51 @@ POINT_FIELDS = [
     "roll_degrees",
     "fov_degrees",
 ]
+
+COORDINATE_SYSTEM = COORDINATE_SCALE.coordinate_system()
+
+
+def _pose_payload(pose: Pose) -> dict[str, Any]:
+    return {
+        "position": {"x": pose.x, "y": pose.y, "z": pose.z},
+        "position_m": COORDINATE_SCALE.position_m(pose.x, pose.y, pose.z),
+        "rotation": {
+            "yaw": pose.yaw_degrees,
+            "pitch": pose.pitch_degrees,
+            "roll": pose.roll_degrees,
+        },
+        "quaternion": {
+            "x": pose.q0,
+            "y": pose.q1,
+            "z": pose.q2,
+            "w": pose.q3,
+        },
+        "fov_degrees": pose.fov_degrees,
+    }
+
+
+def _shared_pose_to_legacy(item: dict[str, Any]) -> dict[str, Any]:
+    """Flatten a shared-schema pose for the existing KCD2 dataclasses."""
+    pose = item["pose"]
+    position = pose["position"]
+    rotation = pose["rotation"]
+    quaternion = pose.get("quaternion") or {}
+    metadata = item.get("metadata") or {}
+    return {
+        "captured_at": metadata.get("captured_at", ""),
+        "pid": metadata.get("pid", 0),
+        "x": position["x"],
+        "y": position["y"],
+        "z": position["z"],
+        "q0": quaternion.get("x", 0.0),
+        "q1": quaternion.get("y", 0.0),
+        "q2": quaternion.get("z", 0.0),
+        "q3": quaternion.get("w", 1.0),
+        "yaw_degrees": rotation["yaw"],
+        "pitch_degrees": rotation["pitch"],
+        "roll_degrees": rotation["roll"],
+        "fov_degrees": pose["fov_degrees"],
+    }
 
 
 def safe_id(value: str, fallback: str = "new_scene") -> str:
@@ -54,15 +103,28 @@ class PointStore:
             return []
         raw = json.loads(self.json_path.read_text(encoding="utf-8-sig"))
         entries = raw.get("points", raw if isinstance(raw, list) else [])
+        shared_schema = raw.get("schema_version") == "camera-point-set/v1"
         points: list[CapturedPoint] = []
-        for item in entries:
-            pose = Pose.from_mapping(item)
+        for ordinal, item in enumerate(entries, start=1):
+            pose = Pose.from_mapping(
+                _shared_pose_to_legacy(item) if shared_schema else item
+            )
+            metadata = item.get("metadata") or {}
+            point_index = (
+                int(metadata.get("index", ordinal))
+                if shared_schema
+                else int(item["index"])
+            )
             points.append(
                 CapturedPoint(
-                    index=int(item["index"]),
+                    index=point_index,
                     scene_id=str(item.get("scene_id") or self.scene_id),
                     label=str(item.get("label") or ""),
-                    timestamp_sec=float(item.get("timestamp_sec") or 0.0),
+                    timestamp_sec=float(
+                        item.get("time_sec", 0.0)
+                        if shared_schema
+                        else item.get("timestamp_sec", 0.0)
+                    ),
                     pose=pose,
                 )
             )
@@ -107,9 +169,26 @@ class PointStore:
         self.json_path.write_text(
             json.dumps(
                 {
+                    "schema_version": "camera-point-set/v1",
+                    "game_id": "kcd2",
                     "scene_id": self.scene_id,
-                    "count": len(rows),
-                    "points": rows,
+                    "coordinate_system": COORDINATE_SYSTEM,
+                    "points": [
+                        {
+                            "id": f"point_{point.index:04d}",
+                            "label": point.label,
+                            "time_sec": point.timestamp_sec,
+                            "pose": _pose_payload(point.pose),
+                            "metadata": {
+                                "index": point.index,
+                                "captured_at": point.pose.captured_at,
+                                "pid": point.pose.pid,
+                                "source": "kcd2-camera-tools",
+                            },
+                        }
+                        for point in points
+                    ],
+                    "metadata": {"count": len(points)},
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -131,7 +210,27 @@ class TrajectoryStore:
             return []
         payload = json.loads(self.json_path.read_text(encoding="utf-8-sig"))
         frames = payload.get("keyframes", [])
-        return [TrajectoryKeyframe(**item) for item in frames]
+        if payload.get("schema_version") != "camera-trajectory/v1":
+            return [TrajectoryKeyframe(**item) for item in frames]
+        converted: list[TrajectoryKeyframe] = []
+        for item in frames:
+            pose = item["pose"]
+            position = pose["position"]
+            rotation = pose["rotation"]
+            converted.append(
+                TrajectoryKeyframe(
+                    step=int(item["index"]),
+                    time_sec=float(item["time_sec"]),
+                    x=float(position["x"]),
+                    y=float(position["y"]),
+                    z=float(position["z"]),
+                    yaw_degrees=float(rotation["yaw"]),
+                    pitch_degrees=float(rotation["pitch"]),
+                    roll_degrees=float(rotation["roll"]),
+                    fov_degrees=float(pose["fov_degrees"]),
+                )
+            )
+        return converted
 
     def append_pose(self, pose: Pose) -> TrajectoryKeyframe:
         frames = self.load()
@@ -151,7 +250,10 @@ class TrajectoryStore:
         return frame
 
     def reset(self) -> None:
-        self._write([])
+        # The shared trajectory schema requires at least one keyframe. An empty
+        # trajectory is therefore represented by the absence of its files.
+        self.json_path.unlink(missing_ok=True)
+        self.csv_path.unlink(missing_ok=True)
         self.started = time.perf_counter()
 
     def _write(self, frames: list[TrajectoryKeyframe]) -> None:
@@ -159,19 +261,48 @@ class TrajectoryStore:
         self.json_path.write_text(
             json.dumps(
                 {
+                    "schema_version": "camera-trajectory/v1",
+                    "game_id": "kcd2",
                     "trajectory_id": self.trajectory_id,
-                    "coordinate_system": {
-                        "angle_unit": "degrees",
-                        "vertical_axis": "z",
+                    "coordinate_system": COORDINATE_SYSTEM,
+                    "keyframes": [
+                        {
+                            "index": frame.step,
+                            "time_sec": frame.time_sec,
+                            "pose": {
+                                "position": {
+                                    "x": frame.x,
+                                    "y": frame.y,
+                                    "z": frame.z,
+                                },
+                                "position_m": COORDINATE_SCALE.position_m(
+                                    frame.x, frame.y, frame.z
+                                ),
+                                "rotation": {
+                                    "yaw": frame.yaw_degrees,
+                                    "pitch": frame.pitch_degrees,
+                                    "roll": frame.roll_degrees,
+                                },
+                                "fov_degrees": frame.fov_degrees,
+                            },
+                        }
+                        for frame in frames
+                    ],
+                    "metadata": {
+                        "source": "kcd2-camera-tools",
+                        **COORDINATE_SCALE.metadata(),
                     },
-                    "keyframes": rows,
                 },
                 ensure_ascii=False,
                 indent=2,
             ),
             encoding="utf-8",
         )
-        fieldnames = list(TrajectoryKeyframe.__dataclass_fields__)
+        fieldnames = list(TrajectoryKeyframe.__dataclass_fields__) + [
+            "x_m",
+            "y_m",
+            "z_m",
+        ]
         with self.csv_path.open("w", newline="", encoding="utf-8-sig") as handle:
             writer = csv.DictWriter(handle, fieldnames=fieldnames)
             writer.writeheader()

@@ -22,6 +22,7 @@ constexpr std::uint8_t kRelayStartTrajectory = 3;
 constexpr std::uint8_t kRelayStopTrajectory = 4;
 constexpr std::uint8_t kRelaySetPose = 5;
 constexpr std::uint8_t kRelaySetHud = 6;
+constexpr std::uint8_t kRelayReadInputEvents = 7;
 constexpr std::uint16_t kRelayStatusOk = 0;
 constexpr std::uint16_t kRelayStatusError = 1;
 constexpr std::size_t kRelayMaxPayload = 8 * 1024 * 1024;
@@ -147,6 +148,20 @@ bool sendState(SOCKET client)
     append(g_relayMapping + kHudControlOffset, sizeof(HudControl));
     append(g_relayMapping + kTrajectoryOffset, sizeof(NativeTrajectory));
     return sendResponse(client, kRelayReadState, kRelayStatusOk, state.data(), state.size());
+}
+
+bool sendInputEvents(SOCKET client)
+{
+    if (g_relayMapping == nullptr)
+    {
+        return sendError(client, kRelayReadInputEvents, "bridge mapping is unavailable");
+    }
+    return sendResponse(
+        client,
+        kRelayReadInputEvents,
+        kRelayStatusOk,
+        g_relayMapping + kInputEventsOffset,
+        sizeof(InputEvents));
 }
 
 bool applyControl(SOCKET client, const std::vector<std::uint8_t>& payload)
@@ -296,6 +311,10 @@ bool handleRequest(SOCKET client)
         return setPose(client, payload);
     case kRelaySetHud:
         return setHud(client, payload);
+    case kRelayReadInputEvents:
+        return payload.empty()
+            ? sendInputEvents(client)
+            : sendError(client, request.operation, "read-input-events payload must be empty");
     default:
         return sendError(client, request.operation, "unknown relay operation");
     }

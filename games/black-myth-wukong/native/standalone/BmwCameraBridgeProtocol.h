@@ -13,6 +13,7 @@ constexpr std::size_t kMetadataOffset = 256;
 constexpr std::size_t kControlOffset = 512;
 constexpr std::size_t kAbsolutePoseOffset = 768;
 constexpr std::size_t kHudControlOffset = 896;
+constexpr std::size_t kInputEventsOffset = 960;
 constexpr std::size_t kTrajectoryOffset = 1024;
 
 constexpr std::uint32_t kMetadataMagic = 0x42574D42; // BMWB
@@ -25,6 +26,8 @@ constexpr std::uint32_t kAbsolutePoseMagic = 0x41574D42; // BMWA
 constexpr std::uint32_t kAbsolutePoseVersion = 1;
 constexpr std::uint32_t kHudControlMagic = 0x48574D42; // BMWH
 constexpr std::uint32_t kHudControlVersion = 1;
+constexpr std::uint32_t kInputEventsMagic = 0x45574D42; // BMWE
+constexpr std::uint32_t kInputEventsVersion = 1;
 constexpr std::uint32_t kTrajectoryMagic = 0x54574D42; // BMWT
 constexpr std::uint32_t kTrajectoryVersion = 1;
 
@@ -34,6 +37,7 @@ constexpr std::uint32_t kFlagPoseObserved = 1u << 2;
 constexpr std::uint32_t kFlagNativeControlReady = 1u << 3;
 constexpr std::uint32_t kFlagInputCaptureReady = 1u << 4;
 constexpr std::uint32_t kFlagHudControlReady = 1u << 5;
+constexpr std::uint32_t kFlagWindowInputCapture = 1u << 6;
 
 constexpr std::uint32_t kCapabilityForward = 1u << 0;
 constexpr std::uint32_t kCapabilityRight = 1u << 1;
@@ -194,6 +198,15 @@ struct HudControl
     std::uint32_t reserved[7];
 };
 
+struct InputEvents
+{
+    std::uint32_t magic;
+    std::uint32_t version;
+    std::uint32_t size;
+    volatile LONG recordPointSequence;
+    std::uint32_t reserved[12];
+};
+
 struct NativeTrajectory
 {
     std::uint32_t magic;
@@ -246,6 +259,7 @@ static_assert(sizeof(PrecisePose) == 72, "PrecisePose layout changed");
 static_assert(sizeof(NativeControl) == 64, "NativeControl layout changed");
 static_assert(sizeof(AbsolutePoseControl) == 88, "AbsolutePoseControl layout changed");
 static_assert(sizeof(HudControl) == 64, "HudControl layout changed");
+static_assert(sizeof(InputEvents) == 64, "InputEvents layout changed");
 static_assert(sizeof(NativeTrajectory) == 64, "NativeTrajectory layout changed");
 static_assert(sizeof(TrajectoryKeyframe) == 32, "TrajectoryKeyframe layout changed");
 static_assert(sizeof(CameraView) == 64, "CameraView layout changed");

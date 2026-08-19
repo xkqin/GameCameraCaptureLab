@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
+import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -13,6 +15,93 @@ from bmw_capture_studio.integration_repair import (
 
 
 class IntegrationRepairTests(unittest.TestCase):
+    def test_native_source_scan_ignores_all_build_directories(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "standalone" / "BmwNativeDepth.cpp"
+            build_script = root / "build_standalone.ps1"
+            generated = root / "build_native_depth_check" / "CMakeCache.txt"
+            source.parent.mkdir(parents=True)
+            generated.parent.mkdir(parents=True)
+            source.write_text("source", encoding="utf-8")
+            build_script.write_text("build", encoding="utf-8")
+            generated.write_text("generated", encoding="utf-8")
+
+            with (
+                patch.object(integration_repair, "NATIVE_DIR", root),
+                patch.object(integration_repair, "REPOSITORY_ROOT", root.parent),
+            ):
+                discovered = integration_repair._native_sources()
+
+        self.assertIn(source, discovered)
+        self.assertIn(build_script, discovered)
+        self.assertNotIn(generated, discovered)
+
+    def test_runtime_input_source_does_not_make_unchanged_injector_stale(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            runtime = root / "UeCameraRuntime.dll"
+            injector = root / "UeCameraInjector.exe"
+            input_source = root / "BmwCameraInput.cpp"
+            injector_source = root / "UeCameraInjector.cpp"
+            for path in (runtime, injector, input_source, injector_source):
+                path.write_bytes(b"x")
+            os.utime(injector_source, (10, 10))
+            os.utime(injector, (20, 20))
+            os.utime(input_source, (30, 30))
+            os.utime(runtime, (40, 40))
+            with patch.object(integration_repair, "UE_RUNTIME_PATH", runtime), patch.object(
+                integration_repair, "UE_INJECTOR_PATH", injector
+            ), patch.object(
+                integration_repair,
+                "_native_sources",
+                return_value=(input_source, injector_source),
+            ):
+                needed, _reason = integration_repair._native_build_needed()
+
+        self.assertFalse(needed)
+
+    def test_verified_build_stamp_prevents_permanent_cmake_timestamp_false_positive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            runtime = root / "UeCameraRuntime.dll"
+            injector = root / "UeCameraInjector.exe"
+            cmake = root / "CMakeLists.txt"
+            runtime_source = root / "BmwCameraBridge.cpp"
+            injector_source = root / "UeCameraInjector.cpp"
+            stamp = root / "native_build_verified.json"
+            for path, content in (
+                (runtime, b"runtime"),
+                (injector, b"injector"),
+                (cmake, b"cmake"),
+                (runtime_source, b"camera"),
+                (injector_source, b"loader"),
+            ):
+                path.write_bytes(content)
+            os.utime(injector, (20, 20))
+            os.utime(cmake, (30, 30))
+            os.utime(runtime_source, (10, 10))
+            os.utime(injector_source, (10, 10))
+            os.utime(runtime, (40, 40))
+            sources = (cmake, runtime_source, injector_source)
+            with (
+                patch.object(integration_repair, "REPOSITORY_ROOT", root),
+                patch.object(integration_repair, "UE_RUNTIME_PATH", runtime),
+                patch.object(integration_repair, "UE_INJECTOR_PATH", injector),
+                patch.object(integration_repair, "NATIVE_BUILD_STAMP_PATH", stamp),
+                patch.object(
+                    integration_repair, "_native_sources", return_value=sources
+                ),
+            ):
+                needed_before, _reason = integration_repair._native_build_needed()
+                self.assertTrue(needed_before)
+                integration_repair._write_native_build_stamp()
+                needed_after, _reason = integration_repair._native_build_needed()
+                self.assertFalse(needed_after)
+                cmake.write_bytes(b"cmake changed")
+                needed_changed, _reason = integration_repair._native_build_needed()
+                self.assertTrue(needed_changed)
+
     def test_linux_keeps_the_existing_proton_injection_helper(self) -> None:
         with patch.object(
             integration_repair.sys, "platform", "linux"

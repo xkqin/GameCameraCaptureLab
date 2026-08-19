@@ -8,6 +8,7 @@ import threading
 import time
 from typing import Any, Callable, Iterable
 
+from .coordinate_scale import COORDINATE_SCALE
 from .igcs_client import IGCSClientManager
 from .models import Pose, TrajectoryKeyframe
 from .paths import (
@@ -233,6 +234,9 @@ class LivePoseRecorder:
         "x",
         "y",
         "z",
+        "x_m",
+        "y_m",
+        "z_m",
         "q0",
         "q1",
         "q2",
@@ -329,6 +333,9 @@ class LivePoseRecorder:
                         self.stop_event.wait(min(next_tick - now, 0.01))
                         continue
                     pose = self.backend.pose()
+                    position_m = COORDINATE_SCALE.position_m(
+                        pose.x, pose.y, pose.z
+                    )
                     writer.writerow(
                         {
                             "session_id": session_id,
@@ -340,6 +347,9 @@ class LivePoseRecorder:
                                 for key in self.FIELDNAMES
                                 if key in pose.as_dict()
                             },
+                            "x_m": position_m["x"],
+                            "y_m": position_m["y"],
+                            "z_m": position_m["z"],
                         }
                     )
                     if self.frame_count % max(1, round(hz)) == 0:

@@ -9,6 +9,7 @@ if(MSVC)
         standalone/BmwCameraBridge.cpp
         standalone/BmwCameraInput.cpp
         standalone/BmwCameraMath.cpp
+        standalone/BmwNativeDepth.cpp
         standalone/BmwCameraRelay.cpp
         standalone/BmwCameraTrajectory.cpp
         standalone/BmwCameraHooks.asm
@@ -24,7 +25,7 @@ if(MSVC)
     target_include_directories(
         BmwCameraBridge PRIVATE standalone "${UE_CAMERA_RUNTIME_NATIVE_DIR}"
     )
-    target_link_libraries(BmwCameraBridge PRIVATE ws2_32)
+    target_link_libraries(BmwCameraBridge PRIVATE ws2_32 d3d12 dxgi)
     set_property(
         TARGET BmwCameraBridge
         PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
@@ -47,7 +48,7 @@ if(MSVC)
     target_include_directories(
         UeCameraRuntime PRIVATE standalone "${UE_CAMERA_RUNTIME_NATIVE_DIR}"
     )
-    target_link_libraries(UeCameraRuntime PRIVATE ws2_32)
+    target_link_libraries(UeCameraRuntime PRIVATE ws2_32 d3d12 dxgi)
     set_property(
         TARGET UeCameraRuntime
         PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"

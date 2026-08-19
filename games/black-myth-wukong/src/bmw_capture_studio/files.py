@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import Any, Iterable
 
+from .coordinate_scale import COORDINATE_SCALE
 from .models import CapturePoint, ImportedTrajectory
 
 
@@ -15,6 +16,9 @@ POINT_FIELDS = [
     "x",
     "y",
     "z",
+    "x_m",
+    "y_m",
+    "z_m",
     "yaw_degrees",
     "pitch_degrees",
     "roll_degrees",
@@ -124,6 +128,14 @@ def save_points(path: str | Path, points: Iterable[CapturePoint], *, kind: str) 
             writer.writeheader()
             for point in values:
                 row = point.flat_dict()
+                position_m = COORDINATE_SCALE.position_m(
+                    point.pose.x, point.pose.y, point.pose.z
+                )
+                row.update(
+                    x_m=position_m["x"],
+                    y_m=position_m["y"],
+                    z_m=position_m["z"],
+                )
                 writer.writerow({field: row.get(field, "") for field in POINT_FIELDS})
     else:
         if target.suffix.lower() != ".json":
@@ -132,9 +144,21 @@ def save_points(path: str | Path, points: Iterable[CapturePoint], *, kind: str) 
         payload = {
             "format": "bmw-uuu-camera-v1",
             "kind": kind,
-            "coordinate_system": {"angle_unit": "degrees"},
+            "game_id": "black-myth-wukong",
+            "coordinate_system": COORDINATE_SCALE.coordinate_system(),
             "count": len(values),
-            key: [point.flat_dict() for point in values],
+            key: [
+                {
+                    **point.flat_dict(),
+                    **{
+                        f"{axis}_m": metric_value
+                        for axis, metric_value in COORDINATE_SCALE.position_m(
+                            point.pose.x, point.pose.y, point.pose.z
+                        ).items()
+                    },
+                }
+                for point in values
+            ],
         }
         serialized = json.dumps(payload, ensure_ascii=False, indent=2)
         temporary = target.with_name(f".{target.name}.tmp")

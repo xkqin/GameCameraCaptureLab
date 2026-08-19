@@ -20,6 +20,7 @@ import datetime as dt
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import random
 import struct
@@ -29,11 +30,26 @@ from typing import Any, Callable, Iterable
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-ROOT_DIR = PROJECT_ROOT / "camera_tools"
+
+
+def _env_path(name: str, default: Path) -> Path:
+    raw = os.environ.get(name, "").strip()
+    return Path(raw).expanduser().resolve() if raw else default
+
+
+ADAPTER_ROOT = _env_path("GAME_CAMERA_ADAPTER_ROOT", PROJECT_ROOT)
+ROOT_DIR = _env_path("GAME_CAMERA_TOOLS_DIR", ADAPTER_ROOT / "camera_tools")
 DLL_PATH = ROOT_DIR / "KCD2CameraTools.dll"
 LOG_PATH = ROOT_DIR / "KCD2CameraTools.dll.log"
-DATA_DIR = PROJECT_ROOT / "capture_studio_data" / "low_level"
-DEFAULT_POSE_CONFIG = PROJECT_ROOT / "pose_offsets.json"
+DATA_ROOT = _env_path(
+    "GAME_CAMERA_DATA_ROOT",
+    ADAPTER_ROOT / "capture_studio_data",
+)
+DATA_DIR = DATA_ROOT / "low_level"
+DEFAULT_POSE_CONFIG = _env_path(
+    "GAME_CAMERA_POSE_CONFIG_PATH",
+    ADAPTER_ROOT / "pose_offsets.json",
+)
 
 EXPECTED_DLL_SHA256 = (
     "9600C8CE3B32AE78177603695287126B05B3B165AD8820283544E8AD420B5D96"

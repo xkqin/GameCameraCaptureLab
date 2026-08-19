@@ -8,7 +8,7 @@ This is the Black Myth: Wukong adapter for the **Unified Game Camera Capture Stu
 
 | Capability | Status |
 |---|---|
-| WASD/QE free camera with game-input suppression while Camera ON | Implemented |
+| WASD + Space/Q free camera with game-input suppression while Camera ON | Implemented |
 | Mouse-look yaw/pitch | Implemented |
 | Hold Shift for 5x movement speed | Implemented |
 | Delete / UI button HUD visibility toggle | Implemented; full HUD coverage needs in-game visual acceptance |
@@ -17,6 +17,7 @@ This is the Black Myth: Wukong adapter for the **Unified Game Camera Capture Stu
 | In-process Hermite trajectory | Implemented; terminal pose is held |
 | Point files and automatic 22-view still capture | Integrated |
 | OBS 1920×1080 JPG screenshots | Integrated |
+| Repository-owned D3D12 raw device depth (NPY + preview) | Valid live scene depth captured; OBS RGB pixel alignment pending |
 | Single/batch trajectory recording and resume | Integrated |
 | 30-second OBS restart segmentation | Integrated |
 | Native Windows injection | Implemented |
@@ -32,7 +33,7 @@ The source build and offline protocol tests pass. Our runtime has also completed
 4. Click **Inject Camera Bridge**. The UI uses `UeCameraInjector.exe` by default and refuses to stack over another camera runtime or an old Connector.
 5. Start capture after Pose, absolute `setPose`, and trajectory capabilities are ready.
 
-Controls: `Insert` toggles the camera; `Home` toggles movement lock; `Delete` toggles HUD visibility; `WASD/QE` moves; mouse movement controls yaw/pitch; arrow keys rotate; `Z/C` rolls; numpad `+/-` changes FOV; hold `Shift` for 5x speed; `Ctrl` slows down. Mouse sensitivity can be set with `BMW_CAMERA_MOUSE_SENSITIVITY`. Automated capture enables the camera itself.
+Controls: `Insert` toggles the camera; `Home` toggles movement lock; `Delete` toggles HUD visibility; `WASD` moves horizontally, `Space/Q` moves up/down, and `E` immediately appends the current camera pose to the active point file while Camera ON. Mouse movement controls yaw/pitch; arrow keys rotate; `Z/C` rolls; numpad `+/-` changes FOV; hold `Shift` for 5x speed; `Ctrl` slows down. Mouse sensitivity can be set with `BMW_CAMERA_MOUSE_SENSITIVITY`. Automated capture enables the camera itself.
 
 ## Feishu and Discord notifications
 
@@ -74,6 +75,31 @@ native/build_standalone_v1/Release/
 ```
 
 No third-party closed-source binary is included or redistributed.
+
+## Still-capture output and units
+
+The **Save Depth** option is optional and disabled by default. When selected, each 22-view sample writes an OBS JPG,
+`depth.npy`, `depth_preview.png`, target/measured poses, and `metadata.json`. The depth module is
+compiled directly into `UeCameraRuntime.dll` and installs its D3D12 hooks only after a request;
+no graphics proxy or third-party add-on is required.
+
+Native coordinates are preserved and accompanied by metric `position_m`. The user-provided
+Black Myth scale is `1 game unit = 1 cm`, so `meters_per_unit=0.01`. This scale converts camera
+position only; it is not a depth-linearization parameter. Depth remains labeled
+`raw_device_depth` and `metric_depth=false`. The native depth buffer has produced non-constant
+scene geometry in a live game session; near/far calibration and OBS RGB pixel alignment remain
+separate acceptance steps.
+
+```text
+capture_data/still_captures/<run>/
+├─ images/00001_*.jpg
+├─ samples/sample_000001/
+│  ├─ depth.npy
+│  ├─ depth_preview.png
+│  └─ metadata.json
+├─ manifest.json
+└─ manifest.csv
+```
 
 ## Linux/Proton
 

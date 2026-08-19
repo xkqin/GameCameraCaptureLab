@@ -25,6 +25,10 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "height": 1080,
         "quality": 100,
     },
+    "depth": {
+        "enabled": False,
+        "timeout_seconds": 8.0,
+    },
 }
 
 

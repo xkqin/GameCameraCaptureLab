@@ -30,7 +30,7 @@ The project began with RE9 and now discovers independent adapters through `games
 |---|---|---|
 | Camera | Free movement, mouse look, pose readout, absolute `setPose`, FOV, HUD | A controllable, measurable camera |
 | Space | Boundary recording, 3D point maps, layered point generation, point-file loading | Reusable scene scan plans |
-| Stills | Automatic 22-view scan per point, 1920×1080 JPEG through OBS | Images, target/measured poses, manifests |
+| Stills | Automatic 22-view scan per point; OBS RGB plus game depth-buffer support | RGB, raw depth, target/measured poses, manifests |
 | Trajectories | Automatic loading, continuous playback, recording, batch progress, resume | Video, keyframes, pose series, timing logs |
 | Platform | Multi-game registry, shared schemas, Windows/Linux, alerts and recovery | An extensible, auditable capture system |
 
@@ -89,8 +89,8 @@ So for UE5 titles sharing an existing ABI, the change really can be only a littl
 | Game | Engine | Pose readout | Absolute pose | Still / trajectory capture | Maturity |
 |---|---|---|---|---|---|
 | RE Engine / RE9 | RE Engine | Verified | Verified Lua `setPose` | Verified | Stable |
-| Kingdom Come: Deliverance II | CryEngine | Verified | Full rendered result pending | OBS and batch capture implemented | Beta |
-| Black Myth: Wukong | Unreal Engine 5 | Live Runtime Pose verified | Atomic `setPose` verified in game | 22-view stills and in-process trajectories integrated | Beta |
+| Kingdom Come: Deliverance II | CryEngine | Verified | Full rendered result pending | OBS batch capture implemented; repository-owned raw-depth backend integration pending | Beta |
+| Black Myth: Wukong | Unreal Engine 5 | Live Runtime Pose verified | Atomic `setPose` verified in game | 22-view RGB/Pose/raw depth and native trajectories integrated; native scene depth captured live, RGB alignment pending | Beta |
 | Backrooms Lost Runners | Unreal Engine 5.6 | Three hooks and live Pose verified | Relative control and atomic `setPose` verified | Native trajectory verified; OBS acceptance pending | Beta |
 
 Reading a pose, having the runtime accept a command, and seeing the rendered camera reach the target are three separate acceptance layers. Results are never copied from one game to another.
@@ -136,6 +136,21 @@ On Windows, double-click `launchers\启动多游戏采集中心.bat` to choose a
 
 Linux/Proton can run the same UI with `bash launchers/launch_unified_capture_studio.sh <profile-id>` and supports point/trajectory files, OBS WebSocket, and the loopback relay. The injector and runtime still run inside the game's Proton prefix. Without a live relay, the UI reports an offline/waiting state rather than a false connection.
 
+KCD2 is a separate CryEngine adapter in the unified entrypoint: `-GameId kcd2` routes to its
+Camera Tools/IGCS low-level backend and KCD2 capture UI rather than the UE Camera Runtime. Its
+unified data root is `capture_data/kcd2/`. The launcher discovers and validates an existing
+Camera Tools directory. KCD2 keeps the static-depth output schema for
+`rgb.jpg + depth.npy + depth_preview.png + metadata.json`, but its repository-owned D3D12
+backend is not connected yet, so the adapter does not enable or fabricate depth. Absolute
+`setPose` remains gated as “rendered result pending acceptance”.
+
+Black Myth now embeds a repository-owned, request-driven D3D12 depth bridge in
+`UeCameraRuntime.dll`, with no graphics proxy or third-party add-on. KCD2 can reuse the v2 IPC
+protocol only after a separate runtime integration. Static samples preserve native coordinates and add metric positions: the
+user-provided Black Myth scale is `1 game unit = 1 cm` (`meters_per_unit=0.01`), while KCD2 uses
+`1 game unit = 1 m` (`meters_per_unit=1.0`). This conversion applies to camera position only;
+`depth.npy` remains raw device depth and is never mislabeled as metric distance.
+
 ## Capture-studio controls
 
 After the unified studio starts, the runtime-control area provides one language dropdown. Select `中文` or `English` and the studio switches immediately without a restart; the main UI, dynamic status and progress text, and the Notifications & Recovery setup guide follow the selected language.
@@ -166,8 +181,9 @@ Environment alternatives are `UNIFIED_DISCORD_WEBHOOK_URL`, `UNIFIED_FEISHU_WEBH
 
 Shared formats live under [`core/schemas/`](core/schemas/):
 
-- `camera-pose/v1`: XYZ, rotation, FOV, coordinate frame, and units;
+- `camera-pose/v1`: native XYZ, metric `position_m`, rotation, FOV, coordinate frame, and scale provenance;
 - `camera-point-set/v1`: spatial points, scenes, and capture metadata;
+- `camera-static-sample/v1`: one RGB, pose, raw-depth, and synchronization-quality sample;
 - `camera-trajectory/v1`: timed trajectory keyframes;
 - `ue_camera_profile_v1`: UE process, signatures, ABI, and capabilities.
 - `game_support_catalog/v1`: public camera evidence, project runtime acceptance, and exclusion risk.
