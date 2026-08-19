@@ -88,3 +88,6 @@ games/black-myth-wukong/settings.json
 
 # Curated offline trajectory diagnostics contain plots, but no raw game frames.
 !games/kcd2/examples/trajectory_sets/**/*.png
+
+# Curated point-map previews contain generated geometry only, not game frames.
+!data/point_maps/**/*.png

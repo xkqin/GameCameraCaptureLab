@@ -1,0 +1,36 @@
+{
+  "scene_id": "scen_1_heifengdong_dongwai",
+  "source_file": "current_point_map.json",
+  "source_point_count_used": 193,
+  "ignored_source_indices": [
+    194,
+    195
+  ],
+  "spatial_point_count": 980,
+  "views_per_spatial_point": 22,
+  "planned_image_count": 21560,
+  "layer_point_counts": [
+    184,
+    293,
+    287,
+    164,
+    52
+  ],
+  "layer_heights_m": [
+    28.261965119833548,
+    37.050252746579616,
+    45.838540373325685,
+    54.626828000071754,
+    63.41511562681782
+  ],
+  "hull_vertices": 54,
+  "hull_triangles": 104,
+  "hull_volume_m3": 410137.39304894756,
+  "minimum_hull_clearance_m": 1.501080965713868,
+  "all_points_inside": true,
+  "outputs": {
+    "point_map_json": "scen_1_heifengdong_dongwai.json",
+    "preview_png": "scen_1_heifengdong_dongwai.png",
+    "visualization_html": "oblique-dense-point-map.html"
+  }
+}

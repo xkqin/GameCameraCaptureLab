@@ -15,6 +15,7 @@ dependencies = [
   "pyyaml",
   "pandas",
   "numpy",
+  "scipy",
   "pillow",
   "opencv-python",
   "torch",
