@@ -35,16 +35,40 @@ VIEW_PATTERN = (
 )
 
 
-def load_records(source: Path, source_count: int) -> tuple[dict[str, Any], list[dict[str, Any]], list[int]]:
+def load_records(
+    source: Path,
+    source_count: int | None,
+) -> tuple[dict[str, Any], list[dict[str, Any]], list[int]]:
     payload = json.loads(source.read_text(encoding="utf-8-sig"))
     if not isinstance(payload, dict) or not isinstance(payload.get("points"), list):
         raise TypeError("The source JSON must contain a points list")
     records = [dict(item) for item in payload["points"] if isinstance(item, dict)]
     records.sort(key=lambda item: int(item.get("index", 0)))
+    if source_count is None or source_count <= 0:
+        source_count = len(records)
     if len(records) < source_count:
         raise ValueError(f"Requested {source_count} source points, but only {len(records)} are available")
     ignored = [int(item.get("index", index + 1)) for index, item in enumerate(records[source_count:])]
     return payload, records[:source_count], ignored
+
+
+def detect_recorded_segments(source_xyz_m: np.ndarray) -> list[tuple[int, int]]:
+    """Split independent recorded boundary strokes at unusually large jumps."""
+
+    if len(source_xyz_m) < 2:
+        return [(0, len(source_xyz_m))]
+    steps = np.linalg.norm(np.diff(source_xyz_m, axis=0), axis=1)
+    median = float(np.median(steps))
+    mad = float(np.median(np.abs(steps - median)))
+    robust_limit = median + 12.0 * max(mad, 0.25)
+    percentile_limit = float(np.percentile(steps, 95.0)) * 3.0
+    threshold_m = max(30.0, robust_limit, percentile_limit)
+    boundaries = [0, *(int(index) + 1 for index in np.where(steps > threshold_m)[0]), len(source_xyz_m)]
+    return [
+        (start, end)
+        for start, end in zip(boundaries, boundaries[1:])
+        if end > start
+    ]
 
 
 def hex_candidates(
@@ -176,7 +200,8 @@ def write_png(
     source_xyz_m: np.ndarray,
     hull: ConvexHull,
     layer_points: list[np.ndarray],
-    split: int,
+    segments: list[tuple[int, int]],
+    margin_m: float,
 ) -> None:
     figure = plt.figure(figsize=(14, 10), dpi=180, facecolor="#0f172a")
     axis = figure.add_subplot(111, projection="3d", facecolor="#0f172a")
@@ -189,22 +214,15 @@ def write_png(
         alpha=0.11,
     )
     axis.add_collection3d(mesh)
-    axis.plot(
-        source_xyz_m[:split, 0],
-        source_xyz_m[:split, 1],
-        source_xyz_m[:split, 2],
-        color="#94a3b8",
-        linewidth=1.1,
-        alpha=0.72,
-    )
-    axis.plot(
-        source_xyz_m[split:, 0],
-        source_xyz_m[split:, 1],
-        source_xyz_m[split:, 2],
-        color="#94a3b8",
-        linewidth=1.1,
-        alpha=0.72,
-    )
+    for start, end in segments:
+        axis.plot(
+            source_xyz_m[start:end, 0],
+            source_xyz_m[start:end, 1],
+            source_xyz_m[start:end, 2],
+            color="#94a3b8",
+            linewidth=1.1,
+            alpha=0.72,
+        )
     colors = plt.cm.viridis(np.linspace(0.08, 0.92, len(layer_points)))
     for layer_index, (points, color) in enumerate(zip(layer_points, colors), 1):
         axis.scatter(
@@ -240,7 +258,7 @@ def write_png(
     figure.text(
         0.01,
         0.01,
-        f"{sum(len(points) for points in layer_points)} spatial positions × 22 views = {sum(len(points) for points in layer_points) * 22:,} images · first 193 valid records · 1.5 m hull clearance",
+        f"{sum(len(points) for points in layer_points)} spatial positions × 22 views = {sum(len(points) for points in layer_points) * 22:,} images · {len(source_xyz_m)} recorded boundary points · {margin_m:g} m hull clearance",
         color="#cbd5e1",
         fontsize=8,
     )
@@ -262,11 +280,13 @@ def build(
     write_csv_output: bool,
 ) -> dict[str, Any]:
     source_payload, source_records, ignored_indices = load_records(source, source_count)
+    source_count = len(source_records)
     source_xyz_native = np.asarray(
         [[float(record[axis]) for axis in ("x", "y", "z")] for record in source_records],
         dtype=float,
     )
     source_xyz_m = source_xyz_native * 0.01
+    recorded_segments = detect_recorded_segments(source_xyz_m)
     hull = ConvexHull(source_xyz_m)
     z_min = float(source_xyz_m[:, 2].min())
     z_max = float(source_xyz_m[:, 2].max())
@@ -372,7 +392,11 @@ def build(
         "views_per_spatial_point": 22,
         "static_image_count": len(records) * 22,
         "source_file": source.name,
-        "source_provenance": "local captured point map; only the first validated records are used",
+        "source_provenance": (
+            "local captured point map; all available records are used"
+            if not ignored_indices
+            else "local captured point map; the requested leading records are used"
+        ),
         "source_point_count": source_count,
         "ignored_source_indices": ignored_indices,
         "capture_design": {
@@ -400,13 +424,17 @@ def build(
                 "maximum": [float(value) for value in planned_xyz_m.max(axis=0)],
             },
             "nearest_neighbor_by_layer": layer_stats,
+            "recorded_segment_ranges": [
+                {"start_index": start + 1, "end_index": end}
+                for start, end in recorded_segments
+            ],
         },
         "points": records,
     }
     json_path.write_text(json.dumps(plan, ensure_ascii=False, indent=2), encoding="utf-8")
     if write_csv_output:
         write_csv(csv_path, records)
-    write_png(png_path, source_xyz_m, hull, layer_points, split=125)
+    write_png(png_path, source_xyz_m, hull, layer_points, recorded_segments, margin_m)
 
     ray_anchors: list[list[float]] = []
     for layer_index, points in enumerate(layer_points):
@@ -422,7 +450,8 @@ def build(
             [float(point[0]), float(point[1]), float(point[2]), index + 1]
             for index, point in enumerate(source_xyz_m)
         ],
-        "split": 125,
+        "segments": [[start, end] for start, end in recorded_segments],
+        "sourcePointCount": len(source_xyz_m),
         "hullFaces": [[int(value) for value in simplex] for simplex in hull.simplices],
         "planned": [
             [
@@ -445,6 +474,7 @@ def build(
         ],
         "rayAnchors": ray_anchors,
         "rayLengthM": 12.0,
+        "clearanceM": margin_m,
     }
     template_text = template.read_text(encoding="utf-8")
     if template_text.count("__PAYLOAD__") != 1:
@@ -468,6 +498,10 @@ def build(
         "hull_vertices": len(hull.vertices),
         "hull_triangles": len(hull.simplices),
         "hull_volume_m3": float(hull.volume),
+        "recorded_segment_ranges": [
+            {"start_index": start + 1, "end_index": end}
+            for start, end in recorded_segments
+        ],
         "minimum_hull_clearance_m": float(clearances.min()),
         "all_points_inside": bool(np.all(np.max(signed, axis=1) <= 1e-7)),
         "outputs": {
@@ -489,7 +523,12 @@ def main() -> None:
     parser.add_argument("--template", type=Path, required=True)
     parser.add_argument("--visualization", type=Path, required=True)
     parser.add_argument("--scene-id", default="scen_1_heifengdong_dongwai")
-    parser.add_argument("--source-count", type=int, default=193)
+    parser.add_argument(
+        "--source-count",
+        type=int,
+        default=0,
+        help="Number of leading source records to use; 0 means all records",
+    )
     parser.add_argument("--target-count", type=int, default=980)
     parser.add_argument("--margin-m", type=float, default=1.5)
     parser.add_argument("--candidate-spacing-m", type=float, default=1.5)

@@ -1,0 +1,47 @@
+{
+  "scene_id": "scene_2_huaguoshan_jianlulin",
+  "source_file": "current_point_map.json",
+  "source_point_count_used": 716,
+  "ignored_source_indices": [],
+  "spatial_point_count": 2500,
+  "views_per_spatial_point": 22,
+  "planned_image_count": 55000,
+  "layer_point_counts": [
+    115,
+    369,
+    620,
+    803,
+    593
+  ],
+  "layer_heights_m": [
+    93.32002139930327,
+    131.19187921828635,
+    169.06373703726945,
+    206.93559485625252,
+    244.8074526752356
+  ],
+  "hull_vertices": 63,
+  "hull_triangles": 122,
+  "hull_volume_m3": 21259818.206319965,
+  "recorded_segment_ranges": [
+    {
+      "start_index": 1,
+      "end_index": 360
+    },
+    {
+      "start_index": 361,
+      "end_index": 634
+    },
+    {
+      "start_index": 635,
+      "end_index": 716
+    }
+  ],
+  "minimum_hull_clearance_m": 5.000033080605419,
+  "all_points_inside": true,
+  "outputs": {
+    "point_map_json": "scene_2_huaguoshan_jianlulin.json",
+    "preview_png": "scene_2_huaguoshan_jianlulin.png",
+    "visualization_html": "scene_2_huaguoshan_jianlulin.html"
+  }
+}
