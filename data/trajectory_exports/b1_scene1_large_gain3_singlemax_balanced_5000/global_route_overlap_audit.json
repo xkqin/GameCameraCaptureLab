@@ -1,0 +1,32 @@
+{
+  "audit_type": "deterministic_random_pair_sample",
+  "random_seed": 20260820,
+  "sampled_pair_count": 100000,
+  "route_overlap_definition": {
+    "sample_spacing_m": 0.25,
+    "voxel_size_m": 0.5,
+    "fraction_denominator": "smaller_route_voxel_count"
+  },
+  "route_overlap": {
+    "mean": 0.058388,
+    "median": 0.005917,
+    "p95": 0.254335,
+    "p99": 0.439491,
+    "maximum_in_sample": 0.878613,
+    "fraction_at_or_below_0p4": 0.98583,
+    "fraction_at_or_below_0p6": 0.99815
+  },
+  "same_target_predecessor_mean": 0.207015,
+  "cross_target_predecessor_mean": 0.013306,
+  "maximum_physical_node_overlap_in_sample": 1.0,
+  "unique_start_positions": 198,
+  "unique_first_physical_edges": 614,
+  "target_predecessor_distribution": {
+    "(-716.75, 479.345061, 37.050253)": 1200,
+    "(-716.5, 485.840252, 45.83854)": 1200,
+    "(-710.75, 484.541213, 37.050253)": 1200,
+    "(-708.25, 471.550832, 45.83854)": 1197,
+    "(-703.75, 484.541213, 45.83854)": 203
+  },
+  "interpretation": "The 5000 complete physical geometry signatures are exactly unique. Pairwise overlap statistics are estimates from 100000 deterministic random pairs, not an exact all-pairs maximum."
+}

@@ -1,0 +1,66 @@
+{
+  "validation_passed": true,
+  "scene_id": "scen_1_heifengdong_dongwai_static22_20260819_224337_145",
+  "expected_trajectory_count": 5000,
+  "generated_trajectory_count": 5000,
+  "failure_counts": {},
+  "all_source_batch_validations_passed": true,
+  "all_exported_keyframes_are_real_scored_source_poses": true,
+  "all_scores_are_measured_ezcam_still_scores": true,
+  "materialized_interpolated_keyframe_count": 0,
+  "total_real_scored_keyframe_count": 51487,
+  "all_real_scores_strictly_increasing": true,
+  "minimum_score_gain_required": 3.0,
+  "all_score_gains_passed": true,
+  "minimum_net_distance_required_m": 10.0,
+  "all_net_distances_passed": true,
+  "maximum_path_length_required_m": 80.0,
+  "all_path_lengths_passed": true,
+  "maximum_path_to_net_ratio_required": 2.0,
+  "all_path_to_net_ratios_passed": true,
+  "maximum_target_distance_total_increase_required_m": 3.0,
+  "all_target_distance_backtracking_passed": true,
+  "maximum_control_turn_required_deg": 110.0,
+  "all_control_turns_passed": true,
+  "all_near_revisit_counts_zero": true,
+  "unique_physical_geometry_signatures": 5000,
+  "unique_real_node_path_signatures": 5000,
+  "distinct_target_anchor_poses": 1,
+  "global_max_score": 6.810137,
+  "no_7plus_available": true,
+  "target_anchor_distribution": {
+    "1": 5000
+  },
+  "keyframe_count": {
+    "min": 9.0,
+    "mean": 10.2974,
+    "max": 12.0
+  },
+  "duration_sec": {
+    "min": 27.690495,
+    "mean": 35.381901,
+    "max": 36.363202
+  },
+  "score_gain": {
+    "min": 3.001186,
+    "mean": 3.129085,
+    "max": 3.637596
+  },
+  "path_xyz_length": {
+    "min": 60.91909,
+    "mean": 77.840183,
+    "max": 79.999045
+  },
+  "net_xyz_distance": {
+    "min": 33.678391,
+    "mean": 46.265528,
+    "max": 65.114791
+  },
+  "path_to_net_ratio": {
+    "min": 1.164213,
+    "mean": 1.704219,
+    "max": 1.999919
+  },
+  "true_video_frame_monotonicity_guaranteed": false,
+  "true_video_note": "Every exported keyframe is a measured, strictly increasing EZCAM still pose. Runtime frames between controls remain unscored until capture and rescoring."
+}

@@ -1,0 +1,48 @@
+{
+  "audit_type": "exact_all_pair_physical_route_overlap",
+  "created_at_utc": "2026-08-20T07:51:33.868099+00:00",
+  "source_json": "/data/qinxukun/datatrans/b1/scen_1_heifengdong_dongwai_static22_20260819_224337_145/trajectories_true_keyframes_large_gain3_singlemax_balanced_5000_capture_ready/b1_scene1_large_gain3_singlemax_balanced_5000_trajectories.json",
+  "trajectory_count": 5000,
+  "exact_pair_count": 12497500,
+  "nonzero_overlap_pair_count": 12497500,
+  "route_overlap_definition": {
+    "sample_spacing_m": 0.25,
+    "voxel_size_m": 0.5,
+    "fraction_denominator": "smaller_route_voxel_count"
+  },
+  "route_overlap": {
+    "mean": 0.058174,
+    "median": 0.005917,
+    "p95": 0.252747,
+    "p99": 0.440217,
+    "maximum": 1.0,
+    "fraction_at_or_below_0p4": 0.985522,
+    "fraction_at_or_below_0p6": 0.997912,
+    "fraction_above_0p4": 0.014478,
+    "fraction_above_0p6": 0.002088,
+    "pair_count_above_0p4": 180937,
+    "pair_count_above_0p6": 26090
+  },
+  "maximum_overlap_pair": {
+    "first_index": 274,
+    "second_index": 1014,
+    "first_trajectory_id": "b1_scene1_g3_00275",
+    "second_trajectory_id": "b1_scene1_g3_01015",
+    "overlap": 1.0
+  },
+  "same_target_predecessor": {
+    "pair_count": 2894509,
+    "mean_overlap": 0.207214
+  },
+  "cross_target_predecessor": {
+    "pair_count": 9602991,
+    "mean_overlap": 0.01325
+  },
+  "target_predecessor_distribution": {
+    "(-716.75, 479.345061, 37.050253)": 1200,
+    "(-716.5, 485.840252, 45.83854)": 1200,
+    "(-710.75, 484.541213, 37.050253)": 1200,
+    "(-708.25, 471.550832, 45.83854)": 1197,
+    "(-703.75, 484.541213, 45.83854)": 203
+  }
+}

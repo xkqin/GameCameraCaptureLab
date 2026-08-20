@@ -1,0 +1,207 @@
+{
+  "scene_id": "scen_1_heifengdong_dongwai_static22_20260819_224337_145",
+  "global_max_score": 6.810137,
+  "no_7plus_available": true,
+  "generation_policy": {
+    "real_scored_control_points_only": true,
+    "strict_measured_score_monotonicity": true,
+    "minimum_score_gain": 3.0,
+    "minimum_net_distance_m": 10.0,
+    "maximum_path_length_m": 80.0,
+    "maximum_path_to_net_ratio": 2.0,
+    "maximum_target_distance_total_increase_m": 3.0,
+    "maximum_control_turn_deg": 110.0,
+    "near_revisits_forbidden": true,
+    "unique_physical_xyz_geometry_required": true,
+    "export_direction": "low_to_high"
+  },
+  "batch_reports": [
+    {
+      "target_anchor_rank": 1,
+      "source_json": "/data/qinxukun/datatrans/b1/scen_1_heifengdong_dongwai_static22_20260819_224337_145/trajectories_true_keyframes_large_gain3_singlemax_balanced_5000_capture_ready/_batches/target_predecessor_0/scen_1_heifengdong_dongwai_static22_20260819_224337_145_true_gain3_no_backtrack_balanced_1200_trajectories.json",
+      "trajectory_count": 1200,
+      "target_anchor_node_id": "scen_1_heifengdong_dongwai_static22_20260819_224337_145|14286|650",
+      "target_anchor_score": 6.810137,
+      "batch_validation_passed": true,
+      "search_stats": {
+        "search_method": "reverse_best_first_from_constrained_target_entrance",
+        "eligible_start_count": 236,
+        "eligible_start_position_count_before_sharding": 968,
+        "assigned_start_position_count": 968,
+        "planning_start_shard_count": 1,
+        "planning_start_shard_index": 0,
+        "requested_candidate_count": 6000,
+        "expanded_state_count": 1319178,
+        "remaining_queue_size": 64,
+        "frontier_trim_count": 0,
+        "rejected_duplicate_geometry_count": 9846,
+        "rejected_start_capacity": {
+          "start_node": 53374
+        },
+        "rejected_completed_route_quality": {
+          "path_to_net_ratio": 13662
+        },
+        "accepted_start_node_count": 236,
+        "accepted_start_position_count": 126,
+        "accepted_per_start_node_max": 64,
+        "accepted_per_start_position_max": 256,
+        "accepted_target_predecessor_position_count": 1,
+        "accepted_target_predecessor_position_distribution": {
+          "(-716.75, 479.345061, 37.050253)": 6000
+        },
+        "search_exhausted": false,
+        "state_limit_reached": false
+      }
+    },
+    {
+      "target_anchor_rank": 1,
+      "source_json": "/data/qinxukun/datatrans/b1/scen_1_heifengdong_dongwai_static22_20260819_224337_145/trajectories_true_keyframes_large_gain3_singlemax_balanced_5000_capture_ready/_batches/target_predecessor_1/scen_1_heifengdong_dongwai_static22_20260819_224337_145_true_gain3_no_backtrack_balanced_1200_trajectories.json",
+      "trajectory_count": 1200,
+      "target_anchor_node_id": "scen_1_heifengdong_dongwai_static22_20260819_224337_145|14286|650",
+      "target_anchor_score": 6.810137,
+      "batch_validation_passed": true,
+      "search_stats": {
+        "search_method": "reverse_best_first_from_constrained_target_entrance",
+        "eligible_start_count": 145,
+        "eligible_start_position_count_before_sharding": 968,
+        "assigned_start_position_count": 968,
+        "planning_start_shard_count": 1,
+        "planning_start_shard_index": 0,
+        "requested_candidate_count": 6000,
+        "expanded_state_count": 1930786,
+        "remaining_queue_size": 0,
+        "frontier_trim_count": 0,
+        "rejected_duplicate_geometry_count": 2914,
+        "rejected_start_capacity": {
+          "start_node": 7369
+        },
+        "rejected_completed_route_quality": {
+          "path_to_net_ratio": 819
+        },
+        "accepted_start_node_count": 145,
+        "accepted_start_position_count": 105,
+        "accepted_per_start_node_max": 64,
+        "accepted_per_start_position_max": 198,
+        "accepted_target_predecessor_position_count": 1,
+        "accepted_target_predecessor_position_distribution": {
+          "(-716.5, 485.840252, 45.83854)": 2591
+        },
+        "search_exhausted": true,
+        "state_limit_reached": false
+      }
+    },
+    {
+      "target_anchor_rank": 1,
+      "source_json": "/data/qinxukun/datatrans/b1/scen_1_heifengdong_dongwai_static22_20260819_224337_145/trajectories_true_keyframes_large_gain3_singlemax_balanced_5000_capture_ready/_batches/target_predecessor_2/scen_1_heifengdong_dongwai_static22_20260819_224337_145_true_gain3_no_backtrack_balanced_1200_trajectories.json",
+      "trajectory_count": 1200,
+      "target_anchor_node_id": "scen_1_heifengdong_dongwai_static22_20260819_224337_145|14286|650",
+      "target_anchor_score": 6.810137,
+      "batch_validation_passed": true,
+      "search_stats": {
+        "search_method": "reverse_best_first_from_constrained_target_entrance",
+        "eligible_start_count": 175,
+        "eligible_start_position_count_before_sharding": 968,
+        "assigned_start_position_count": 968,
+        "planning_start_shard_count": 1,
+        "planning_start_shard_index": 0,
+        "requested_candidate_count": 6000,
+        "expanded_state_count": 1725777,
+        "remaining_queue_size": 0,
+        "frontier_trim_count": 0,
+        "rejected_duplicate_geometry_count": 4608,
+        "rejected_start_capacity": {
+          "start_node": 21253
+        },
+        "rejected_completed_route_quality": {
+          "path_to_net_ratio": 1451
+        },
+        "accepted_start_node_count": 175,
+        "accepted_start_position_count": 130,
+        "accepted_per_start_node_max": 64,
+        "accepted_per_start_position_max": 240,
+        "accepted_target_predecessor_position_count": 1,
+        "accepted_target_predecessor_position_distribution": {
+          "(-710.75, 484.541213, 37.050253)": 4247
+        },
+        "search_exhausted": true,
+        "state_limit_reached": false
+      }
+    },
+    {
+      "target_anchor_rank": 1,
+      "source_json": "/data/qinxukun/datatrans/b1/scen_1_heifengdong_dongwai_static22_20260819_224337_145/trajectories_true_keyframes_large_gain3_singlemax_balanced_5000_capture_ready/_batches/target_predecessor_3/scen_1_heifengdong_dongwai_static22_20260819_224337_145_true_gain3_no_backtrack_balanced_1197_trajectories.json",
+      "trajectory_count": 1197,
+      "target_anchor_node_id": "scen_1_heifengdong_dongwai_static22_20260819_224337_145|14286|650",
+      "target_anchor_score": 6.810137,
+      "batch_validation_passed": true,
+      "search_stats": {
+        "search_method": "reverse_best_first_from_constrained_target_entrance",
+        "eligible_start_count": 123,
+        "eligible_start_position_count_before_sharding": 968,
+        "assigned_start_position_count": 968,
+        "planning_start_shard_count": 1,
+        "planning_start_shard_index": 0,
+        "requested_candidate_count": 6000,
+        "expanded_state_count": 988727,
+        "remaining_queue_size": 0,
+        "frontier_trim_count": 0,
+        "rejected_duplicate_geometry_count": 3059,
+        "rejected_start_capacity": {
+          "start_node": 2851
+        },
+        "rejected_completed_route_quality": {
+          "path_to_net_ratio": 2451
+        },
+        "accepted_start_node_count": 123,
+        "accepted_start_position_count": 70,
+        "accepted_per_start_node_max": 64,
+        "accepted_per_start_position_max": 151,
+        "accepted_target_predecessor_position_count": 1,
+        "accepted_target_predecessor_position_distribution": {
+          "(-708.25, 471.550832, 45.83854)": 2473
+        },
+        "search_exhausted": true,
+        "state_limit_reached": false
+      }
+    },
+    {
+      "target_anchor_rank": 1,
+      "source_json": "/data/qinxukun/datatrans/b1/scen_1_heifengdong_dongwai_static22_20260819_224337_145/trajectories_true_keyframes_large_gain3_singlemax_balanced_5000_capture_ready/_batches/target_predecessor_4/scen_1_heifengdong_dongwai_static22_20260819_224337_145_true_gain3_no_backtrack_balanced_203_trajectories.json",
+      "trajectory_count": 203,
+      "target_anchor_node_id": "scen_1_heifengdong_dongwai_static22_20260819_224337_145|14286|650",
+      "target_anchor_score": 6.810137,
+      "batch_validation_passed": true,
+      "search_stats": {
+        "search_method": "reverse_best_first_from_constrained_target_entrance",
+        "eligible_start_count": 57,
+        "eligible_start_position_count_before_sharding": 968,
+        "assigned_start_position_count": 968,
+        "planning_start_shard_count": 1,
+        "planning_start_shard_index": 0,
+        "requested_candidate_count": 1000,
+        "expanded_state_count": 195623,
+        "remaining_queue_size": 0,
+        "frontier_trim_count": 0,
+        "rejected_duplicate_geometry_count": 237,
+        "rejected_start_capacity": {},
+        "rejected_completed_route_quality": {
+          "path_to_net_ratio": 141
+        },
+        "accepted_start_node_count": 57,
+        "accepted_start_position_count": 51,
+        "accepted_per_start_node_max": 17,
+        "accepted_per_start_position_max": 17,
+        "accepted_target_predecessor_position_count": 1,
+        "accepted_target_predecessor_position_distribution": {
+          "(-703.75, 484.541213, 45.83854)": 203
+        },
+        "search_exhausted": true,
+        "state_limit_reached": false
+      }
+    }
+  ],
+  "target_anchor_distribution": {
+    "1": 5000
+  },
+  "generated_count": 5000
+}
