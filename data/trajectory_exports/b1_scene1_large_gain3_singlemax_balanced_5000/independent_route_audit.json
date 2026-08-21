@@ -1,0 +1,97 @@
+{
+  "audit_version": 1,
+  "created_utc": "2026-08-21T03:09:52.221716+00:00",
+  "source_json": "b1_scene1_large_gain3_singlemax_balanced_5000_trajectories.json",
+  "audit_passed": true,
+  "trajectory_count": 5000,
+  "hard_constraint_validation_passed": true,
+  "failure_counts": {},
+  "all_keyframes_real_measured_source_poses": true,
+  "all_measured_keyframe_scores_strictly_increasing": true,
+  "all_trajectories_end_at_single_global_max": true,
+  "global_max_score": 6.810137,
+  "unique_physical_geometry_signatures": 5000,
+  "unique_real_node_path_signatures": 5000,
+  "unique_start_node_ids": 535,
+  "unique_start_xyz_positions": 224,
+  "distinct_penultimate_xyz_positions": 19,
+  "path_xyz_length_m": {
+    "min": 25.717415,
+    "mean": 36.644623,
+    "max": 39.999653
+  },
+  "duration_sec": {
+    "min": 11.689734,
+    "mean": 16.656647,
+    "max": 18.18166
+  },
+  "score_gain": {
+    "min": 3.002384,
+    "mean": 3.283249,
+    "max": 4.179667
+  },
+  "net_xyz_distance_m": {
+    "min": 15.66046,
+    "mean": 26.487138,
+    "max": 38.56488
+  },
+  "path_to_net_ratio": {
+    "min": 1.000632,
+    "mean": 1.410883,
+    "max": 1.799973
+  },
+  "segment_xyz_distance_m": {
+    "min": 5.196152,
+    "mean": 9.610444,
+    "median": 9.367497,
+    "p95": 14.309088,
+    "max": 15.0
+  },
+  "segment_runtime_speed_mps": {
+    "min": 2.199999,
+    "mean": 2.2,
+    "median": 2.2,
+    "p95": 2.2,
+    "max": 2.200001
+  },
+  "segment_yaw_change_deg": {
+    "min": 0.0,
+    "mean": 22.485445,
+    "median": 30.0,
+    "p95": 45.0,
+    "max": 45.0
+  },
+  "segment_pitch_change_deg": {
+    "min": 0.0,
+    "mean": 21.715185,
+    "median": 0.0,
+    "p95": 45.0,
+    "max": 45.0
+  },
+  "minimum_nonadjacent_control_distance_m": {
+    "min": 6.538348,
+    "mean": 13.300415,
+    "median": 12.816006,
+    "p95": 20.055772,
+    "max": 25.5
+  },
+  "target_distance_total_increase_m": {
+    "min": 0.0,
+    "mean": 0.103743,
+    "median": 0.0,
+    "p95": 0.902636,
+    "max": 1.999698
+  },
+  "self_repeated_voxel_fraction_at_0p5m": {
+    "min": 0.0,
+    "mean": 0.001761,
+    "median": 0.0,
+    "p95": 0.011905,
+    "max": 0.027027
+  },
+  "routes_with_any_nonconsecutive_repeated_voxel": 703,
+  "self_overlap_note": "Repeated 0.5 m voxels indicate small local path crossings; maximum route fraction is below 3%, while nonadjacent measured controls remain at least 6.5 m apart.",
+  "video_frame_monotonicity_guaranteed": false,
+  "collision_clearance_mesh_verified": false,
+  "required_follow_up": "Run a small in-game smoke capture and rescore replay frames before bulk collection."
+}
