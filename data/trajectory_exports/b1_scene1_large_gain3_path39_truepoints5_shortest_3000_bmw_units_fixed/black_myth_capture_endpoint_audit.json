@@ -1,0 +1,31 @@
+{
+  "validation_passed": true,
+  "scene_id": "scen_1_heifengdong_dongwai_static22_20260819_224337_145",
+  "capture_loader": "GameCameraCaptureLab bmw_capture_studio.files.load_trajectories",
+  "trajectory_count": 3000,
+  "real_keyframe_count": 15000,
+  "source_global_max": {
+    "score_avg": 6.8101372718811035,
+    "sample_index": "14286",
+    "point_index": "650",
+    "image_path": "/data/qinxukun/datatrans/b1/scen_1_heifengdong_dongwai_static22_20260819_224337_145/14286_p0650_middle_yaw315_pitch_00.jpg",
+    "native_game_pose": {
+      "x": -71425.0,
+      "y": 47934.50609946881,
+      "z": 4583.854037332569,
+      "yaw_degrees": 315.0,
+      "pitch_degrees": 0.0,
+      "fov_degrees": 65.0
+    }
+  },
+  "checks": {
+    "all_15000_xyz_values_equal_planning_meters_times_100": true,
+    "all_fov_values_equal_measured_65_degrees": true,
+    "all_scores_and_times_preserved": true,
+    "black_myth_loader_reads_3000_trajectories": true,
+    "all_loaded_trajectories_have_exactly_5_keyframes": true,
+    "all_loaded_endpoints_equal_source_global_max_native_pose": true,
+    "distinct_loaded_endpoint_count": 1
+  },
+  "important_note": "Scores are measured only at the five source controls. Runtime interpolation frames remain unscored."
+}
